@@ -50,6 +50,11 @@ const StatCounter = ({ value, label, icon: Icon }: { value: string; label: strin
 const StatsSection = ({ settings }: StatsSectionProps) => {
   const stats = [
     { 
+      label: "Years of Excellence", 
+      value: (settings?.years_of_experience || "15") + "+",
+      icon: Calendar
+    },
+    { 
       label: "Happy Students", 
       value: (settings?.number_of_students || "500") + "+",
       icon: Users
@@ -60,8 +65,8 @@ const StatsSection = ({ settings }: StatsSectionProps) => {
       icon: GraduationCap
     },
     { 
-      label: "Years of Excellence", 
-      value: (settings?.years_of_experience || "15") + "+",
+      label: "Awards & Honors", 
+      value: (settings?.awards || "15") + "+",
       icon: Award
     },
     { 
@@ -74,7 +79,7 @@ const StatsSection = ({ settings }: StatsSectionProps) => {
   return (
     <section className="py-20 bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8">
           {stats.map((stat, index) => (
             <StatCounter 
               key={index} 

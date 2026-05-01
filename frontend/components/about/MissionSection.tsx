@@ -30,7 +30,7 @@ const MissionSection = ({ missionData, missionParagraph }: MissionSectionProps) 
             <Target className="w-8 h-8 text-primary" />
           </motion.div>
 
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -40,7 +40,7 @@ const MissionSection = ({ missionData, missionParagraph }: MissionSectionProps) 
             Our Mission
           </motion.h2>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -50,7 +50,7 @@ const MissionSection = ({ missionData, missionParagraph }: MissionSectionProps) 
             {hasMissionList ? (
               <div className="grid gap-4 max-w-2xl mx-auto">
                 {missionData.map((item, idx) => (
-                  <motion.div 
+                  <motion.div
                     key={idx}
                     initial={{ opacity: 0, x: -10 }}
                     whileInView={{ opacity: 1, x: 0 }}

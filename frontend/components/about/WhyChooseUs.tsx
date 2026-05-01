@@ -42,7 +42,7 @@ const WhyChooseUs = ({ heading, cards }: WhyChooseUsProps) => {
               className="group relative bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500"
             >
               <div className="absolute top-6 right-6 opacity-10 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110">
-                <CheckCircle2 className="w-8 h-8 text-primary" />
+                <CheckCircle2 className="w-5 h-5 text-primary" />
               </div>
               
               <div className="flex items-center space-x-3 mb-6">

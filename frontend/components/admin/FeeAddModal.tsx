@@ -619,12 +619,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
       return;
     }
 
-    const feeType =
-      calculations.hasAdm && calculations.hasProg
-        ? "billing"
-        : calculations.hasAdm
-          ? "admission"
-          : "program";
+
 
     try {
       setLoading(true);
@@ -633,14 +628,40 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         ? `${BASE_URL}/admin/student-fees/${fee.id}`
         : `${BASE_URL}/admin/student-fees`;
 
-      const feeType = fee ? fee.fee_type : (calculations.hasAdm && calculations.hasProg ? 'billing' : (calculations.hasAdm ? 'admission' : 'program'));
+      // Determine fee type: 
+      // 1. If editing, use the existing fee_type (or calculate from fee_types if singular is missing)
+      // 2. If new, determine based on what is being paid
+      let activeFeeType: string = "program"; // Default fallback
+      
+      if (fee) {
+        // If it's an existing record, we look at what it was
+        const typesStr = fee.fee_type || fee.fee_types || "";
+        if (typesStr.includes("admission") && typesStr.includes("program")) {
+          activeFeeType = "billing";
+        } else if (typesStr.includes("admission")) {
+          activeFeeType = "admission";
+        } else if (typesStr.includes("billing")) {
+          activeFeeType = "billing";
+        } else {
+          activeFeeType = "program";
+        }
+      } else {
+        // For new records, we determine based on the current selection in the modal
+        if (calculations.hasAdm && calculations.hasProg) {
+          activeFeeType = "billing";
+        } else if (calculations.hasAdm) {
+          activeFeeType = "admission";
+        } else {
+          activeFeeType = "program";
+        }
+      }
 
       const payload: Record<string, any> = {
         student_id: selectedStudentId,
-        fee_type: feeType,
+        fee_type: activeFeeType,
         month_year: formatPeriodToReadable(progPeriod),
         payment_method: paymentMethod,
-        remarks: remarks || `${feeType} — ${formatPeriodToReadable(progPeriod)}`,
+        remarks: remarks || `${activeFeeType} — ${formatPeriodToReadable(progPeriod)}`,
       };
 
       if (calculations.hasAdm) {
@@ -686,7 +707,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         student: selectedStudent,
         month_year: progPeriod,
         payment_method: paymentMethod,
-        fee_type: feeType,
+        fee_type: activeFeeType,
         total_amount: calculations.grandTotal,
         gross_amount:
           calculations.progBaseSum +
