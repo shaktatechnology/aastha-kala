@@ -28,17 +28,21 @@
   
   --accent: #8b5cf6; /* Violet 500 */
   
-  /* Semantic Colors */
-  --background: #f8fafc; /* Slate 50 */
-  --foreground: #0f172a; /* Slate 900 */
+  /* Semantic Colors - Digital Newsroom */
+  --bg-main: #f8fafc; /* Very light cool blue-white, not gray */
+  --card-bg: #ffffff;
+  --text-main: #1e1b4b; /* Deep Indigo-Black for high contrast */
+
+  --background: var(--bg-main); 
+  --foreground: var(--text-main); 
   
-  --surface: #ffffff;
+  --surface: var(--card-bg);
   --surface-hover: #f1f5f9;
   
   --border: #e2e8f0;
   --border-hover: #cbd5e1;
   
-  --text-primary: #1e293b;
+  --text-primary: var(--text-main);
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
   
@@ -49,7 +53,7 @@
 
   /* Elevation */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.15); /* Indigo-tinted shadow */
   --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.05);
@@ -105,7 +109,10 @@
   }
   
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: var(--font-poppins), sans-serif;
+    @apply antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
@@ -214,4 +221,4 @@
 
 .public-content p {
   @apply text-foreground/80;
-}
+}

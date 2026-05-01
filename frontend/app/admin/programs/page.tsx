@@ -335,8 +335,9 @@ const ProgramsPage = () => {
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-gray-400" />
                             <span className="text-sm text-gray-700">
-                              {(program.schedules?.length || 0) + 
-                               (program.sub_programs?.reduce((acc, sp) => acc + (sp.schedules?.length || 0), 0) || 0)}
+                              {(program.sub_programs?.length || 0) > 0 
+                               ? (program.sub_programs?.reduce((acc, sp) => acc + (sp.schedules?.length || 0), 0) || 0)
+                               : (program.schedules?.length || 0)}
                             </span>
                           </div>
                         </TableCell>

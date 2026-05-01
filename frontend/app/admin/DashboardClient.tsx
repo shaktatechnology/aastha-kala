@@ -1,27 +1,31 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Users,
-  BookOpen,
-  CalendarCheck,
-  Clock,
-  PlusCircle,
+  CreditCard,
   UserPlus,
-  Flag,
-  Image as ImageIcon,
+  Receipt,
+  FileText,
+  Activity,
   ChevronRight,
-  MessageSquare,
-  Zap,
-  Mail,
-  Timer,
-  CheckCircle2,
-  XCircle,
-  GraduationCap,
-  CreditCard
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/DashboardContext";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
 
 import ProgramAddEditModal from "@/components/admin/ProgramAddEditModal";
 import InstructorModal from "@/components/admin/InstructorModal";
@@ -29,210 +33,51 @@ import EventAddEditModal from "@/components/admin/EventAddEditModal";
 import GalleryAddEditModal from "@/components/admin/GalleryAddEditModal";
 import StudentAddEditModal from "@/components/admin/StudentAddEditModal";
 import BookingViewModal from "@/components/admin/BookingViewModal";
-import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import { CustomSelect } from "@/components/ui/custom-select";
+
+const PIE_COLORS = ["#6366f1", "#ec4899", "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6"];
 
 /* ───────────────────────── helpers ───────────────────────── */
-
 const fmt = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
-const timeAgo = (date: string) => {
-  const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
-};
-
-const statusConfig: Record<
-  string,
-  { bg: string; text: string; dot: string; label: string }
-> = {
-  pending: {
-    bg: "bg-amber-50",
-    text: "text-amber-600",
-    dot: "bg-amber-400",
-    label: "Pending",
-  },
-  accepted: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-600",
-    dot: "bg-emerald-400",
-    label: "Accepted",
-  },
-  approved: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-600",
-    dot: "bg-emerald-400",
-    label: "Approved",
-  },
-  rejected: {
-    bg: "bg-red-50",
-    text: "text-red-600",
-    dot: "bg-red-400",
-    label: "Rejected",
-  },
-};
-
-/* ─────────────────────── animated counter ─────────────────── */
-
-const AnimatedNumber = ({ value, duration = 700, prefix = "" }: { value: number; duration?: number; prefix?: string }) => {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const step = value / (duration / 16);
-    const id = setInterval(() => {
-      start += step;
-      if (start >= value) {
-        setDisplay(value);
-        clearInterval(id);
-      } else {
-        setDisplay(Math.floor(start));
-      }
-    }, 16);
-    return () => clearInterval(id);
-  }, [value, duration]);
-  return <>{prefix}{fmt(display)}</>;
-};
-
-/* ─────────────────────── stat card (COMPACT) ────────────────────────── */
-
-const StatCard = ({
+/* ─────────────────────── stat card (Pulse) ────────────────────────── */
+const PulseCard = ({
   title,
   value,
   icon: Icon,
-  accent,
-  prefix = "",
-  trend = "",
-}: {
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  accent: string;
-  prefix?: string;
-  trend?: string;
-}) => (
-  <div className="relative bg-surface border border-border rounded-xl p-5 shadow-sm hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
-    
-    {/* Background glow */}
-    <div
-      className="absolute -right-16 -top-16 w-48 h-48 rounded-full blur-[80px] opacity-[0.05] group-hover:opacity-[0.1] transition-opacity duration-700"
-      style={{ backgroundColor: accent }}
-    />
-
-    <div className="relative z-10">
-      <div className="flex items-center justify-between mb-6">
-        <div
-          className="w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-inner"
-          style={{
-            background: `linear-gradient(135deg, ${accent}20 0%, ${accent}08 100%)`,
-            border: `1px solid ${accent}15`,
-          }}
-        >
-          <Icon className="w-6 h-6" style={{ color: accent }} />
-        </div>
-        {trend && (
-          <span className="text-[10px] font-black tracking-widest text-success bg-success/10 border border-success/20 px-3 py-1 rounded-full uppercase">
-            {trend}
-          </span>
-        )}
-      </div>
-
-      <div>
-        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1.5">
-          {title}
-        </p>
-        <p className="text-2xl font-black text-text-primary leading-none tracking-tight">
-          <AnimatedNumber value={value} prefix={prefix} />
-        </p>
-      </div>
-
-      <div
-        className="absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-700 rounded-full opacity-50"
-        style={{ backgroundColor: accent }}
-      />
-    </div>
-  </div>
-);
-
-/* ─────────────────────── quick action ─────────────────────── */
-
-const QuickAction = ({
-  title,
-  desc,
-  icon: Icon,
+  subtitle,
+  alert = false,
   onClick,
-  accent,
 }: {
   title: string;
-  desc: string;
+  value: string | number;
   icon: React.ElementType;
-  onClick: () => void;
-  accent: string;
+  subtitle?: React.ReactNode;
+  alert?: boolean;
+  onClick?: () => void;
 }) => (
-  <button
+  <div 
     onClick={onClick}
-    className="relative bg-surface border border-border rounded-xl p-5 text-left shadow-sm hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 transition-all duration-300 group overflow-hidden cursor-pointer"
+    className={`bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200 group overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
   >
-    <div
-      className="absolute inset-0 opacity-0 group-hover:opacity-[0.05] transition-opacity duration-500"
-      style={{ backgroundColor: accent }}
-    />
-    <div className="relative z-10 flex items-center gap-5">
-      <div
-        className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all duration-500 group-hover:scale-110 group-hover:bg-white"
-        style={{ backgroundColor: `${accent}10`, borderColor: `${accent}15` }}
-      >
-        <Icon className="w-6 h-6" style={{ color: accent }} />
-      </div>
-      <div className="min-w-0">
-        <span className="block text-base font-black text-text-primary group-hover:text-primary transition-colors tracking-tight truncate">
-          {title}
-        </span>
-        <span className="block text-xs font-medium text-text-muted mt-1 truncate">{desc}</span>
+    <div className="flex items-center justify-between mb-1">
+      <p className="text-[10px] font-semibold text-[var(--text-main)] uppercase tracking-[0.05em] opacity-70">
+        {title}
+      </p>
+      <div className={`p-1.5 rounded-md ${alert ? 'bg-red-50 text-red-500' : 'bg-[#e0e7ff] text-[var(--primary)]'}`}>
+        <Icon className="w-4 h-4" />
       </div>
     </div>
-  </button>
-);
-
-/* ─────────────────────── status badge ─────────────────────── */
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const cfg = statusConfig[status] || statusConfig.pending;
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${cfg.bg} ${cfg.text}`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
-    </span>
-  );
-};
-
-/* ─────────────────────── activity item ────────────────────── */
-
-const ActivityItem = ({
-  icon: Icon,
-  color,
-  title,
-  time,
-}: {
-  icon: React.ElementType;
-  color: string;
-  title: string;
-  time: string;
-}) => (
-  <div className="flex items-start gap-3">
-    <div
-      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
-      style={{ backgroundColor: `${color}0D`, borderColor: `${color}1A` }}
-    >
-      <Icon className="w-3.5 h-3.5" style={{ color }} />
-    </div>
-    <div className="min-w-0 pt-0.5">
-      <p className="text-[12px] font-semibold text-gray-700 leading-snug">{title}</p>
-      <p className="text-[10px] text-gray-400 mt-0.5 font-medium">{time}</p>
+    <div className="flex items-end justify-between">
+      <p className={`text-2xl font-black tracking-tight leading-none ${alert ? 'text-red-500' : 'text-[var(--primary)]'}`}>
+        {value}
+      </p>
+      {subtitle && (
+        <div className="text-[10px] font-medium text-[var(--text-main)] opacity-70 mb-0.5">
+          {subtitle}
+        </div>
+      )}
     </div>
   </div>
 );
@@ -242,8 +87,6 @@ const ActivityItem = ({
 const Dashboard = () => {
   const { data, loading, categories, refreshData } = useDashboard();
   const router = useRouter();
-  const [adminName, setAdminName] = useState("Admin");
-  const [currentTime, setCurrentTime] = useState("");
 
   const [modals, setModals] = useState({
     program: false,
@@ -256,368 +99,327 @@ const Dashboard = () => {
 
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
+  const [expenseFilter, setExpenseFilter] = useState({ month: '', year: '' });
+  const [attendanceFilter, setAttendanceFilter] = useState({ day: '', month: '', year: '' });
+
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user.name) setAdminName(user.name);
-      } catch {}
-    }
-
-    const tick = () =>
-      setCurrentTime(
-        new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
-    tick();
-    const id = setInterval(tick, 1000);
-
-    // Refresh dashboard data on mount
-    refreshData();
-
-    return () => clearInterval(id);
-  }, [refreshData]);
+    refreshData({
+      expense_month: expenseFilter.month,
+      expense_year: expenseFilter.year,
+      attendance_day: attendanceFilter.day,
+      attendance_month: attendanceFilter.month,
+      attendance_year: attendanceFilter.year,
+    });
+  }, [expenseFilter, attendanceFilter, refreshData]);
 
   const openModal = (type: keyof typeof modals) =>
     setModals((p) => ({ ...p, [type]: true }));
   const closeModal = (type: keyof typeof modals) =>
     setModals((p) => ({ ...p, [type]: false }));
 
-  const handleUpdateStatus = async (id: number, status: string, instructorId?: number, customStartTime?: string, customEndTime?: string) => {
-    try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/bookings/${id}/status`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: JSON.stringify({ status, instructor_id: instructorId, custom_start_time: customStartTime, custom_end_time: customEndTime }),
-        });
-        if (!res.ok) throw new Error("Update failed");
-        toast.success(`Booking ${status}`);
-        refreshData();
-        closeModal("viewBooking");
-    } catch (error: any) { 
-      toast.error(error.message); 
-    }
-  };
-
-  /* ── skeleton ── */
-  if (loading && !data) {
-    return (
-      <div className="space-y-8 animate-pulse">
-        <div className="h-8 w-64 bg-gray-200 rounded-lg" />
-        <div className="grid grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-28 bg-gray-100 rounded-2xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 h-80 bg-gray-100 rounded-2xl" />
-          <div className="h-80 bg-gray-100 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
-
+  // Dynamic Data Assignment
   const stats = data?.stats || {};
-  const recentBookings = data?.recent_bookings || [];
-  const recentMessages = data?.recent_messages || [];
+  const pieData = data?.employee_attendance || [];
+  const expenseCategories = data?.expense_categories || [];
+  const scheduleData = data?.schedules || [];
+  const eventsData = data?.recent_events || [];
+  const revenueGauges = data?.revenue_gauges || [];
+
+  const totalEmployees = pieData.reduce((acc: any, curr: any) => acc + curr.value, 0);
+
+  const monthOptions = [
+    { value: "", label: "Month" },
+    ...Array.from({ length: 12 }).map((_, i) => ({ value: String(i + 1), label: new Date(0, i).toLocaleString('en', { month: 'short' }) }))
+  ];
+
+  const yearOptions = [
+    { value: "", label: "Year" },
+    { value: "2026", label: "2026" },
+    { value: "2025", label: "2025" }
+  ];
+
+  const dayOptions = [
+    { value: "", label: "Day" },
+    ...Array.from({ length: 31 }).map((_, i) => ({ value: String(i + 1), label: String(i + 1) }))
+  ];
 
   return (
-    <div className="space-y-10 pb-16 animate-fade-in">
-      {/* ──── HEADER ──── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 bg-surface border border-border rounded-xl shadow-sm relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -mr-48 -mt-48 blur-3xl group-hover:bg-primary/10 transition-colors duration-500" />
-        
-        <div className="relative z-10">
-          <h1 className="text-3xl lg:text-4xl font-black text-gradient tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-text-muted text-sm font-medium mt-1.5 flex items-center gap-2">
-            Welcome back to your workspace,
-            <span className="text-primary font-black uppercase tracking-widest text-xs px-2.5 py-1 bg-primary/10 rounded-lg">{adminName}</span>
-          </p>
-        </div>
-
-        <div className="relative z-10 flex items-center gap-8">
-          <div className="text-right hidden sm:block border-r border-border pr-8">
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1.5">
-              Local Time
-            </p>
-            <p className="text-2xl font-black text-text-primary tabular-nums tracking-tighter">
-              {currentTime}
-            </p>
-          </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1.5">
-              Current Date
-            </p>
-            <p className="text-sm font-black text-text-secondary uppercase tracking-widest">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                year: "numeric"
-              })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ──── KPI STATS (all values from API) ──── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Bookings"
-          value={stats.total_bookings || 0}
-          icon={CalendarCheck}
-          accent="#2563EB"
+    <div className="space-y-4 pb-8 animate-fade-in font-poppins">
+      
+      {/* ──── TOP BAR: PULSE METRICS ──── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <PulseCard
+          title="Total Employees"
+          value={stats.total_employees || 0}
+          icon={Users}
+          subtitle={<span className="flex items-center text-[var(--primary)] gap-2"><Activity className="w-4 h-4"/> Active Staff</span>}
         />
-        <StatCard
-          title="Pending Requests"
-          value={stats.pending_bookings || 0}
-          icon={Clock}
-          accent="#D97706"
-        />
-        <StatCard
-          title="Total Students"
+        <PulseCard
+          title="Active Students"
           value={stats.total_students || 0}
-          icon={GraduationCap}
-          accent="#4F46E5"
+          icon={Users}
+          subtitle={<span className="flex items-center text-[var(--primary)] gap-2"><Activity className="w-4 h-4 animate-pulse"/> Live</span>}
         />
-        <StatCard
-          title="Total Revenue"
-          value={stats.total_revenue || 0}
+        <PulseCard
+          title="Outstanding Fees"
+          value={`Rs. ${stats.outstanding_fees ? stats.outstanding_fees.toLocaleString() : 0}`}
           icon={CreditCard}
-          accent="#059669"
-          prefix="Rs. "
+          alert={true}
+          onClick={() => router.push("/admin/fees")}
+        />
+        <PulseCard
+          title="Dress Hire Count"
+          value={stats.dress_hire_count || 0}
+          icon={FileText}
         />
       </div>
 
-      {/* ──── QUICK ACTIONS ──── */}
-      <div>
-        <div className="flex items-center gap-3 mb-5">
-          <Zap className="w-4 h-4 text-gray-400" />
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em]">
-            Quick Actions
-          </h2>
-          <div className="h-px flex-1 bg-gray-100" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QuickAction
-            title="New Student"
-            desc="Register a new student"
-            icon={UserPlus}
-            accent="#0EA5E9"
-            onClick={() => openModal("student")}
-          />
-          <QuickAction
-            title="Manage Fees"
-            desc="View billing & payments"
-            icon={CreditCard}
-            accent="#10B981"
-            onClick={() => router.push("/admin/fees")}
-          />
-          <QuickAction
-            title="Create Event"
-            desc="Schedule an upcoming event"
-            icon={Flag}
-            accent="#EC4899"
-            onClick={() => openModal("event")}
-          />
-          <QuickAction
-            title="Gallery Upload"
-            desc="Add photos to the gallery"
-            icon={ImageIcon}
-            accent="#3B82F6"
-            onClick={() => openModal("gallery")}
-          />
-        </div>
-      </div>
-
-      {/* ──── MAIN CONTENT GRID ──── */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* ── BOOKINGS TABLE ── */}
-        <div className="xl:col-span-8 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <CalendarCheck className="w-4 h-4 text-blue-500" />
-              </div>
-              <h2 className="text-xs font-black text-text-muted uppercase tracking-[0.2em]">
-                Recent Bookings
-              </h2>
-              {recentBookings.length > 0 && (
-                <span className="px-2.5 py-1 rounded-lg bg-background border border-border text-[10px] font-black text-text-muted">
-                  {recentBookings.length}
-                </span>
-              )}
+      {/* ──── MIDDLE SECTION: CHARTS ──── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        {/* LEFT: Expense Categories Flow */}
+        <div className="lg:col-span-8 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)]">Expense Categories</h2>
+            <div className="flex gap-2 text-xs w-48">
+              <CustomSelect 
+                options={monthOptions} 
+                value={expenseFilter.month} 
+                onChange={(val) => setExpenseFilter({...expenseFilter, month: val})} 
+                placeholder="Month" 
+                className="w-24"
+              />
+              <CustomSelect 
+                options={yearOptions} 
+                value={expenseFilter.year} 
+                onChange={(val) => setExpenseFilter({...expenseFilter, year: val})} 
+                placeholder="Year" 
+                className="w-24"
+              />
             </div>
-            <Link
-              href="/admin/booking"
-              className="px-4 py-2 text-[10px] font-black text-text-muted uppercase tracking-[0.2em] hover:text-primary hover:bg-primary/5 rounded-lg transition-all flex items-center gap-2 group"
-            >
-              View All
-              <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-            </Link>
           </div>
-
-          <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm">
-            {recentBookings.length > 0 ? (
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left min-w-[600px] lg:min-w-full">
-                  <thead>
-                    <tr className="border-b border-border bg-background/50">
-                      <th className="px-8 py-4 text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-                        Customer
-                      </th>
-                      <th className="px-8 py-4 text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-                        Program
-                      </th>
-                      <th className="px-8 py-4 text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-                        Status
-                      </th>
-                      <th className="px-8 py-4 text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-right">
-                        Received
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {recentBookings.map((booking: any) => (
-                      <tr
-                        key={booking.id}
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setModals((p) => ({ ...p, viewBooking: true }));
-                        }}
-                        className="hover:bg-primary/5 transition-all duration-300 group cursor-pointer"
-                      >
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-background border border-border flex items-center justify-center text-xs font-black text-text-muted uppercase shrink-0 group-hover:scale-110 group-hover:text-primary group-hover:border-primary/30 transition-all">
-                              {(booking.name || "?")[0]}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-black text-text-primary group-hover:text-primary transition-colors truncate max-w-[160px]">
-                                {booking.name}
-                              </p>
-                              <p className="text-[11px] font-medium text-text-muted truncate max-w-[160px] mt-0.5">
-                                {booking.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5">
-                          <span className="text-xs font-black text-primary uppercase tracking-wider bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10 truncate block max-w-[180px]">
-                            {booking.program?.title || "—"}
-                          </span>
-                        </td>
-                        <td className="px-8 py-5">
-                          <StatusBadge status={booking.status} />
-                        </td>
-                        <td className="px-8 py-5 text-right">
-                          <span className="text-[11px] font-black text-text-muted uppercase tracking-widest bg-background px-2 py-1 rounded-md">
-                            {timeAgo(booking.created_at)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <div className="h-[220px] w-full">
+            {expenseCategories.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={expenseCategories} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{fill: 'var(--text-main)', opacity: 0.6, fontSize: 12}} dy={10} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow)' }}
+                    itemStyle={{ fontWeight: 600, color: '#f87171' }}
+                    labelStyle={{ fontWeight: 700, color: 'var(--text-main)' }}
+                    formatter={(value: any) => [`Rs. ${Number(value || 0).toLocaleString()}`, "Amount"]}
+                  />
+                  <Bar dataKey="value" fill="#f87171" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-                <CalendarCheck className="w-10 h-10 mb-3 opacity-30" />
-                <p className="text-xs font-bold uppercase tracking-widest">
-                  No bookings yet
-                </p>
-              </div>
+              <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-main)] opacity-50 font-medium">No expense data available for this period.</div>
             )}
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN ── */}
-        <div className="xl:col-span-4 space-y-6">
-          {/* Recent Messages */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <MessageSquare className="w-4 h-4 text-violet-500" />
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em]">
-                  Inbox
-                </h2>
-                {recentMessages.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-md bg-violet-50 text-[10px] font-bold text-violet-500">
-                    {recentMessages.length}
-                  </span>
-                )}
-              </div>
-              <Link
-                href="/admin/contact"
-                className="text-[10px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-700 transition-colors flex items-center gap-1"
-              >
-                All
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-
-            <div className="space-y-4">
-              {recentMessages.length > 0 ? (
-                recentMessages.map((msg: any) => (
-                  <div
-                    key={msg.id}
-                    className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 transition-all duration-500 group relative overflow-hidden"
+        {/* RIGHT: Employee Attendance Donut */}
+        <div className="lg:col-span-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200 flex flex-col">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] shrink-0">Employee Attendance</h2>
+          </div>
+          <div className="flex flex-wrap gap-2 mb-4 text-[10px] w-full">
+            <CustomSelect 
+              options={dayOptions} 
+              value={attendanceFilter.day} 
+              onChange={(val) => setAttendanceFilter({...attendanceFilter, day: val})} 
+              placeholder="Day" 
+              className="flex-1 min-w-[70px]"
+            />
+            <CustomSelect 
+              options={monthOptions} 
+              value={attendanceFilter.month} 
+              onChange={(val) => setAttendanceFilter({...attendanceFilter, month: val})} 
+              placeholder="Month" 
+              className="flex-1 min-w-[80px]"
+            />
+            <CustomSelect 
+              options={yearOptions} 
+              value={attendanceFilter.year} 
+              onChange={(val) => setAttendanceFilter({...attendanceFilter, year: val})} 
+              placeholder="Year" 
+              className="flex-1 min-w-[70px]"
+            />
+          </div>
+          <div className="flex-1 relative min-h-[160px]">
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
                   >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                    
-                    <div className="relative z-10 flex items-start gap-4">
-                      <div className="w-11 h-11 rounded-xl bg-background border border-border flex items-center justify-center shrink-0 text-text-muted group-hover:text-primary group-hover:border-primary/30 group-hover:scale-110 transition-all duration-500 shadow-inner">
-                        <Mail className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <span className="text-sm font-black text-text-primary group-hover:text-primary transition-colors truncate tracking-tight">
-                            {msg.name}
-                          </span>
-                          <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] whitespace-nowrap bg-background px-2 py-0.5 rounded-md border border-border">
-                            {timeAgo(msg.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-[12px] font-medium text-text-secondary line-clamp-2 leading-relaxed italic">
-                          &ldquo;{msg.message}&rdquo;
-                        </p>
-                        <div className="flex items-center gap-4 mt-4">
-                          {msg.email && (
-                            <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest truncate max-w-[130px]">
-                              {msg.email}
-                            </span>
-                          )}
-                          {msg.phone && (
-                            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                              {msg.phone}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="bg-surface border border-dashed border-border rounded-xl p-16 flex flex-col items-center text-text-muted/30">
-                  <div className="w-16 h-16 rounded-lg bg-background border border-border flex items-center justify-center mb-4">
-                    <MessageSquare className="w-8 h-8 opacity-20" />
-                  </div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em]">
-                    No messages
-                  </p>
-                </div>
-              )}
-            </div>
+                    {pieData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'var(--card-bg)', border: 'none', borderRadius: '8px', boxShadow: 'var(--shadow)' }}
+                    itemStyle={{ fontWeight: 600, color: 'var(--text-main)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-main)] opacity-50 font-medium">No attendance data</div>
+            )}
+            {pieData.length > 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-black text-[var(--text-main)]">{totalEmployees}</span>
+                <span className="text-[10px] font-semibold uppercase text-[var(--text-main)] opacity-60 tracking-wider">Records</span>
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-1 mt-2">
+            {pieData.map((entry: any, index: number) => (
+              <div key={entry.name} className="flex items-center gap-2 text-xs font-semibold text-[var(--text-main)] opacity-80 truncate" title={entry.name}>
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></span>
+                <span className="truncate">{entry.name}</span>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
+
+      {/* ──── REVENUE GAUGE ──── */}
+      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
+        <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] mb-3">Revenue Collection Gauge</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {revenueGauges.length > 0 ? (
+            revenueGauges.map((gauge: any) => (
+              <div key={gauge.program}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold text-sm text-[var(--text-main)] truncate max-w-[70%]" title={gauge.program}>{gauge.program}</span>
+                  <span className="font-bold text-sm text-[var(--primary)]">{gauge.collected}%</span>
+                </div>
+                <div className="w-full bg-[var(--border)] h-2.5 rounded-full overflow-hidden">
+                  <div className="bg-[var(--primary)] h-full transition-all duration-1000" style={{ width: `${gauge.collected}%` }} />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-sm text-[var(--text-main)] opacity-50 font-medium col-span-full">No revenue data available</div>
+          )}
+        </div>
+      </div>
+
+      {/* ──── LOWER SECTION: OPERATIONAL GRID ──── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        {/* Schedule */}
+        <div className="lg:col-span-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
+          <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] mb-3">Instructor Schedule (Today)</h2>
+          <div className="space-y-2">
+            {scheduleData.length > 0 ? (
+              scheduleData.map((item: any, i: number) => (
+                <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#f8fafc] transition-colors border border-transparent hover:border-[var(--border)]">
+                  <span className="text-sm font-black text-[var(--primary)] bg-[#e0e7ff] px-2 py-1 rounded">{item.time}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-[var(--text-main)] truncate">{item.class}</p>
+                    <p className="text-xs font-semibold text-[var(--text-main)] opacity-60 truncate">{item.instructor}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+               <div className="text-sm text-[var(--text-main)] opacity-50 font-medium py-4 text-center">No classes scheduled</div>
+            )}
+          </div>
+        </div>
+
+        {/* Events Table */}
+        <div className="lg:col-span-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-0 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200 overflow-hidden flex flex-col">
+          <div className="p-4 pb-2 flex justify-between items-center">
+            <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)]">Events (Recent)</h2>
+            <Link href="/admin/event" className="text-xs font-semibold text-[var(--primary)] hover:underline">View All</Link>
+          </div>
+          {eventsData.length > 0 ? (
+            <div className="w-full">
+              <table className="w-full text-left table-fixed">
+                <colgroup>
+                  <col className="w-[45%]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[25%]" />
+                </colgroup>
+                <thead>
+                  <tr className="bg-[#f8fafc] border-y border-[var(--border)]">
+                    <th className="px-4 py-3 text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.05em] text-center">Event</th>
+                    <th className="px-4 py-3 text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.05em] text-center">Date</th>
+                    <th className="px-4 py-3 text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.05em] text-center">Location</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {eventsData.map((evt: any, i: number) => (
+                    <tr key={i} className="hover:bg-[#f8fafc] transition-colors relative group">
+                      <td className="px-4 py-3 text-sm font-semibold text-[var(--text-main)] text-center border-l-4 border-transparent group-hover:border-[var(--primary)] truncate" title={evt.title}>{evt.title}</td>
+                      <td className="px-4 py-3 text-xs font-black text-[var(--primary)] text-center truncate">{evt.date}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-[var(--text-main)] opacity-60 text-center truncate" title={evt.location}>{evt.location}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-sm text-[var(--text-main)] opacity-50 font-medium p-6 text-center">No recent events</div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="lg:col-span-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
+          <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] mb-3">Quick Actions</h2>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={() => openModal('student')}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Add Student</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+            </button>
+            <button 
+              onClick={() => openModal('program')}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Add Program</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+            </button>
+            <button 
+              onClick={() => router.push('/admin/expenses')}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Log Expense</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+            </button>
+            <button 
+              onClick={() => router.push('/admin/fees')}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" />
+                <span>Issue Invoice</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+            </button>
+          </div>
+        </div>
+
       </div>
 
       {/* ──── MODALS ──── */}
@@ -652,14 +454,11 @@ const Dashboard = () => {
         onSuccess={() => refreshData()}
         student={null}
       />
-
       <BookingViewModal
         isOpen={modals.viewBooking}
         onClose={() => closeModal("viewBooking")}
         booking={selectedBooking}
-        onStatusUpdate={(status, instId, start, end) => {
-          if (selectedBooking) handleUpdateStatus(selectedBooking.id, status, instId, start, end);
-        }}
+        onStatusUpdate={(status, instId, start, end) => {}}
       />
     </div>
   );

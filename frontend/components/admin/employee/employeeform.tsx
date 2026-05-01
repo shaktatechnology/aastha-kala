@@ -63,6 +63,7 @@ export function EmployeeForm({
   const [joiningDate, setJoiningDate] = React.useState(initialData?.joining_date || "");
   const [status, setStatus] = React.useState(initialData?.status ?? true);
   const [image, setImage] = React.useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = React.useState(false);
 
   // Instructor specific state
   const [title, setTitle] = React.useState(initialData?.instructor?.title || "");
@@ -101,7 +102,11 @@ export function EmployeeForm({
       if (percentage) formData.append('percentage', percentage);
       if (joiningDate) formData.append('joining_date', joiningDate);
       formData.append('status', status ? '1' : '0');
-      if (image) formData.append('image', image);
+      if (image) {
+        formData.append('image', image);
+      } else if (imageRemoved) {
+        formData.append('remove_image', '1');
+      }
 
       if (type === 'instructor') {
         formData.append('title', title);
@@ -249,7 +254,7 @@ export function EmployeeForm({
             <div>
               <FieldLabel label="Profile Image" />
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-2 text-center hover:border-blue-400 transition-colors h-[180px] flex items-center justify-center overflow-hidden">
-                {image || initialData?.image ? (
+                {image || (initialData?.image && !imageRemoved) ? (
                   <div className="relative w-full h-full">
                     <img
                       src={image ? URL.createObjectURL(image) : (initialData?.image?.startsWith('http') ? initialData.image : `${IMAGE_BASE}/${initialData?.image}`)}
@@ -259,7 +264,10 @@ export function EmployeeForm({
                     {!isViewMode && (
                       <button
                         type="button"
-                        onClick={() => setImage(null)}
+                        onClick={() => {
+                          setImage(null);
+                          if (!image) setImageRemoved(true);
+                        }}
                         className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
                       >
                         <X className="size-3" />
