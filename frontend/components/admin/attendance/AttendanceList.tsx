@@ -13,6 +13,7 @@ interface AttendanceRecord {
   check_in: string | null;
   check_out: string | null;
   status: "early" | "ontime" | "late" | "absent";
+  remarks: string;
   employee: {
     id: number;
     name: string;
