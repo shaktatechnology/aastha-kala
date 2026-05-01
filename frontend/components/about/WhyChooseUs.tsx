@@ -58,9 +58,6 @@ const WhyChooseUs = ({ heading, cards }: WhyChooseUsProps) => {
                 {item.desc}
               </p>
 
-              <div className="mt-8 flex items-center text-primary font-bold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
-                DISCOVER MORE <span className="ml-2">→</span>
-              </div>
             </motion.div>
           ))}
         </div>
