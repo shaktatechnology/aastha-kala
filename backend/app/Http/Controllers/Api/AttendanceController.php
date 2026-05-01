@@ -27,43 +27,38 @@ class AttendanceController extends Controller
         $date = $request->input('date', date('Y-m-d'));
         $dayOfWeek = \Carbon\Carbon::parse($date)->dayOfWeek; // 0 (Sunday) to 6 (Saturday)
 
+        // Clean up old program schedule or instructor availability attendances for this date
+        // as we now unified everything to use standard employee shifts
+        \App\Models\Attendance::whereNotNull('program_schedule_id')
+            ->where('date', $date)
+            ->delete();
+        \App\Models\Attendance::whereNull('program_schedule_id')
+            ->whereNull('shift_id')
+            ->where('date', $date)
+            ->delete();
+
         $employees = \App\Models\Employee::with('instructor')->get();
         $processedCount = 0;
 
         foreach ($employees as $employee) {
             $shiftsToProcess = [];
 
-            if ($employee->type === 'instructor' && $employee->instructor) {
-                // Fetch ProgramSchedules for this instructor
-                $schedules = \App\Models\ProgramSchedule::where('instructor_id', $employee->instructor->id)->get();
-                foreach ($schedules as $schedule) {
+            // Fetch EmployeeShifts for ALL employees (staff and instructors)
+            $employeeShifts = \App\Models\EmployeeShift::with('shift')
+                ->where('employee_id', $employee->id)
+                ->where('day_of_week', $dayOfWeek)
+                ->get();
+                
+            foreach ($employeeShifts as $empShift) {
+                if ($empShift->shift) {
                     $shiftsToProcess[] = [
-                        'id' => $schedule->id,
-                        'name' => 'Slot (Prog ' . $schedule->program_id . ')',
-                        'start_time' => $schedule->start_time,
-                        'end_time' => $schedule->end_time,
-                        'grace_period_minutes' => 15, // Default grace period for slots
-                        'type' => 'program_schedule'
+                        'id' => $empShift->shift->id,
+                        'name' => $empShift->shift->name,
+                        'start_time' => $empShift->shift->start_time,
+                        'end_time' => $empShift->shift->end_time,
+                        'grace_period_minutes' => $empShift->shift->grace_period_minutes,
+                        'type' => 'shift'
                     ];
-                }
-            } else {
-                // Fetch EmployeeShifts for staff
-                $employeeShifts = \App\Models\EmployeeShift::with('shift')
-                    ->where('employee_id', $employee->id)
-                    ->where('day_of_week', $dayOfWeek)
-                    ->get();
-                    
-                foreach ($employeeShifts as $empShift) {
-                    if ($empShift->shift) {
-                        $shiftsToProcess[] = [
-                            'id' => $empShift->shift->id,
-                            'name' => $empShift->shift->name,
-                            'start_time' => $empShift->shift->start_time,
-                            'end_time' => $empShift->shift->end_time,
-                            'grace_period_minutes' => $empShift->shift->grace_period_minutes,
-                            'type' => 'shift'
-                        ];
-                    }
                 }
             }
 
@@ -72,10 +67,22 @@ class AttendanceController extends Controller
             }
 
             // Get all logs for this employee on this date
-            $logs = \App\Models\AttendanceLog::where('employee_id', $employee->id)
+            $logs = \App\Models\AttendanceLog::where(function($q) use ($employee) {
+                $q->where('employee_id', $employee->id);
+                if (!empty($employee->device_user_id)) {
+                    $q->orWhere('device_user_id', $employee->device_user_id);
+                }
+            })
                 ->whereDate('timestamp', $date)
                 ->orderBy('timestamp', 'asc')
                 ->get();
+                
+            // Auto-heal unmapped logs
+            foreach ($logs as $log) {
+                if (empty($log->employee_id)) {
+                    $log->update(['employee_id' => $employee->id]);
+                }
+            }
 
             if ($logs->isEmpty()) {
                 foreach ($shiftsToProcess as $shiftObj) {
@@ -159,19 +166,21 @@ class AttendanceController extends Controller
             'date' => $date,
         ];
         
-        if ($shiftObj['type'] === 'program_schedule') {
+        if (isset($shiftObj['type']) && $shiftObj['type'] === 'program_schedule') {
             $matchQuery['program_schedule_id'] = $shiftObj['id'];
         } else {
             $matchQuery['shift_id'] = $shiftObj['id'];
         }
 
+        $updateData = [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'status' => $status,
+        ];
+
         \App\Models\Attendance::updateOrCreate(
             $matchQuery,
-            [
-                'check_in' => $checkIn,
-                'check_out' => $checkOut,
-                'status' => $status,
-            ]
+            $updateData
         );
     }
 

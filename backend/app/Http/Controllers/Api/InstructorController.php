@@ -44,6 +44,7 @@ class InstructorController extends Controller
             'availabilities.*.end_time' => 'required|date_format:H:i|after:availabilities.*.start_time',
             'program_ids' => 'nullable|array',
             'program_ids.*' => 'exists:programs,id',
+            'device_user_id' => 'nullable|string|unique:employees,device_user_id',
         ], [], [
             'availabilities.*.start_time' => 'start time',
             'availabilities.*.end_time' => 'end time',
@@ -76,7 +77,27 @@ class InstructorController extends Controller
             $data['image'] = asset('storage/' . $path);
         }
 
+        // Create the underlying Employee record required for attendance and device sync
+        $employee = \App\Models\Employee::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'type' => 'instructor',
+            'status' => true,
+            'device_user_id' => $request->device_user_id,
+            'salary_basis' => 'none',
+        ]);
+
+        $data['employee_id'] = $employee->id;
         $instructor = Instructor::create($data);
+
+        // Queue registration for ZKT device via ADMS if device_user_id is provided
+        if (!empty($employee->device_user_id)) {
+            $deviceName = str_replace(' ', '_', $employee->name); 
+            \App\Models\DeviceCommand::create([
+                'command' => "DATA USER PIN={$employee->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
+            ]);
+        }
 
         if ($request->has('availabilities')) {
             foreach ($request->availabilities as $avail) {
@@ -103,7 +124,7 @@ class InstructorController extends Controller
     // GET /api/instructors/{id}
     public function show($id)
     {
-        $instructor = Instructor::with(['availabilities', 'programs'])->find($id);
+        $instructor = Instructor::with(['availabilities', 'programs', 'employee'])->find($id);
 
         if (!$instructor) {
             return response()->json([
@@ -146,6 +167,7 @@ public function update(Request $request, $id)
         'availabilities.*.end_time' => 'required|date_format:H:i|after:availabilities.*.start_time',
         'program_ids' => 'nullable|array',
         'program_ids.*' => 'exists:programs,id',
+        'device_user_id' => 'nullable|string|unique:employees,device_user_id,' . ($instructor->employee_id ?? 'NULL'),
     ], [], [
         'availabilities.*.start_time' => 'start time',
         'availabilities.*.end_time' => 'end time',
@@ -197,6 +219,44 @@ public function update(Request $request, $id)
 
     $instructor->update($data);
 
+    if ($instructor->employee_id) {
+        $employee = \App\Models\Employee::find($instructor->employee_id);
+        if ($employee) {
+            $employee->update([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'device_user_id' => $request->device_user_id,
+            ]);
+
+            if (!empty($request->device_user_id)) {
+                $deviceName = str_replace(' ', '_', $employee->name); 
+                \App\Models\DeviceCommand::create([
+                    'command' => "DATA USER PIN={$request->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
+                ]);
+            }
+        }
+    } else {
+        // Create employee if it doesn't exist for this instructor
+        $employee = \App\Models\Employee::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'type' => 'instructor',
+            'status' => true,
+            'device_user_id' => $request->device_user_id,
+            'salary_basis' => 'none',
+        ]);
+        $instructor->update(['employee_id' => $employee->id]);
+
+        if (!empty($request->device_user_id)) {
+            $deviceName = str_replace(' ', '_', $employee->name); 
+            \App\Models\DeviceCommand::create([
+                'command' => "DATA USER PIN={$request->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
+            ]);
+        }
+    }
+
     if ($request->has('availabilities')) {
         $instructor->availabilities()->delete();
         foreach ($request->availabilities as $avail) {
@@ -237,6 +297,10 @@ public function update(Request $request, $id)
         if ($instructor->image) {
             $oldPath = str_replace(asset('storage/'), '', $instructor->image);
             Storage::disk('public')->delete($oldPath);
+        }
+
+        if ($instructor->employee_id) {
+            \App\Models\Employee::where('id', $instructor->employee_id)->delete();
         }
 
         $instructor->delete();

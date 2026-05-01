@@ -328,10 +328,12 @@ const AttendanceList = () => {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-gray-800">
-                        {record.shift?.name || (record.program_schedule?.program?.title ? `Prog: ${record.program_schedule.program.title}` : 'Slot/Shift')}
+                        {record.shift?.name || (record.program_schedule?.program?.title ? `Prog: ${record.program_schedule.program.title}` : 'Working Hours')}
                       </div>
                       <div className="text-xs font-mono text-gray-500">
-                        {formatShiftTime(record.shift?.start_time || record.program_schedule?.start_time || "")} - {formatShiftTime(record.shift?.end_time || record.program_schedule?.end_time || "")}
+                        {record.shift?.start_time ? `${formatShiftTime(record.shift.start_time)} - ${formatShiftTime(record.shift.end_time)}` : 
+                         record.program_schedule?.start_time ? `${formatShiftTime(record.program_schedule.start_time)} - ${formatShiftTime(record.program_schedule.end_time)}` :
+                         record.remarks || ""}
                       </div>
                     </TableCell>
                     <TableCell>
