@@ -51,6 +51,7 @@ const ExpensesPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [globalRecentCategory, setGlobalRecentCategory] = useState<string>("");
   
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -84,7 +85,14 @@ const ExpensesPage = () => {
 
       const result = await res.json();
       if (res.ok) {
-        setExpenses(result.data?.data || []);
+        const data = result.data?.data || [];
+        setExpenses(data);
+        
+        // Update global recent category only when viewing unfiltered first page
+        if (page === 1 && !searchTerm && !categoryFilter && result.recent_category) {
+           setGlobalRecentCategory(result.recent_category);
+        }
+
         if (result.data?.last_page) {
           setPagination({
             currentPage: result.data.current_page,
@@ -105,7 +113,7 @@ const ExpensesPage = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchExpenses();
+      fetchExpenses(1);
     }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm, categoryFilter, fetchExpenses]);
@@ -183,7 +191,7 @@ const ExpensesPage = () => {
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <p className="text-sm text-gray-500">Recent Category</p>
             <p className="text-xl font-bold text-blue-600 mt-1 truncate">
-              {CATEGORY_MAP[expenses[0]?.category || ""] || expenses[0]?.category || "General"}
+              {CATEGORY_MAP[globalRecentCategory] || globalRecentCategory || "General"}
             </p>
           </div>
         </div>

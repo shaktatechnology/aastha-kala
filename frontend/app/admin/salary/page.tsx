@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { Pagination } from "@/components/global/Pagination";
 import { SalaryForm } from "@/components/admin/salary/salaryform";
 import { AnimatePresence, motion } from "framer-motion";
-import { Toaster } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { CustomSelect } from "@/components/ui/custom-select";
 
@@ -31,6 +30,7 @@ interface SalaryPayment {
   employee?: {
     name: string;
     type: string;
+    image?: string | null;
   };
 }
 
@@ -59,11 +59,13 @@ const SalaryManagementPage = () => {
   const fetchPayments = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/admin/salary-payments?page=${page}`;
-      if (monthFilter) url += `&month=${monthFilter}`;
-      if (yearFilter) url += `&year=${yearFilter}`;
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/admin/salary-payments`);
+      url.searchParams.append('page', page.toString());
+      if (monthFilter) url.searchParams.append('month', monthFilter);
+      if (yearFilter) url.searchParams.append('year', yearFilter);
+      if (searchTerm) url.searchParams.append('search', searchTerm);
 
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           Accept: "application/json",
@@ -92,11 +94,14 @@ const SalaryManagementPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [monthFilter, yearFilter]);
+  }, [monthFilter, yearFilter, searchTerm]);
 
   useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
+    const timer = setTimeout(() => {
+      fetchPayments(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [monthFilter, yearFilter, searchTerm, fetchPayments]);
 
   const handleEdit = useCallback((payment: SalaryPayment) => {
     setEditingPayment(payment);
@@ -212,7 +217,7 @@ const SalaryManagementPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Filter results..."
+              placeholder="Search by employee..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -253,9 +258,17 @@ const SalaryManagementPage = () => {
                         <TableCell className="font-medium text-gray-500">{sn}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                              <User className="w-4 h-4 text-gray-500" />
-                            </div>
+                            {payment.employee?.image ? (
+                              <img
+                                src={payment.employee.image.startsWith('http') ? payment.employee.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${payment.employee.image}`}
+                                alt={payment.employee?.name}
+                                className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                <User className="w-4 h-4 text-gray-500" />
+                              </div>
+                            )}
                             <div>
                               <div className="font-bold text-gray-900">{payment.employee?.name}</div>
                               <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">{payment.employee?.type}</div>
@@ -373,8 +386,6 @@ const SalaryManagementPage = () => {
         title="Delete Payment Record"
         description="Are you sure you want to delete this payment record? This action cannot be undone."
       />
-
-      <Toaster richColors position="top-right" />
     </div>
   );
 };

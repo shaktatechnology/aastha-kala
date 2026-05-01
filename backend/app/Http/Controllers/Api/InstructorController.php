@@ -14,7 +14,7 @@ class InstructorController extends Controller
     public function index()
     {
         $instructors = Instructor::whereHas('employee', function($query) {
-                $query->where('type', 'instructor');
+                $query->where('type', 'instructor')->where('status', true);
             })
             ->with(['availabilities', 'programs', 'employee'])
             ->latest()

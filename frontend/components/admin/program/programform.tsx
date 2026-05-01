@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { 
@@ -12,8 +11,16 @@ import {
   Activity, AlertCircle, Hash, BookOpen, Captions, 
   Layout, Layers, ImageIcon, ChevronDown, Save, Calendar
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+
+const formatTime12h = (time24: string) => {
+  if (!time24) return "";
+  const [hours, minutes] = time24.split(":").map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return "";
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL;
@@ -36,6 +43,8 @@ interface SubProgram {
   description?: string;
   program_fee: string;
   schedules: Schedule[];
+  image?: File | string | null;
+  remove_image?: boolean;
 }
 
 function ErrorMessage({ message }: { message?: string }) {
@@ -154,6 +163,10 @@ export function ProgramForm({
         formData.append(`sub_programs[${i}][title]`, sp.title);
         if (sp.description) formData.append(`sub_programs[${i}][description]`, sp.description);
         formData.append(`sub_programs[${i}][program_fee]`, sp.program_fee);
+        
+        if (sp.remove_image) formData.append(`sub_programs[${i}][remove_image]`, '1');
+        if (sp.image instanceof File) formData.append(`sub_programs[${i}][image]`, sp.image);
+
         sp.schedules.forEach((s, j) => {
           if (s.id) formData.append(`sub_programs[${i}][schedules][${j}][id]`, s.id.toString());
           formData.append(`sub_programs[${i}][schedules][${j}][start_time]`, s.start_time);
@@ -420,28 +433,38 @@ export function ProgramForm({
             {schedules.map((schedule, index) => (
               <div key={index} className="flex gap-3 items-start">
                 <div className="flex-1 grid grid-cols-2 gap-3">
-                  <Input
-                    type="time"
-                    value={schedule.start_time}
-                    onChange={(e) => {
-                      const newSchedules = [...schedules];
-                      newSchedules[index].start_time = e.target.value;
-                      setSchedules(newSchedules);
-                    }}
-                    disabled={subPrograms.length > 0}
-                    className="h-11 text-base"
-                  />
-                  <Input
-                    type="time"
-                    value={schedule.end_time}
-                    onChange={(e) => {
-                      const newSchedules = [...schedules];
-                      newSchedules[index].end_time = e.target.value;
-                      setSchedules(newSchedules);
-                    }}
-                    disabled={subPrograms.length > 0}
-                    className="h-11 text-base"
-                  />
+                  <div>
+                    <Input
+                      type="time"
+                      value={schedule.start_time}
+                      onChange={(e) => {
+                        const newSchedules = [...schedules];
+                        newSchedules[index].start_time = e.target.value;
+                        setSchedules(newSchedules);
+                      }}
+                      disabled={subPrograms.length > 0}
+                      className="h-11 text-base w-full"
+                    />
+                    {schedule.start_time && (
+                      <p className="text-[10px] text-gray-500 mt-1 pl-1 font-medium">{formatTime12h(schedule.start_time)}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      type="time"
+                      value={schedule.end_time}
+                      onChange={(e) => {
+                        const newSchedules = [...schedules];
+                        newSchedules[index].end_time = e.target.value;
+                        setSchedules(newSchedules);
+                      }}
+                      disabled={subPrograms.length > 0}
+                      className="h-11 text-base w-full"
+                    />
+                    {schedule.end_time && (
+                      <p className="text-[10px] text-gray-500 mt-1 pl-1 font-medium">{formatTime12h(schedule.end_time)}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1 relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
@@ -560,6 +583,52 @@ export function ProgramForm({
                     <ErrorMessage message={errors[`sub_programs.${index}.description`]?.[0]} />
                   </div>
                 </div>
+
+                <div>
+                  <FieldLabel label="Sub-Program Image" />
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
+                    {subProgram.image ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={typeof subProgram.image === 'string' ? (subProgram.image.startsWith('http') ? subProgram.image : `${IMAGE_BASE?.endsWith('/') ? IMAGE_BASE.slice(0, -1) : IMAGE_BASE}/${subProgram.image.startsWith('/') ? subProgram.image.slice(1) : subProgram.image}`) : URL.createObjectURL(subProgram.image as File)}
+                          alt="Sub-Program"
+                          className="w-32 h-32 object-cover rounded-lg mx-auto"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSubs = [...subPrograms];
+                            newSubs[index].image = null;
+                            newSubs[index].remove_image = true;
+                            setSubPrograms(newSubs);
+                          }}
+                          className="absolute -top-2 -right-2 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer block py-4">
+                        <Upload className="size-6 text-gray-400 mx-auto mb-2" />
+                        <span className="text-xs text-gray-500">Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const newSubs = [...subPrograms];
+                              newSubs[index].image = file;
+                              newSubs[index].remove_image = false;
+                              setSubPrograms(newSubs);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
@@ -580,26 +649,36 @@ export function ProgramForm({
                     {subProgram.schedules.map((schedule, slotIndex) => (
                       <div key={slotIndex} className="flex gap-3 items-start">
                         <div className="flex-1 grid grid-cols-2 gap-3">
-                          <Input
-                            type="time"
-                            value={schedule.start_time}
-                            onChange={(e) => {
-                              const newSubs = [...subPrograms];
-                              newSubs[index].schedules[slotIndex].start_time = e.target.value;
-                              setSubPrograms(newSubs);
-                            }}
-                            className="h-10"
-                          />
-                          <Input
-                            type="time"
-                            value={schedule.end_time}
-                            onChange={(e) => {
-                              const newSubs = [...subPrograms];
-                              newSubs[index].schedules[slotIndex].end_time = e.target.value;
-                              setSubPrograms(newSubs);
-                            }}
-                            className="h-10"
-                          />
+                          <div>
+                            <Input
+                              type="time"
+                              value={schedule.start_time}
+                              onChange={(e) => {
+                                const newSubs = [...subPrograms];
+                                newSubs[index].schedules[slotIndex].start_time = e.target.value;
+                                setSubPrograms(newSubs);
+                              }}
+                              className="h-10 w-full"
+                            />
+                            {schedule.start_time && (
+                              <p className="text-[10px] text-gray-500 mt-1 pl-1 font-medium">{formatTime12h(schedule.start_time)}</p>
+                            )}
+                          </div>
+                          <div>
+                            <Input
+                              type="time"
+                              value={schedule.end_time}
+                              onChange={(e) => {
+                                const newSubs = [...subPrograms];
+                                newSubs[index].schedules[slotIndex].end_time = e.target.value;
+                                setSubPrograms(newSubs);
+                              }}
+                              className="h-10 w-full"
+                            />
+                            {schedule.end_time && (
+                              <p className="text-[10px] text-gray-500 mt-1 pl-1 font-medium">{formatTime12h(schedule.end_time)}</p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex-1 relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />

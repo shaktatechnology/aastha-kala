@@ -7,6 +7,7 @@ use App\Models\SalaryPayment;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SalaryPaymentController extends Controller
 {
@@ -28,6 +29,13 @@ class SalaryPaymentController extends Controller
             $query->where('year', $request->year);
         }
 
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->whereHas('employee', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
         $payments = $query->latest()->paginate(10);
 
         return response()->json([
@@ -41,13 +49,23 @@ class SalaryPaymentController extends Controller
         $this->authorize('create', SalaryPayment::class);
 
         $validator = Validator::make($request->all(), [
-            'employee_id' => 'required|exists:employees,id',
+            'employee_id' => [
+                'required',
+                'exists:employees,id',
+                Rule::unique('salary_payments')->where(function ($query) use ($request) {
+                    return $query->where('month', $request->month)
+                                 ->where('year', $request->year)
+                                 ->where('payment_type', $request->payment_type);
+                })
+            ],
             'amount' => 'required|numeric|min:0',
             'payment_date' => 'required|date',
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer',
             'payment_type' => 'required|string',
             'remarks' => 'nullable|string',
+        ], [
+            'employee_id.unique' => 'A payment of this type already exists for this employee for the selected month and year.'
         ]);
 
         if ($validator->fails()) {
@@ -82,13 +100,23 @@ class SalaryPaymentController extends Controller
         $this->authorize('update', $salaryPayment);
 
         $validator = Validator::make($request->all(), [
-            'employee_id' => 'required|exists:employees,id',
+            'employee_id' => [
+                'required',
+                'exists:employees,id',
+                Rule::unique('salary_payments')->where(function ($query) use ($request) {
+                    return $query->where('month', $request->month)
+                                 ->where('year', $request->year)
+                                 ->where('payment_type', $request->payment_type);
+                })->ignore($salaryPayment->id)
+            ],
             'amount' => 'required|numeric|min:0',
             'payment_date' => 'required|date',
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer',
             'payment_type' => 'required|string',
             'remarks' => 'nullable|string',
+        ], [
+            'employee_id.unique' => 'A payment of this type already exists for this employee for the selected month and year.'
         ]);
 
         if ($validator->fails()) {

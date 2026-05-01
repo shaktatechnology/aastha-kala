@@ -123,8 +123,17 @@ export function EmployeeForm({
         let errorMessage = 'Operation failed';
         try {
           const errorData = await response.json();
-          if (errorData.errors) setErrors(errorData.errors);
-          errorMessage = errorData.message || errorMessage;
+          if (errorData.errors) {
+            setErrors(errorData.errors);
+            const firstErrorField = Object.keys(errorData.errors)[0];
+            if (firstErrorField) {
+              errorMessage = errorData.errors[firstErrorField][0];
+            } else {
+              errorMessage = errorData.message || errorMessage;
+            }
+          } else {
+            errorMessage = errorData.message || errorMessage;
+          }
         } catch {
           errorMessage = `Server error: ${response.status}`;
         }
@@ -145,7 +154,7 @@ export function EmployeeForm({
       {/* Header */}
       <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
         <h2 className="text-2xl font-bold text-gray-900">
-          {initialData ? 'Edit Employee' : 'Add New Employee'}
+          {isViewMode ? 'View Employee' : initialData ? 'Edit Employee' : 'Add New Employee'}
         </h2>
         <p className="text-sm text-gray-500 mt-1">
           {isViewMode ? 'Viewing employee details' : `Fill in the details below to ${initialData ? 'update' : 'add'} an employee`}
@@ -424,32 +433,7 @@ export function EmployeeForm({
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <FieldLabel label="Facebook URL" />
-                  <div className="relative">
-                    <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-blue-600" />
-                    <Input
-                      value={facebookUrl}
-                      onChange={(e) => setFacebookUrl(e.target.value)}
-                      placeholder="https://facebook.com/..."
-                      className="pl-10 h-11"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel label="Instagram URL" />
-                  <div className="relative">
-                    <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-pink-600" />
-                    <Input
-                      value={instagramUrl}
-                      onChange={(e) => setInstagramUrl(e.target.value)}
-                      placeholder="https://instagram.com/..."
-                      className="pl-10 h-11"
-                    />
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         )}

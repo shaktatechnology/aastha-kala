@@ -111,8 +111,15 @@ export function SalaryForm({
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (errorData.errors) setErrors(errorData.errors);
-        throw new Error(errorData.message || 'Operation failed');
+        let errorMessage = errorData.message || 'Operation failed';
+        if (errorData.errors) {
+          setErrors(errorData.errors);
+          const firstErrorField = Object.keys(errorData.errors)[0];
+          if (firstErrorField) {
+            errorMessage = errorData.errors[firstErrorField][0];
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success(`Payment ${initialData ? 'updated' : 'recorded'} successfully`);
