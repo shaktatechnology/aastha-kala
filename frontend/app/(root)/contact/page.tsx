@@ -33,7 +33,19 @@ const fetchSettings = async () => {
 
 const getMapEmbedUrl = (url: string) => {
   if (!url) return "";
-  if (url.includes("google.com/maps/embed")) return url;
+  let embedUrl = url;
+
+  if (url.includes("<iframe")) {
+    const match = url.match(/src="([^"]+)"/);
+    if (match) embedUrl = match[1];
+  }
+
+  // Fix malformed https:/ (single slash) often caused by bad copy/paste
+  if (embedUrl.startsWith("https:/") && !embedUrl.startsWith("https://")) {
+    embedUrl = embedUrl.replace("https:/", "https://");
+  }
+
+  if (embedUrl.includes("google.com/maps/embed")) return embedUrl;
 
   // Extract place name or coordinates if it's a standard URL
   try {
@@ -49,7 +61,7 @@ const getMapEmbedUrl = (url: string) => {
     // If parsing fails, fall back to simple search embed if it looks like a string
   }
 
-  return url;
+  return embedUrl;
 };
 
 const ContactPage = async () => {
@@ -138,45 +150,72 @@ const ContactPage = async () => {
           {/* Contact Information */}
           <div className="space-y-12">
             <div className="space-y-8">
-              <div className="flex items-start gap-4">
-                <div className="bg-linear-to-r from-primary to-secondary p-2.5 rounded-full flex items-center justify-center">
+              <a 
+                href={`tel:${settings?.phone || "+9779841305158"}`}
+                className="flex items-start gap-4 group"
+              >
+                <div className="bg-linear-to-r from-primary to-secondary p-2.5 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Phone className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
                     Contact Number
                   </h3>
                   <p className="text-black text-xl mt-1">
                     {settings?.phone || "+977 9841305158"}
                   </p>
                 </div>
-              </div>
+              </a>
 
-              <div className="flex items-start gap-4">
-                <div className="bg-linear-to-r from-primary to-secondary p-2.5 rounded-full flex items-center justify-center">
+              <a 
+                href={`mailto:${settings?.email || "aasthakalakendra1@gmail.com"}`}
+                className="flex items-start gap-4 group"
+              >
+                <div className="bg-linear-to-r from-primary to-secondary p-2.5 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Mail className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
                     Email Address
                   </h3>
-                  <p className="text-black text-xl mt-1">
+                  <p className="text-black text-xl mt-1 break-all">
                     {settings?.email || "aasthakalakendra1@gmail.com"}
                   </p>
                 </div>
-              </div>
+              </a>
 
-              <div className="flex items-start gap-4">
-                <div className="bg-linear-to-r from-primary to-secondary p-2.5 rounded-full flex items-center justify-center">
+              <a 
+                href={getMapEmbedUrl(settings?.location_map) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings?.address || "Narayangoal Chowk, Kathmandu, Nepal")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-4 group"
+              >
+                <div className="bg-linear-to-r from-primary to-secondary p-2.5 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <MapPin className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Location</h3>
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">Location</h3>
                   <p className="text-black text-xl mt-1">
                     {settings?.address || "Narayangoal Chowk, Kathmandu, Nepal"}
                   </p>
                 </div>
-              </div>
+              </a>
+
+              {socialLinks?.whatsapp_number && (
+                <div className="flex items-start gap-4">
+                  <div className="bg-[#25D366] p-2.5 rounded-full flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white">
+                      <path d="M20.52 3.48A11.79 11.79 0 0 0 12.06 0C5.47 0 .12 5.35.12 11.94c0 2.1.55 4.14 1.6 5.93L0 24l6.3-1.66a11.9 11.9 0 0 0 5.76 1.47c6.59 0 11.94-5.35 11.94-11.94 0-3.19-1.24-6.19-3.49-8.39ZM12.07 21.5a9.9 9.9 0 0 1-5.05-1.38l-4.1 1.07 1.1-3.98A9.93 9.93 0 0 1 2.2 11.9c0-5.47 4.45-9.92 9.92-9.92s9.92 4.45 9.92 9.92-4.45 9.92-9.97 9.92Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">WhatsApp</h3>
+                    <p className="text-black text-xl mt-1">
+                      {socialLinks.whatsapp_number}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Google Maps Embed */}

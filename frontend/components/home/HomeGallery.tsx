@@ -69,10 +69,10 @@ const HomeGallery = ({
   if (gallery.length === 0) return null;
 
   return (
-    <section className="py-24 bg-white overflow-hidden">
+    <section className="pt-16 pb-8 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <ScrollReveal>
-          <div className="text-center space-y-4 mb-16 relative z-0">
+          <div className="text-center space-y-4 mb-12 relative z-0">
             {/* Pulsing background decorative element */}
             <motion.div 
               animate={{ 
@@ -87,7 +87,7 @@ const HomeGallery = ({
               className="absolute left-1/2 -top-10 -translate-x-1/2 w-48 h-48 bg-primary/10 rounded-full blur-3xl" 
             />
             
-            <h2 className="text-4xl md:text-5xl font-black text-gradient tracking-tight relative z-10 font-poppins">
+            <h2 className="text-4xl font-bold text-primary tracking-tight relative z-10 font-poppins">
               Our Visual Gallery
             </h2>
             <p className="text-text-muted text-base max-w-2xl mx-auto font-medium relative z-10 font-poppins">

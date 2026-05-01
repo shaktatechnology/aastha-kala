@@ -45,7 +45,7 @@ const TestimonialSlider = () => {
   if (data.length === 0) return null;
 
   return (
-    <section className="bg-white py-24 px-6 font-poppins relative overflow-hidden">
+    <section className="bg-white pt-8 pb-16 px-6 font-poppins relative overflow-hidden">
       {/* Pulse background element */}
       <motion.div 
         animate={{ 
@@ -62,9 +62,9 @@ const TestimonialSlider = () => {
 
       <div className="max-w-7xl mx-auto relative z-10">
         <ScrollReveal>
-          <div className="text-center mb-16">
-            <h4 className="text-secondary font-bold mb-2 uppercase tracking-widest">Student Success Stories</h4>
-            <h2 className="text-4xl md:text-5xl font-black text-[#27A0CF] font-poppins">
+          <div className="text-center mb-12">
+            <h4 className="text-primary font-bold mb-2 uppercase tracking-widest">Student Success Stories</h4>
+            <h2 className="text-4xl font-bold text-primary font-poppins">
               What Our Students Say
             </h2>
           </div>

@@ -25,14 +25,14 @@ const HomeProgramSection = async () => {
 
 
   return (
-    <section className="bg-white pt-24 pb-16 px-6">
+    <section className="bg-white pt-20 pb-6 px-6">
       <div className="max-w-7xl mx-auto">
 
         {/* HEADER */}
         <ScrollReveal once={true} direction="up">
           <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6 relative">
             <div className="text-center md:text-left space-y-3 relative z-10">
-              <h2 className="text-4xl md:text-5xl font-black text-gradient tracking-tight uppercase">
+              <h2 className="text-4xl font-bold text-primary tracking-tight uppercase">
                 What WE Offer
               </h2>
               <p className="text-text-muted font-medium max-w-xl">Discover our curated programs designed to nurture your artistic and musical talent</p>

@@ -86,8 +86,8 @@ const ContactForm: React.FC = () => {
             required
             value={formData.full_name}
             onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
-            placeholder="Enter your Name"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+            placeholder="Enter your name"
           />
         </div>
         <div>
@@ -104,8 +104,8 @@ const ContactForm: React.FC = () => {
             required
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
-            placeholder="Enter your email Address"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+            placeholder="Enter your email"
           />
         </div>
       </div>
@@ -123,8 +123,8 @@ const ContactForm: React.FC = () => {
           name="phone_number"
           value={formData.phone_number}
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
-          placeholder="Your Phone number"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+          placeholder="Enter your phone number"
         />
       </div>
 
@@ -142,27 +142,28 @@ const ContactForm: React.FC = () => {
           rows={5}
           value={formData.message}
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition resize-none"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all resize-none"
           placeholder="How can we help you?"
         ></textarea>
-        <p
-          className={`text-xs mt-1 text-right ${
-            wordCount >= WORD_LIMIT
-              ? "text-red-500 font-medium"
-              : "text-gray-400"
-          }`}
-        >
-          {wordCount} / {WORD_LIMIT} words
-        </p>
+        <div className="flex justify-between items-center mt-2">
+          <p className="text-xs text-gray-400">
+            {wordCount} / {WORD_LIMIT} words
+          </p>
+          <p className="text-[10px] text-gray-400 text-right max-w-[300px]">
+            By submitting, you agree to the processing of your personal data as described in the Privacy Statement.
+          </p>
+        </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-linear-to-r from-primary to-secondary text-white font-bold py-2.5 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? "Sending..." : "Send Message"}
-      </button>
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-12 py-3.5 bg-primary text-white font-bold rounded-full shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Sending..." : "Submit Message"}
+        </button>
+      </div>
     </form>
   );
 };

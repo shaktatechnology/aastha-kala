@@ -41,7 +41,7 @@ const AboutHomeSection: React.FC<AboutHomeSectionProps> = ({
           {/* Left: Text Content */}
           <ScrollReveal direction="up" className="w-full md:w-1/2">
             <div className={`${displayImage ? '' : 'max-w-3xl mx-auto'} space-y-6`}>
-              <h1 className="text-4xl md:text-5xl font-bold text-primary">
+              <h1 className="text-4xl font-bold text-primary">
                 {settings?.company_name || "Aasha Kala Kendra"}
               </h1>
               <h3 className="text-xl md:text-2xl font-semibold text-secondary -mt-2">

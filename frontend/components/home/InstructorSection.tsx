@@ -52,9 +52,9 @@ const InstructorSection = ({
   };
 
   return (
-    <section className="bg-white px-4 md:px-10 py-32 relative overflow-hidden">
+    <section className="bg-white px-4 md:px-10 pt-12 pb-24 relative overflow-hidden">
       {/* Dynamic Rope SVG - Restored Woven Design */}
-      <div className="absolute top-[260px] left-0 w-full pointer-events-none z-20 hidden lg:block">
+      <div className="absolute top-[150px] left-0 w-full pointer-events-none z-20 hidden lg:block">
         <svg 
           width="100%" 
           height="150" 
@@ -84,7 +84,7 @@ const InstructorSection = ({
 
       <div className="max-w-7xl mx-auto relative z-10">
         <ScrollReveal once={true} direction="up">
-          <div className="text-center space-y-3 mb-24 relative z-0">
+          <div className="text-center space-y-3 mb-16 relative z-0">
             {/* Animated Decorative background element */}
             <motion.div 
               animate={{ 
@@ -99,7 +99,7 @@ const InstructorSection = ({
               className="absolute left-1/2 -top-6 -translate-x-1/2 w-32 h-32 bg-secondary/10 rounded-full blur-3xl" 
             />
             
-            <h2 className="text-4xl md:text-5xl font-black text-gradient tracking-tight relative z-10 font-poppins">
+            <h2 className="text-4xl font-bold text-primary tracking-tight relative z-10 font-poppins">
               Meet Our Instructors
             </h2>
             <p className="text-text-muted text-base max-w-2xl mx-auto font-medium relative z-10 font-poppins">
