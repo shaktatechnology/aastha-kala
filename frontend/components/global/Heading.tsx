@@ -11,14 +11,15 @@ interface HeadingProps {
   title: string;
   subtitle: React.ReactNode;
   className?: string;
+  position?: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const IMAGE_URL = process.env.NEXT_PUBLIC_IMAGE_URL;
 
-const fetchHeroMedia = async (): Promise<HeroMedia[]> => {
+const fetchHeroMedia = async (pos: string = "slider-home"): Promise<HeroMedia[]> => {
   try {
-    const res = await fetch(`${API_URL}/galleries/position/slider-home`, {
+    const res = await fetch(`${API_URL}/galleries/position/${pos}`, {
       cache: "no-store",
     });
     
@@ -42,7 +43,7 @@ const fetchHeroMedia = async (): Promise<HeroMedia[]> => {
       return categoryName === "banner";
     });
 
-    // If banner category items exist, use them; otherwise, use all slider-home items
+    // If banner category items exist, use them; otherwise, use all items for that position
     const finalItems = bannerItems.length > 0 ? bannerItems : items;
     
     const media: HeroMedia[] = [];
@@ -63,7 +64,7 @@ const fetchHeroMedia = async (): Promise<HeroMedia[]> => {
           const base = IMAGE_URL;
           if (!base) {
             console.warn("NEXT_PUBLIC_IMAGE_URL is not configured");
-            return; // or continue to skip this image
+            return;
           }
           const finalBase = base.endsWith("/") ? base.slice(0, -1) : base;
           
@@ -91,8 +92,8 @@ const fetchHeroMedia = async (): Promise<HeroMedia[]> => {
   }
 };
 
-const Heading = async ({ title, subtitle, className }: HeadingProps) => {
-  const media = await fetchHeroMedia();
+const Heading = async ({ title, subtitle, className, position }: HeadingProps) => {
+  const media = await fetchHeroMedia(position);
 
   return (
     <HeadingSlider 

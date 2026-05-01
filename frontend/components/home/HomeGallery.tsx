@@ -1,11 +1,15 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
 import ClientGallery from "@/components/client/ClientGallery";
 import Link from "next/link";
-import { Facebook, Instagram, Twitter } from "lucide-react";
+import { Facebook, Instagram, Twitter } from "lucide-react";  
+import ScrollReveal from "../client/ScrollReveal";
+import { motion } from "framer-motion";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /* -------------------- TYPES -------------------- */
-
 type Category = {
   id: number;
   name: string;
@@ -27,127 +31,77 @@ interface SocialLinks {
   x?: string;
 }
 
-interface SettingResponse {
-  data: {
-    setting: any;
-    social_links: SocialLinks;
-  };
-}
-
-/* -------------------- FETCH FUNCTIONS -------------------- */
-
-const fetchGallery = async (): Promise<GalleryItem[]> => {
-  try {
-    const res = await fetch(`${API_URL}/galleries/position/gallery`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch gallery");
-
-    const data = await res.json();
-    return Array.isArray(data) ? data : data?.data || [];
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-};
-
-const fetchCategories = async (): Promise<Category[]> => {
-  try {
-    const res = await fetch(`${API_URL}/gallery-categories`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch categories");
-
-    const data = await res.json();
-    return Array.isArray(data) ? data : data?.data || [];
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-};
-
-const fetchSettings = async (): Promise<SocialLinks | null> => {
-  try {
-    const res = await fetch(`${API_URL}/settings`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch settings");
-
-    const json: SettingResponse = await res.json();
-
-    return json?.data?.social_links || null;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
-
-/* -------------------- UTILS -------------------- */
-
-const formatUrl = (url?: string) =>
-  url?.startsWith("http") ? url : `https://${url}`;
-
 /* -------------------- COMPONENT -------------------- */
 
-const HomeGallery = async ({
+const HomeGallery = ({
   socialLinks,
 }: {
   socialLinks: SocialLinks | null;
 }) => {
-  const gallery = await fetchGallery();
-  const categories = await fetchCategories();
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [galleryRes, catRes] = await Promise.all([
+          fetch(`${API_URL}/galleries/position/gallery`),
+          fetch(`${API_URL}/gallery-categories`)
+        ]);
+
+        const galleryData = await galleryRes.json();
+        const catData = await catRes.json();
+
+        setGallery(Array.isArray(galleryData) ? galleryData : galleryData?.data || []);
+        setCategories(Array.isArray(catData) ? catData : catData?.data || []);
+      } catch (error) {
+        console.error("Failed to fetch gallery data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) return null;
   if (gallery.length === 0) return null;
 
-  const limitedGallery = gallery.slice(0, 8);
-
   return (
-    <section className="py-10 px-6 bg-gray-100">
-      <div className="max-w-7xl mx-auto">
-        {/* HEADER REMOVED */}
-
-
-        {/* GALLERY */}
-        <ClientGallery gallery={limitedGallery} categories={categories} />
-
-        {/* SOCIAL LINKS */}
-        {/* {socialLinks && (
-          <div className="flex justify-center gap-4 mt-8">
-            {socialLinks.facebook && (
-              <a
-                href={formatUrl(socialLinks.facebook)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Facebook className="p-1.5 w-9 h-9 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition" />
-              </a>
-            )}
-
-            {socialLinks.instagram && (
-              <a
-                href={formatUrl(socialLinks.instagram)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Instagram className="p-1.5 w-9 h-9 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200 transition" />
-              </a>
-            )}
-
-            {socialLinks.x && (
-              <a
-                href={formatUrl(socialLinks.x)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Twitter className="p-1.5 w-9 h-9 rounded-full bg-gray-200 text-blue-500 hover:bg-gray-300 transition" />
-              </a>
-            )}
+    <section className="py-24 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+        <ScrollReveal>
+          <div className="text-center space-y-4 mb-16 relative z-0">
+            {/* Pulsing background decorative element */}
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.15, 1],
+                opacity: [0.2, 0.4, 0.2] 
+              }}
+              transition={{ 
+                duration: 10, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+              }}
+              className="absolute left-1/2 -top-10 -translate-x-1/2 w-48 h-48 bg-primary/10 rounded-full blur-3xl" 
+            />
+            
+            <h2 className="text-4xl md:text-5xl font-black text-gradient tracking-tight relative z-10 font-poppins">
+              Our Visual Gallery
+            </h2>
+            <p className="text-text-muted text-base max-w-2xl mx-auto font-medium relative z-10 font-poppins">
+              Explore the vibrant moments, artistic creations, and memorable events captured at Aastha Kala.
+            </p>
           </div>
-        )} */}
+        </ScrollReveal>
       </div>
+      
+      <ScrollReveal delay={200} once={true}>
+        <div className="relative">
+          <ClientGallery gallery={gallery} categories={categories} />
+        </div>
+      </ScrollReveal>
     </section>
   );
 };

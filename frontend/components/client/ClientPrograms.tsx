@@ -128,26 +128,20 @@ const ProgramCard = ({ program, onBook }: { program: Program; onBook: () => void
         </div>
 
         {/* Footer */}
-        <div className="pt-6 border-t border-gray-50 flex items-center justify-between gap-4">
-          <div className="flex items-baseline gap-1 shrink-0">
-            <span className="text-xs text-gray-400 font-bold">Rs.</span>
-            <span className="text-2xl font-black text-[#001f54] tracking-tight">{getPriceDisplay()}</span>
-            <span className="text-[10px] text-gray-400 font-bold uppercase ml-1">/ Mo</span>
-          </div>
-
+        <div className="pt-6 border-t border-gray-50">
           {hasSubPrograms ? (
             <Link
               href={`/programs/${toSlug(program.title, program.id)}`}
-              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-primary/90 transition-colors"
+              className="flex items-center justify-center gap-2 bg-primary text-white w-full py-3 rounded-xl text-sm font-bold tracking-wide hover:bg-primary/90 transition-all active:scale-95"
             >
-              View Tracks <ArrowUpRight className="w-3 h-3" />
+              View Available Tracks <ArrowUpRight className="w-4 h-4" />
             </Link>
           ) : (
             <button
               onClick={onBook}
-              className="bg-primary text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide cursor-pointer hover:bg-primary/90 transition-colors"
+              className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold tracking-wide cursor-pointer hover:bg-primary/90 transition-all active:scale-95"
             >
-              Enroll Now
+              Join Now
             </button>
           )}
         </div>

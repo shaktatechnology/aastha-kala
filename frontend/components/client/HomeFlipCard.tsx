@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Sparkles, Layers, ChevronRight, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Layers, ChevronRight, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 interface Program {
   id: number;
@@ -31,7 +30,6 @@ const toSlug = (title: string, id: string | number) =>
   id;
 
 const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
   const [showAllTracks, setShowAllTracks] = useState(false);
   const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL;
   const hasSubPrograms = program.sub_programs && program.sub_programs.length > 0;
@@ -41,21 +39,6 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
     if (path.startsWith("http")) return path;
     if (!IMAGE_BASE) return "/placeholder-dance.png";
     return `${IMAGE_BASE?.replace(/\/$/, "")}/${path.replace(/^\/+/, "")}`;
-  };
-
-  const getPriceDisplay = () => {
-    const mainFee = Number(program.program_fee);
-    if (hasSubPrograms) {
-      const fees = program.sub_programs!
-        .map(sp => Number(sp.program_fee))
-        .filter(fee => !isNaN(fee) && fee > 0);
-      if (fees.length > 0) {
-        const minFee = Math.min(...fees);
-        const maxFee = Math.max(...fees);
-        return minFee === maxFee ? minFee : `${minFee} - ${maxFee}`;
-      }
-    }
-    return isNaN(mainFee) ? 0 : mainFee;
   };
 
   const handleJoinNow = (e: React.MouseEvent) => {
@@ -68,35 +51,28 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
   };
 
   return (
-    <div 
-      className="relative h-[450px] md:h-[550px] w-full [perspective:1500px] cursor-pointer group"
-      role="button"
-      tabIndex={0}
-      onClick={() => setIsFlipped(!isFlipped)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          setIsFlipped(!isFlipped);
-        }
-      }}
-      aria-pressed={isFlipped}
-      aria-label={`${program.title} card. Press to ${isFlipped ? 'show front' : 'show details'}`}
+    <motion.div 
+      className="relative h-[450px] md:h-[550px] w-full [perspective:1500px] group"
+      initial="initial"
+      whileHover="flipped"
     >
       <motion.div
-        className="relative w-full h-full [transform-style:preserve-3d] transition-all duration-700"
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        className="relative w-full h-full [transform-style:preserve-3d]"
+        variants={{
+          initial: { rotateY: 0, scale: 1 },
+          flipped: { rotateY: 180, scale: 1.02 }
+        }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
       >
-        {/* FRONT SIDE - Matches original slider exactly */}
+        {/* FRONT SIDE */}
         <div className="absolute inset-0 [backface-visibility:hidden] w-full h-full">
-          <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-xl border border-gray-100">
+          <div className="relative w-full h-full rounded-2xl overflow-hidden border border-gray-100">
             <img 
               src={getImageUrl(program?.image)} 
               alt={program?.title}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder-dance.png" }}
             />
-            {/* Dark Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-300" />
             
             <div className="absolute bottom-12 left-8 right-8 flex flex-col items-center gap-6 text-center">
@@ -104,10 +80,9 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
                 {program?.title}
               </h3>
               
-              {/* Circular JOIN NOW Button */}
               <button
                 onClick={handleJoinNow}
-                className="shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full bg-cyan-400 hover:bg-cyan-300 active:scale-90 transition-all duration-300 flex items-center justify-center shadow-2xl hover:rotate-12 group/btn"
+                className="shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full bg-cyan-400 hover:bg-cyan-300 active:scale-90 transition-all duration-300 flex items-center justify-center hover:rotate-12 group/btn"
               >
                 <span className="text-white text-[9px] md:text-[12px] font-black uppercase tracking-wider text-center leading-none">
                   JOIN<br/>NOW
@@ -116,17 +91,16 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
             </div>
 
             {hasSubPrograms && (
-              <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-[#001f54] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg">
+              <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-[#001f54] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
                 <Layers className="w-3 h-3 text-cyan-500" /> {program.sub_programs!.length} Programs
               </div>
             )}
           </div>
         </div>
 
-        {/* BACK SIDE - Clean, Professional UI */}
+        {/* BACK SIDE */}
         <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] w-full h-full">
-          <div className="bg-white rounded-2xl p-8 flex flex-col h-full text-[#001f54] shadow-2xl border border-gray-100 relative overflow-hidden">
-            {/* Subtle background element */}
+          <div className="bg-white rounded-2xl p-8 flex flex-col h-full text-[#001f54] border border-gray-100 relative overflow-hidden text-center">
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-50/50 rounded-full blur-3xl" />
             
             <h3 className="text-xl font-black mb-4 leading-tight border-b border-gray-50 pb-4 italic">{program?.title}</h3>
@@ -171,26 +145,19 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
-              <div className="flex flex-col">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[10px] text-primary font-bold">Rs.</span>
-                  <span className="text-base font-black tracking-tighter">{getPriceDisplay()}</span>
-                </div>
-              </div>
-              
+            <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-center">
               <button
                 onClick={handleJoinNow}
-                className="group/btn relative flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-[8px] font-bold uppercase tracking-wider cursor-pointer hover:bg-primary/90 transition-all active:scale-95 shadow-sm"
+                className="group/btn relative flex items-center justify-center gap-2 bg-primary text-white w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer hover:bg-primary/90 transition-all active:scale-95"
               >
                 Join Now
-                <ChevronRight className="w-2.5 h-2.5 transition-transform group-hover/btn:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
               </button>
             </div>
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 

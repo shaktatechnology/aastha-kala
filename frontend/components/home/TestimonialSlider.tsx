@@ -1,5 +1,9 @@
+"use client";
 
+import React, { useEffect, useState } from "react";
 import ClientTestimonialSlider from "@/components/client/ClientTestimonialSlider";
+import ScrollReveal from "@/components/client/ScrollReveal";
+import { motion } from "framer-motion";
 
 interface Testimonial {
   id: number;
@@ -14,39 +18,61 @@ interface Testimonial {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-const fetchTestimonials = async (): Promise<Testimonial[]> => {
-  try {
-    const res = await fetch(`${API_URL}/testimonials`, {
-      cache: "no-store",
-    });
-    const json = await res.json();
-    const testimonials = json?.data?.data || json?.data || [];
-    if (Array.isArray(testimonials)) {
-      return testimonials.sort(
-        (a: Testimonial, b: Testimonial) => a.order - b.order
-      );
-    }
-  } catch (error) {
-    console.error("Failed to fetch testimonials", error);
-  }
-  return [];
-};
+const TestimonialSlider = () => {
+  const [data, setData] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const TestimonialSlider = async () => {
-  const data = await fetchTestimonials();
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        const res = await fetch(`${API_URL}/testimonials`);
+        const json = await res.json();
+        const testimonials = json?.data?.data || json?.data || [];
+        if (Array.isArray(testimonials)) {
+          setData(testimonials.sort((a: Testimonial, b: Testimonial) => a.order - b.order));
+        }
+      } catch (error) {
+        console.error("Failed to fetch testimonials", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchTestimonials();
+  }, []);
+
+  if (loading) return null;
   if (data.length === 0) return null;
 
   return (
-    <section className="bg-white py-20 px-6 font-poppins">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h4 className="text-secondary font-bold mb-2 uppercase tracking-widest">Student Success Stories</h4>
-          <h2 className="text-4xl md:text-5xl font-black text-[#27A0CF] font-poppins">
-            What Our Students Say
-          </h2>
-        </div>
-        <ClientTestimonialSlider data={data} />
+    <section className="bg-white py-24 px-6 font-poppins relative overflow-hidden">
+      {/* Pulse background element */}
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.1, 1],
+          opacity: [0.1, 0.2, 0.1] 
+        }}
+        transition={{ 
+          duration: 9, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+        className="absolute left-10 top-1/2 -translate-y-1/2 w-64 h-64 bg-secondary/5 rounded-full blur-3xl" 
+      />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <ScrollReveal>
+          <div className="text-center mb-16">
+            <h4 className="text-secondary font-bold mb-2 uppercase tracking-widest">Student Success Stories</h4>
+            <h2 className="text-4xl md:text-5xl font-black text-[#27A0CF] font-poppins">
+              What Our Students Say
+            </h2>
+          </div>
+        </ScrollReveal>
+
+        <ScrollReveal delay={200}>
+          <ClientTestimonialSlider data={data} />
+        </ScrollReveal>
       </div>
     </section>
   );

@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import ClientGallery from "@/components/client/ClientGallery";
+import GalleryGrid from "@/components/client/GalleryGrid";
 import Heading from "@/components/global/Heading";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -47,7 +47,7 @@ const fetchGallery = async (): Promise<GalleryItem[]> => {
     if (!res.ok) throw new Error("Failed to fetch gallery");
 
     const data = await res.json();
-    return Array.isArray(data) ? data : (data?.data || []);
+    return data?.data?.data || data?.data || data || [];
   } catch (error) {
     console.error(error);
     return [];
@@ -63,7 +63,7 @@ const fetchCategories = async (): Promise<Category[]> => {
     if (!res.ok) throw new Error("Failed to fetch categories");
 
     const data = await res.json();
-    return Array.isArray(data) ? data : (data?.data || []);
+    return data?.data?.data || data?.data || data || [];
   } catch (error) {
     console.error(error);
     return [];
@@ -82,7 +82,7 @@ const GalleryPage = async () => {
         subtitle="Explore the vibrant moments of artistic expression, performances, and student life at Aastha Kala Kendra."
       />
 
-      <ClientGallery gallery={gallery} categories={categories} />
+      <GalleryGrid gallery={gallery} categories={categories} />
     </section>
   );
 };

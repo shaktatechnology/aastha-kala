@@ -22,14 +22,6 @@ interface Props {
 }
 
 const ClientInstructors = ({ instructors }: Props) => {
-  const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleInstructorClick = (instructor: Instructor) => {
-    setSelectedInstructor(instructor);
-    setIsModalOpen(true);
-  };
-
   if (!instructors || instructors.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-500">
@@ -47,16 +39,9 @@ const ClientInstructors = ({ instructors }: Props) => {
           <InstructorsCard 
             key={instructor.id} 
             instructor={instructor} 
-            onClick={handleInstructorClick}
           />
         ))}
       </div>
-
-      <InstructorDetailModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        instructor={selectedInstructor}
-      />
     </div>
   );
 };

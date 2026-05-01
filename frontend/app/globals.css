@@ -124,7 +124,7 @@
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-[0px_20px_40px_rgba(0,0,50,0.1)] hover:-translate-y-2;
   }
 
   .hide-scrollbar {
@@ -178,6 +178,27 @@
   .animate-slide-down { animation: slide-down 0.5s ease-out forwards; }
   .animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
   .animate-float { animation: float 3s ease-in-out infinite; }
+
+  /* Scroll Reveal Utilities */
+  .reveal {
+    opacity: 0;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .reveal-up {
+    transform: translateY(40px);
+  }
+
+  .reveal-active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-delay-100 { transition-delay: 100ms; }
+  .reveal-delay-200 { transition-delay: 200ms; }
+  .reveal-delay-300 { transition-delay: 300ms; }
+  .reveal-delay-400 { transition-delay: 400ms; }
+  .reveal-delay-500 { transition-delay: 500ms; }
 }
 
 .swiper {

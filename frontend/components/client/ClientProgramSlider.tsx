@@ -9,6 +9,7 @@ import "swiper/css/navigation";
 import BookingModal from "../layout/BookingModal";
 
 import HomeFlipCard from "./HomeFlipCard";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Schedule {
   id: number;
@@ -37,13 +38,47 @@ interface ClientProgramSliderProps {
 const ClientProgramSlider: React.FC<ClientProgramSliderProps> = ({ programs, viewType = "slider" }) => {
   const [bookingProgram, setBookingProgram] = useState<Program | null>(null);
 
+  const itemVariants = {
+    initial: { 
+      opacity: 0, 
+      y: 40, 
+      scale: 0.95 
+    },
+    animate: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: {
+        duration: 0.8,
+        ease: [0.22, 1, 0.36, 1] as any
+      }
+    }
+  };
+
   const renderCard = (program: Program, index: number) => {
     return (
-      <HomeFlipCard 
-        key={program.id}
-        program={program as any}
-        onBook={() => setBookingProgram(program)}
-      />
+      <motion.div 
+        layout 
+        variants={itemVariants}
+        initial="initial"
+        animate="animate"
+        exit={{ opacity: 0, scale: 0.95 }}
+        whileHover={{ 
+          y: -10,
+          transition: { type: "spring", stiffness: 400, damping: 25 }
+        }}
+        className="relative group"
+      >
+        <HomeFlipCard 
+          key={program.id}
+          program={program as any}
+          onBook={() => setBookingProgram(program)}
+        />
+        {/* High-density navy shadow on hover */}
+        <motion.div 
+          className="absolute inset-0 rounded-2xl pointer-events-none transition-shadow duration-300 group-hover:shadow-[0px_20px_40px_rgba(0,30,90,0.08)]"
+        />
+      </motion.div>
     );
   };
 
@@ -82,9 +117,18 @@ const ClientProgramSlider: React.FC<ClientProgramSliderProps> = ({ programs, vie
           ))}
         </Swiper>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-6 pb-10">
-          {programs.map((program, index) => renderCard(program, index))}
-        </div>
+        <motion.div 
+          layout
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ staggerChildren: 0.1 }}
+          className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-6 pb-10"
+        >
+          <AnimatePresence mode="popLayout">
+            {programs.map((program, index) => renderCard(program, index))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Custom Navigation Buttons (Only for slider) */}

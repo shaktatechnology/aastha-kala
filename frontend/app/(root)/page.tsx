@@ -40,11 +40,24 @@ const fetchGalleriesByPosition = async (position: string) => {
 // Loading skeletons or basic fallbacks for selective streaming
 const SectionPlaceholder = () => <div className="min-h-[200px] animate-pulse bg-gray-50" />;
 
+const fetchInstructors = async () => {
+  try {
+    const res = await fetch(`${API_URL}/instructors`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch instructors");
+    const data = await res.json();
+    return data?.data?.data || data?.data || data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
 const Page = async () => {
   // Fetch key data in parallel
-  const [data, aboutHomeGallery] = await Promise.all([
+  const [data, aboutHomeGallery, instructors] = await Promise.all([
     fetchSettings(),
     fetchGalleriesByPosition("about-home"),
+    fetchInstructors(),
   ]);
 
   const settings = data?.setting;
@@ -58,16 +71,16 @@ const Page = async () => {
 
       <StatsSection settings={settings} />
 
-      {/* {settings && (
+      {settings && (
         <AboutHomeSection settings={settings} gallery={aboutHomeGallery?.[0]} />
-      )} */}
+      )}
 
       <Suspense fallback={<SectionPlaceholder />}>
         <HomeProgramSection />
       </Suspense>
 
       <Suspense fallback={<SectionPlaceholder />}>
-        <InstructorSection />
+        <InstructorSection instructors={instructors} />
       </Suspense>
 
       <Suspense fallback={<SectionPlaceholder />}>
@@ -77,7 +90,6 @@ const Page = async () => {
       <Suspense fallback={<SectionPlaceholder />}>
         <TestimonialSlider />
       </Suspense>
-
 
       {settings && <ContactHomeSection settings={settings} />}
     </div>

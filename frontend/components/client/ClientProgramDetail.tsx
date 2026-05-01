@@ -518,17 +518,12 @@ const SubProgramCard = ({ sub, parentImage }: { sub: SubProgram; parentImage?: s
           </div>
 
           {/* Footer */}
-          <div className="pt-6 border-t border-gray-50 flex items-center justify-between gap-4">
-            <div className="flex items-baseline gap-1 shrink-0">
-              <span className="text-xs text-gray-400 font-bold">Rs.</span>
-              <span className="text-2xl font-black text-[#001f54] tracking-tight">{Number(sub.program_fee) || 0}</span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase ml-1">/ Mo</span>
-            </div>
+          <div className="pt-6 border-t border-gray-50">
             <button
               onClick={() => setShowModal(true)}
-              className="bg-primary text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide cursor-pointer hover:bg-primary/90 transition-colors"
+              className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold tracking-wide cursor-pointer hover:bg-primary/90 transition-all active:scale-95"
             >
-              Enroll Now
+              Join Now
             </button>
           </div>
         </div>
@@ -604,16 +599,11 @@ export default function ClientProgramDetail({ program }: { program: Program }) {
                 <h2 className="text-2xl font-black text-[#001f54] mb-2">Ready to Enroll?</h2>
                 <p className="text-gray-400 text-sm">Click below to fill in your booking details for this program.</p>
               </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm text-gray-400 font-bold">Rs.</span>
-                <span className="text-4xl font-black text-[#001f54]">{Number(program.program_fee) || 0}</span>
-                <span className="text-xs text-gray-400 font-bold uppercase ml-1">/ Month</span>
-              </div>
               <Button
                 onClick={() => setShowMainModal(true)}
-                className="bg-primary hover:bg-primary/90 text-white px-10 h-11 font-semibold"
+                className="w-full bg-primary hover:bg-primary/90 text-white h-12 font-bold uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20"
               >
-                Enroll Now
+                Join Now
               </Button>
             </div>
           </div>

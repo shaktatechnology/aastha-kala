@@ -6,6 +6,8 @@ import Image from "next/image";
 export type HeroMedia = {
   url: string;
   type: "image" | "video";
+  title?: string;
+  description?: string;
 };
 
 interface HeroSliderProps {
@@ -25,6 +27,32 @@ const HeroSlider: React.FC<HeroSliderProps> = ({ heroMedia, fill = false }) => {
     return () => clearInterval(timer);
   }, [heroMedia]);
 
+  // Fallback if no media is provided
+  if (!heroMedia || heroMedia.length === 0) {
+    return (
+      <div className={`relative w-full overflow-hidden ${fill ? "h-full" : ""}`} style={!fill ? { aspectRatio: "3/1.6", minHeight: 400 } : {}}>
+        <div className="absolute inset-0 w-full h-full bg-slate-950 flex items-center justify-center px-6">
+           <div className="w-full max-w-5xl text-center text-white [text-shadow:_0_2px_10px_rgba(0,0,0,0.5)]">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight font-poppins mb-4 animate-slide-up">
+              Aastha Kala Kendra
+            </h1>
+            <p className="text-base sm:text-lg md:text-xl font-medium tracking-wide !text-white max-w-2xl mx-auto animate-slide-up [animation-delay:200ms] [text-shadow:_0_1px_8px_rgba(0,0,0,0.8)]">
+              Preserving Heritage, Inspiring Passion in Performing Arts, Dance & Music.
+            </p>
+            <div className="mt-10 animate-slide-up [animation-delay:400ms]">
+              <a 
+                href="/programs" 
+                className="inline-block bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-full font-bold transition-all duration-300 transform hover:scale-105 shadow-lg"
+              >
+                Explore Programs
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative w-full overflow-hidden ${fill ? "h-full" : ""}`}
@@ -40,7 +68,7 @@ const HeroSlider: React.FC<HeroSliderProps> = ({ heroMedia, fill = false }) => {
           {media.type === "image" ? (
             <img
               src={media.url}
-              alt={`Hero media ${idx + 1}`}
+              alt={media.title || `Hero media ${idx + 1}`}
               className="w-full h-full object-cover object-top"
             />
           ) : (
@@ -49,8 +77,31 @@ const HeroSlider: React.FC<HeroSliderProps> = ({ heroMedia, fill = false }) => {
                 src={`${media.url}?autoplay=1&mute=1&controls=0&loop=1&playlist=${media.url.split("/").pop()}&rel=0&showinfo=0`}
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] pointer-events-none"
                 allow="autoplay; encrypted-media"
-                title={`Hero video ${idx + 1}`}
+                title={media.title || `Hero video ${idx + 1}`}
               />
+            </div>
+          )}
+
+          {/* Text Overlay - Only on the first slide (as per request) */}
+          {idx === 0 && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 px-6">
+              <div className="w-full max-w-5xl text-center text-white [text-shadow:_0_2px_10px_rgba(0,0,0,0.5)]">
+                <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight font-poppins mb-4 animate-slide-up">
+                  {media.title || "Aastha Kala Kendra"}
+                </h1>
+                <p className="text-base sm:text-lg md:text-xl font-medium tracking-wide !text-white max-w-2xl mx-auto animate-slide-up [animation-delay:200ms] [text-shadow:_0_1px_8px_rgba(0,0,0,0.8)]">
+                  {media.description || "Preserving Heritage, Inspiring Passion in Performing Arts, Dance & Music."}
+                </p>
+                
+                <div className="mt-10 animate-slide-up [animation-delay:400ms]">
+                   <a 
+                    href="/programs" 
+                    className="inline-block bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-full font-bold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                   >
+                     Explore Programs
+                   </a>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -82,14 +133,14 @@ const HeroSlider: React.FC<HeroSliderProps> = ({ heroMedia, fill = false }) => {
 
       {/* Pagination indicators - Styled as modern dash/dots */}
       {heroMedia.length > 1 && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
           {heroMedia.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
               className={`transition-all duration-500 rounded-full cursor-pointer h-1.5 ${
                 idx === currentIndex
-                  ? "w-8 bg-primary shadow-[0_0_10px_rgba(39,160,207,0.5)]"
+                  ? "w-8 bg-primary shadow-[0_0_10_rgba(39,160,207,0.5)]"
                   : "w-2 bg-white/30 hover:bg-white/50"
               }`}
               title={`Slide ${idx + 1}`}

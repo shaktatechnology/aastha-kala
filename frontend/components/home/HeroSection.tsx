@@ -7,6 +7,8 @@ const IMAGE_URL = process.env.NEXT_PUBLIC_IMAGE_URL;
 export type HeroMedia = {
   url: string;
   type: "image" | "video";
+  title?: string;
+  description?: string;
 };
 
 const fetchHero = async (): Promise<HeroMedia[]> => {
@@ -23,6 +25,9 @@ const fetchHero = async (): Promise<HeroMedia[]> => {
     const media: HeroMedia[] = [];
 
     items.forEach((item: any) => {
+      const itemTitle = item.title;
+      const itemDescription = item.description;
+
       if (item.type === "images" && item.images) {
         item.images.forEach((img: string) => {
           if (!img) return;
@@ -46,12 +51,16 @@ const fetchHero = async (): Promise<HeroMedia[]> => {
           media.push({
             url: `${finalBase}${imgPath}`,
             type: "image",
+            title: itemTitle,
+            description: itemDescription,
           });
         });
       } else if (item.type === "video" && item.video) {
         media.push({
           url: getYouTubeEmbedUrl(item.video),
           type: "video",
+          title: itemTitle,
+          description: itemDescription,
         });
       }
     });
@@ -66,15 +75,12 @@ const fetchHero = async (): Promise<HeroMedia[]> => {
 const HeroSection = async () => {
   const heroMedia = await fetchHero();
 
-  if (heroMedia.length === 0) return null;
-
   return (
-    <section className="relative w-full h-[450px] sm:h-[550px] md:h-[650px] lg:h-[750px] bg-brand-deep overflow-hidden">
+    <section className="relative w-full h-[calc(100vh-72px)] bg-slate-950 overflow-hidden">
       {/* ── Hero image/video – Fill entire section ── */}
       <div className="absolute inset-0 z-10">
         <HeroSlider heroMedia={heroMedia} fill />
       </div>
-
     </section>
   );
 };
