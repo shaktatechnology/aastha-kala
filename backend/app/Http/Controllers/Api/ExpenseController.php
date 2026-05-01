@@ -43,9 +43,12 @@ class ExpenseController extends Controller
             return $expense;
         });
 
+        $recentExpense = Expense::latest('created_at')->first();
+
         return response()->json([
             'success' => true,
-            'data' => $expenses
+            'data' => $expenses,
+            'recent_category' => $recentExpense ? $recentExpense->category : null
         ]);
     }
 

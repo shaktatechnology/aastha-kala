@@ -14,12 +14,18 @@ use Illuminate\Support\Facades\Storage;
 class ProgramController extends Controller
 {
     // GET /api/programs
-    public function index()
+    public function index(Request $request)
     {
-        $programs = Program::with(['schedules.instructor', 'instructors', 'subPrograms.schedules.instructor'])
+        $query = Program::with(['schedules.instructor', 'instructors', 'subPrograms.schedules.instructor'])
             ->whereNull('parent_id')
-            ->latest()
-            ->paginate(10);
+            ->latest();
+
+        if (!$request->is('api/admin/*')) {
+            $query->where('is_active', true);
+            $programs = $query->get();
+        } else {
+            $programs = $query->paginate(10);
+        }
 
         return response()->json([
             'success' => true,
@@ -62,6 +68,7 @@ class ProgramController extends Controller
             'sub_programs.*.title'       => 'required_with:sub_programs|string|max:255',
             'sub_programs.*.description' => 'nullable|string',
             'sub_programs.*.program_fee' => 'nullable|numeric|min:0',
+            'sub_programs.*.image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'sub_programs.*.schedules'   => 'nullable|array',
         ]);
 
@@ -133,13 +140,20 @@ class ProgramController extends Controller
 
         // Create sub-programs if provided
         if ($request->has('sub_programs')) {
-            foreach ($request->sub_programs as $subData) {
-                $subProgram = $program->subPrograms()->create([
+            foreach ($request->sub_programs as $index => $subData) {
+                $subProgramData = [
                     'title'       => $subData['title'],
                     'description' => $subData['description'] ?? null,
                     'program_fee' => $subData['program_fee'] ?? 0,
                     'is_active'   => true,
-                ]);
+                ];
+
+                if ($request->hasFile("sub_programs.{$index}.image")) {
+                    $path = $request->file("sub_programs.{$index}.image")->store('programs', 'public');
+                    $subProgramData['image'] = asset('storage/' . $path);
+                }
+
+                $subProgram = $program->subPrograms()->create($subProgramData);
 
                 if (!empty($subData['schedules'])) {
                     foreach ($subData['schedules'] as $sData) {
@@ -211,6 +225,8 @@ class ProgramController extends Controller
             'sub_programs.*.title'       => 'required_with:sub_programs|string|max:255',
             'sub_programs.*.description' => 'nullable|string',
             'sub_programs.*.program_fee' => 'nullable|numeric|min:0',
+            'sub_programs.*.image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'sub_programs.*.remove_image'=> 'nullable|in:1',
             'sub_programs.*.schedules'   => 'nullable|array',
         ]);
 
@@ -316,15 +332,32 @@ class ProgramController extends Controller
             // Delete sub-programs that are no longer present
             $program->subPrograms()->whereNotIn('id', $existingSubIds)->delete();
 
-            foreach ($newSubPrograms as $subData) {
+            foreach ($newSubPrograms as $spIndex => $subData) {
                 if (!empty($subData['id'])) {
                     $subProgram = $program->subPrograms()->where('id', $subData['id'])->first();
                     if ($subProgram) {
-                        $subProgram->update([
+                        $updateData = [
                             'title'       => $subData['title'],
                             'description' => $subData['description'] ?? null,
                             'program_fee' => $subData['program_fee'] ?? 0,
-                        ]);
+                        ];
+
+                        if (isset($subData['remove_image']) && $subData['remove_image'] == '1' && $subProgram->image) {
+                            $oldPath = str_replace(asset('storage/'), '', $subProgram->image);
+                            Storage::disk('public')->delete($oldPath);
+                            $updateData['image'] = null;
+                        }
+
+                        if ($request->hasFile("sub_programs.{$spIndex}.image")) {
+                            if ($subProgram->image) {
+                                $oldPath = str_replace(asset('storage/'), '', $subProgram->image);
+                                Storage::disk('public')->delete($oldPath);
+                            }
+                            $path = $request->file("sub_programs.{$spIndex}.image")->store('programs', 'public');
+                            $updateData['image'] = asset('storage/' . $path);
+                        }
+
+                        $subProgram->update($updateData);
 
                         // Update sub-program schedules
                         if (isset($subData['schedules'])) {
@@ -350,12 +383,19 @@ class ProgramController extends Controller
                         }
                     }
                 } else {
-                    $subProgram = $program->subPrograms()->create([
+                    $subProgramData = [
                         'title'       => $subData['title'],
                         'description' => $subData['description'] ?? null,
                         'program_fee' => $subData['program_fee'] ?? 0,
                         'is_active'   => true,
-                    ]);
+                    ];
+
+                    if ($request->hasFile("sub_programs.{$spIndex}.image")) {
+                        $path = $request->file("sub_programs.{$spIndex}.image")->store('programs', 'public');
+                        $subProgramData['image'] = asset('storage/' . $path);
+                    }
+
+                    $subProgram = $program->subPrograms()->create($subProgramData);
 
                     if (!empty($subData['schedules'])) {
                         foreach ($subData['schedules'] as $ssData) {

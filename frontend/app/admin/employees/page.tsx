@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { Pagination } from "@/components/global/Pagination";
 import { EmployeeForm } from "@/components/admin/employee/employeeform";
 import { AnimatePresence, motion } from "framer-motion";
-import { Toaster } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { CustomSelect } from "@/components/ui/custom-select";
 
@@ -44,6 +43,12 @@ const EmployeesPage = () => {
     totalPages: 1,
     totalItems: 0,
     itemsPerPage: 10,
+  });
+
+  const [globalStats, setGlobalStats] = useState({
+    total: 0,
+    staff: 0,
+    instructors: 0,
   });
 
   const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL;
@@ -76,7 +81,12 @@ const EmployeesPage = () => {
   const fetchEmployees = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/employees?page=${page}`, {
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/admin/employees`);
+      url.searchParams.append('page', page.toString());
+      if (searchTerm) url.searchParams.append('search', searchTerm);
+      if (typeFilter !== 'all') url.searchParams.append('type', typeFilter);
+
+      const res = await fetch(url.toString(), {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           Accept: "application/json",
@@ -102,21 +112,26 @@ const EmployeesPage = () => {
           itemsPerPage: result.data.per_page,
         });
       }
+
+      setGlobalStats({
+        total: result.totalEmployees ?? 0,
+        staff: result.totalStaff ?? 0,
+        instructors: result.totalInstructor ?? 0,
+      });
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchTerm, typeFilter]);
 
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
-
-  const filteredEmployees = employees.filter((e: Employee) =>
-    e.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (typeFilter === "all" || e.type === typeFilter)
-  );
+    // Debounce search
+    const timer = setTimeout(() => {
+      fetchEmployees(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm, typeFilter, fetchEmployees]);
 
   const handleView = useCallback((employee: Employee) => {
     setEditingEmployee(employee);
@@ -189,18 +204,18 @@ const EmployeesPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <p className="text-sm text-gray-500">Total Employees</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{pagination.totalItems}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{globalStats.total}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <p className="text-sm text-gray-500">Instructors</p>
             <p className="text-3xl font-bold text-blue-600 mt-1">
-              {employees.filter(e => e.type === 'instructor').length}
+              {globalStats.instructors}
             </p>
           </div>
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <p className="text-sm text-gray-500">Staff</p>
             <p className="text-3xl font-bold text-green-600 mt-1">
-              {employees.filter(e => e.type === 'staff').length}
+              {globalStats.staff}
             </p>
           </div>
         </div>
@@ -243,7 +258,7 @@ const EmployeesPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEmployees.length === 0 ? (
+                {employees.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="text-center py-12">
                       <div className="flex flex-col items-center gap-2">
@@ -253,7 +268,7 @@ const EmployeesPage = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredEmployees.map((employee, index) => {
+                  employees.map((employee, index) => {
                     const sn = (pagination.currentPage - 1) * pagination.itemsPerPage + index + 1;
                     return (
                       <TableRow key={employee.id} className="hover:bg-gray-50 transition-colors">
@@ -410,8 +425,6 @@ const EmployeesPage = () => {
         title="Delete Employee"
         description="Are you sure you want to delete this employee? This will also remove the associated instructor record if any. This action cannot be undone."
       />
-
-      <Toaster richColors position="top-right" />
     </div>
   );
 };

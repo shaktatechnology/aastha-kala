@@ -30,8 +30,8 @@ const getPrograms = async () => {
       cache: "no-store",
     });
     const data = await res.json();
-    // Since index() uses pagination, programs are in data.data.data
-    return data?.data?.data || [];
+    // Since index() might use pagination, check for data.data.data or fallback to data.data
+    return data?.data?.data || data?.data || [];
   } catch (error) {
     console.error("Failed to fetch programs:", error);
     return [];

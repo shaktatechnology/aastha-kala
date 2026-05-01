@@ -11,12 +11,35 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 class EmployeeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $employees = Employee::with('instructor')->latest()->paginate(10);
+        $query = Employee::with('instructor')->latest();
+
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('type') && in_array($request->type, ['staff', 'instructor'])) {
+            $query->where('type', $request->type);
+        }
+
+        $employees = $query->paginate(10);
+        
+        $totalStaff = Employee::where('type', 'staff')->count();
+        $totalInstructor = Employee::where('type', 'instructor')->count();
+        $totalEmployees = Employee::count();
+
         return response()->json([
             'success' => true,
-            'data' => $employees
+            'data' => $employees,
+            'totalStaff' => $totalStaff,
+            'totalInstructor' => $totalInstructor,
+            'totalEmployees' => $totalEmployees
         ]);
     }
 
@@ -26,7 +49,7 @@ class EmployeeController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:employees,email',
             'device_user_id' => 'nullable|string|unique:employees,device_user_id',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20|unique:employees,phone',
             'address' => 'nullable|string',
             'type' => 'required|in:staff,instructor',
             'salary_basis' => 'required|in:salary,percentage,none',
@@ -141,7 +164,7 @@ class EmployeeController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:employees,email,' . $id,
             'device_user_id' => 'nullable|string|unique:employees,device_user_id,' . $id,
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20|unique:employees,phone,' . $id,
             'address' => 'nullable|string',
             'type' => 'required|in:staff,instructor',
             'salary_basis' => 'required|in:salary,percentage,none',
