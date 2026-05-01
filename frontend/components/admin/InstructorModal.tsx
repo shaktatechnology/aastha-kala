@@ -16,6 +16,7 @@ interface Instructor {
   facebook_url?: string;
   instagram_url?: string;
   image?: string;
+  device_user_id?: string;
   availabilities?: any[];
   programs?: any[];
 }
@@ -43,6 +44,7 @@ const InstructorModal: React.FC<Props> = ({
     about: "",
     facebook_url: "",
     instagram_url: "",
+    device_user_id: "",
     availabilities: [],
   });
   
@@ -78,7 +80,10 @@ const InstructorModal: React.FC<Props> = ({
     if (!isOpen) return;
 
     if (instructor) {
-      setForm({ ...instructor });
+      setForm({ 
+        ...instructor,
+        device_user_id: (instructor as any).employee?.device_user_id || instructor.device_user_id || ""
+      });
       if (instructor.availabilities) {
         setAvailabilities(instructor.availabilities.map(a => ({
           ...a,
@@ -117,6 +122,7 @@ const InstructorModal: React.FC<Props> = ({
         about: "",
         facebook_url: "",
         instagram_url: "",
+        device_user_id: "",
       });
 
       setSelectedPrograms([]);
@@ -170,6 +176,7 @@ const InstructorModal: React.FC<Props> = ({
       formData.append("about", form.about || "");
       formData.append("facebook_url", form.facebook_url || "");
       formData.append("instagram_url", form.instagram_url || "");
+      if (form.device_user_id) formData.append("device_user_id", form.device_user_id);
 
       availabilities.forEach((a, i) => {
         formData.append(`availabilities[${i}][day_of_week]`, "Monday"); // Send dummy day value to bypass backend validation
@@ -346,6 +353,15 @@ const InstructorModal: React.FC<Props> = ({
             onChange={(e) => handleChange("email", e.target.value)}
             disabled={loading}
             error={errors.email}
+          />
+
+          <InputField
+            label="Device User ID (Biometric)"
+            icon={UserPlus}
+            value={form.device_user_id || ""}
+            onChange={(e) => handleChange("device_user_id", e.target.value)}
+            disabled={loading}
+            error={errors.device_user_id}
           />
 
           <InputField
