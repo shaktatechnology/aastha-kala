@@ -7,13 +7,18 @@ interface DashboardData {
   stats: any;
   recent_bookings: any[];
   recent_messages: any[];
+  employee_attendance?: any[];
+  expense_categories?: any[];
+  schedules?: any[];
+  recent_events?: any[];
+  revenue_gauges?: any[];
 }
 
 interface DashboardContextType {
   data: DashboardData | null;
   loading: boolean;
   categories: any[];
-  refreshData: () => Promise<void>;
+  refreshData: (params?: Record<string, string>) => Promise<void>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -23,10 +28,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
 
-  const fetchData = useCallback(async (showLoading = true) => {
+  const fetchData = useCallback(async (showLoading = true, params?: Record<string, string>) => {
     try {
       if (showLoading) setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/dashboard`, {
+      const queryStr = params ? '?' + new URLSearchParams(params).toString() : '';
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/dashboard${queryStr}`, {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem("token")}`,
           'Accept': 'application/json'
@@ -67,8 +73,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [fetchData, fetchCategories]);
 
-  const refreshData = useCallback(async () => {
-    await fetchData(false);
+  const refreshData = useCallback(async (params?: Record<string, string>) => {
+    await fetchData(false, params);
     await fetchCategories();
   }, [fetchData, fetchCategories]);
 

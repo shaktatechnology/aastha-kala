@@ -3,9 +3,11 @@
 import React from "react";
 import {
   X, User, Phone, Mail, Calendar, Clock, MapPin, Tag,
-  CheckCircle2, XCircle, AlertCircle, AlertTriangle, Edit3,
+  CheckCircle2, XCircle, AlertCircle, AlertTriangle, Edit3, Layout,
 } from "lucide-react";
 import { to12h } from "@/lib/timeFormat";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface BookingViewModalProps {
   isOpen: boolean;
@@ -15,9 +17,9 @@ interface BookingViewModalProps {
 }
 
 const statusColors: any = {
-  pending:  "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  accepted: "bg-green-500/10 text-green-500 border-green-500/20",
-  rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+  pending:  "bg-yellow-50 text-yellow-700 border-yellow-200",
+  accepted: "bg-green-50 text-green-700 border-green-200",
+  rejected: "bg-red-50 text-red-700 border-red-200",
 };
 
 /** Convert "HH:MM" or "HH:MM:SS" → integer minutes */
@@ -66,7 +68,6 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
     }
   }, [isOpen, booking?.id, booking?.instructor_id, booking?.type]);
 
-  // Auto-select instructor for regular bookings if not already set once instructors are loaded
   React.useEffect(() => {
     if (isOpen && booking?.type === "regular" && !selectedInstructorId && availableInstructors.length > 0) {
       setSelectedInstructorId(availableInstructors[0].id);
@@ -91,10 +92,6 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
 
   if (!isOpen || !booking) return null;
 
-  // ── Determine instructor busy times from selected instructor's free_slots ──
-  // free_slots = remaining segments; busy = raw availability MINUS free_slots
-  // We don't have raw availability here, so we rely on free_slots as a proxy:
-  // show them as "available windows" and warn if agreedTime doesn't fit.
   const selectedInstructor = availableInstructors.find(
     (ins) => ins.id === Number(selectedInstructorId)
   );
@@ -102,7 +99,6 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
   const freeSlots: { start: string; end: string }[] =
     selectedInstructor?.free_slots || [];
 
-  // Check if agreed time fits into any free slot
   const isCustomBooking = booking.type === "customization";
   const timeConflict =
     isCustomBooking &&
@@ -126,467 +122,491 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-lg cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-y-auto py-8 px-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-2xl p-8 bg-white/50 relative cursor-default"
-        style={{ backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
+        className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden relative"
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-8 border-b border-primary/50 pb-4">
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-primary flex items-center gap-2 italic">
-              <AlertCircle className="w-5 h-5 text-primary" /> Booking Request Details
+        <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <AlertCircle className="w-6 h-6 text-blue-600" /> Booking Request
             </h2>
-            <p className="text-[10px] text-primary/60 uppercase tracking-widest font-black italic">
+            <p className="text-sm text-gray-500 mt-1 uppercase tracking-widest font-semibold">
               Ref ID: BK-{booking.id?.toString().padStart(4, "0")}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-full text-primary/60 hover:text-primary transition"
+            className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Section 1: Customer Info */}
-          <div className="space-y-6">
-            <div>
-              <h4 className="text-[11px] font-black text-primary/60 uppercase tracking-widest mb-4 flex items-center gap-2 italic">
-                <User className="w-3.5 h-3.5 text-secondary" /> Customer Profile
-              </h4>
-              <div className="bg-white/40 rounded-xl p-5 border border-primary/20 space-y-5 shadow-sm">
-                {[
-                  { label: "Full Name",       value: booking.name },
-                  { label: "Contact Email",   value: booking.email,   icon: <Mail className="w-3.5 h-3.5 text-primary" /> },
-                  { label: "Phone Number",    value: booking.phone,   icon: <Phone className="w-3.5 h-3.5 text-secondary" /> },
-                  { label: "Current Address", value: booking.address || "Not provided", icon: <MapPin className="w-3.5 h-3.5 text-primary" /> },
-                ].map(({ label, value, icon }) => (
-                  <div key={label} className="flex flex-col">
-                    <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic">{label}</span>
-                    <span className="text-sm text-primary font-bold flex items-center gap-2 italic">
-                      {icon} {value}
-                    </span>
-                  </div>
-                ))}
+        <div className="p-8 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Section 1: Customer Info */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                  <User className="size-5 text-blue-600" /> Customer Profile
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-5">
+                  {[
+                    { label: "Full Name",       value: booking.name,    icon: <User className="w-4 h-4 text-gray-400" /> },
+                    { label: "Contact Email",   value: booking.email,   icon: <Mail className="w-4 h-4 text-gray-400" /> },
+                    { label: "Phone Number",    value: booking.phone,   icon: <Phone className="w-4 h-4 text-gray-400" /> },
+                    { label: "Current Address", value: booking.address || "Not provided", icon: <MapPin className="w-4 h-4 text-gray-400" /> },
+                  ].map(({ label, value, icon }) => (
+                    <div key={label} className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-gray-500 uppercase">{label}</span>
+                      <span className="text-sm text-gray-900 font-medium flex items-center gap-2">
+                        {icon} {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Request Message</h3>
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                  <p className="text-sm text-gray-700 leading-relaxed italic">
+                    "{booking.message || "No additional message provided."}"
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div>
-              <h4 className="text-[11px] font-black text-primary/60 uppercase tracking-widest mb-4 italic">Request Message</h4>
-              <p className="text-sm text-primary/80 bg-white/40 p-5 rounded-xl border border-primary/20 italic font-medium leading-relaxed shadow-sm">
-                "{booking.message || "No additional message provided."}"
-              </p>
+            {/* Section 2: Class Info */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                  <Tag className="size-5 text-blue-600" /> Class Details
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-5">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-gray-500 uppercase">Program Name</span>
+                    <span className="text-base text-gray-900 font-semibold">{booking.program?.title}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-gray-500 uppercase">Format & Type</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded font-medium uppercase">{booking.class_mode}</span>
+                      <span className={`text-xs px-2 py-1 rounded font-medium uppercase ${booking.type === 'regular' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{booking.type}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 border-t border-gray-200 pt-4">
+                    <span className="text-xs font-medium text-gray-500 uppercase">Requested Date</span>
+                    <span className="text-sm text-gray-900 font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" /> {booking.booking_date}
+                    </span>
+                  </div>
+
+                  {booking.duration_value && booking.duration_unit && (
+                    <div className="flex flex-col gap-1 border-t border-gray-200 pt-4">
+                      <span className="text-xs font-medium text-gray-500 uppercase">Duration</span>
+                      <span className="text-sm text-gray-900 font-medium flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-400" /> {booking.duration_value} {booking.duration_unit}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1 border-t border-gray-200 pt-4">
+                    <span className="text-xs font-medium text-gray-500 uppercase">
+                      {isCustomBooking ? "Student's Preferred Time" : "Requested Time Slot(s)"}
+                    </span>
+                    {booking.type === "regular" ? (
+                      <div className="space-y-2 mt-1">
+                        {(booking.schedules && booking.schedules.length > 0
+                          ? booking.schedules
+                          : [booking.schedule]
+                        ).filter(Boolean).map((s: any, i: number) => (
+                          <span key={i} className="text-sm text-gray-900 font-medium flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 w-fit">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            {to12h(s.start_time)} - {to12h(s.end_time)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-900 font-medium flex items-center gap-2 mt-1">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        {to12h(booking.custom_start_time)} – {to12h(booking.custom_end_time)}
+                      </span>
+                    )}
+                    {booking.instructor && (
+                      <span className="text-xs font-medium text-gray-500 uppercase mt-3 block">
+                        Assigned Facilitator: <span className="text-gray-900 font-semibold">{booking.instructor.name}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Current Status</h3>
+                <div className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${statusColors[booking.status]}`}>
+                  {booking.status}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Section 2: Class Info */}
-          <div className="space-y-6 text-right md:text-left">
-            <div>
-              <h4 className="text-[11px] font-black text-primary/60 uppercase tracking-widest mb-4 flex items-center gap-2 justify-end md:justify-start italic">
-                <Tag className="w-3.5 h-3.5 text-primary" /> Class Selection
-              </h4>
-              <div className="bg-white/40 rounded-xl p-5 border border-primary/20 space-y-5 shadow-sm">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic">Program Name</span>
-                  <span className="text-md text-secondary font-black uppercase tracking-wider">{booking.program?.title}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic">Class Format & Type</span>
-                  <div className="flex gap-2 justify-end md:justify-start mt-1">
-                    <span className="text-[9px] bg-primary/10 text-primary px-3 py-1 rounded-md border border-primary/20 font-black uppercase tracking-widest italic">{booking.class_mode}</span>
-                    <span className="text-[9px] bg-secondary/10 text-secondary px-3 py-1 rounded-md border border-secondary/20 font-black uppercase tracking-widest italic">{booking.type}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col border-t border-primary/10 pt-4">
-                  <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic">Requested Date</span>
-                  <span className="text-sm text-primary font-bold flex items-center justify-end md:justify-start gap-2 italic">
-                    <Calendar className="w-3.5 h-3.5 text-primary" /> {booking.booking_date}
-                  </span>
-                </div>
+          {/* ── Instructor Assignment Section ───────────────────────────── */}
+          {booking.status === "pending" && (
+            <div className="mt-8 pt-8 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <User className="size-5 text-blue-600" /> Assign Instructor
+              </h3>
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-6">
 
-                {booking.duration_value && booking.duration_unit && (
-                  <div className="flex flex-col border-t border-primary/10 pt-4">
-                    <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic">Duration</span>
-                    <span className="text-sm text-primary font-bold flex items-center justify-end md:justify-start gap-2 italic">
-                      <Clock className="w-3.5 h-3.5 text-secondary" /> {booking.duration_value} {booking.duration_unit}
-                    </span>
+                {booking.type === "regular" ? (
+                  /* Regular bookings: Show specific fixed instructors for each assigned slot */
+                  <div className="space-y-6">
+                    {(booking.schedules && booking.schedules.length > 0
+                      ? booking.schedules
+                      : [booking.schedule]
+                    ).filter(Boolean).map((s: any, idx: number) => (
+                      <div key={idx} className="space-y-3">
+                        <div className="flex items-center gap-2 border-l-2 border-blue-500 pl-3">
+                          <Clock className="w-4 h-4 text-gray-500" />
+                          <span className="text-xs text-gray-600 font-medium uppercase tracking-wider">
+                            Class Slot: {to12h(s.start_time)} – {to12h(s.end_time)}
+                          </span>
+                        </div>
+                        
+                        {s.instructor ? (
+                          <div
+                            onClick={() => setSelectedInstructorId(s.instructor.id)}
+                            className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
+                              selectedInstructorId === s.instructor.id
+                                ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                                : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
+                            }`}
+                          >
+                            <User className="w-5 h-5" />
+                            <div className="flex-1">
+                              <p className="line-clamp-1">{s.instructor.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs font-medium text-gray-500">
+                                  Fixed Instructor for this Slot
+                                </span>
+                              </div>
+                            </div>
+                            {selectedInstructorId === s.instructor.id && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            <span className="text-sm text-amber-700 font-medium">
+                              No fixed lead instructor assigned to this program slot.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Fallback */}
+                    {(() => {
+                      const hasSomeNoFixed = (booking.schedules && booking.schedules.length > 0
+                        ? booking.schedules
+                        : [booking.schedule]
+                      ).filter(Boolean).some((s: any) => !s.instructor);
+
+                      if (hasSomeNoFixed && availableInstructors.length > 0) {
+                        return (
+                          <div className="pt-4 border-t border-gray-200">
+                            <span className="text-xs text-gray-500 font-medium uppercase tracking-wider block mb-3">
+                              Available Program Facilitators
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {availableInstructors.map((ins) => (
+                                <div
+                                  key={ins.id}
+                                  onClick={() => setSelectedInstructorId(ins.id)}
+                                  className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
+                                    selectedInstructorId === ins.id
+                                      ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                                      : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
+                                  }`}
+                                >
+                                  <User className="w-4 h-4" />
+                                  <span className="line-clamp-1">{ins.name}</span>
+                                  {selectedInstructorId === ins.id && <CheckCircle2 className="ml-auto w-4 h-4 text-blue-600" />}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {loadingInstructors && (
+                      <span className="text-sm text-gray-500 animate-pulse font-medium block mt-4 text-center">
+                        Refreshing instructor list...
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  /* Customization bookings */
+                  <div className="space-y-5">
+                    {/* Available instructors */}
+                    {availableInstructors.filter(ins => ins.is_available).length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          <span className="text-xs text-green-700 font-bold uppercase tracking-wider">Perfectly Available</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {availableInstructors.filter(ins => ins.is_available).map((ins) => (
+                            <div
+                              key={ins.id}
+                              onClick={() => setSelectedInstructorId(ins.id)}
+                              className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
+                                selectedInstructorId === ins.id
+                                  ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                                  : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
+                              }`}
+                            >
+                              <User className="w-4 h-4 text-gray-400" />
+                              <div className="flex-1">
+                                <p className="line-clamp-1">{ins.name}</p>
+                                <p className="text-xs font-medium text-gray-500">
+                                  Free for requested time
+                                </p>
+                              </div>
+                              {selectedInstructorId === ins.id && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Busy but has free slots */}
+                    {availableInstructors.filter(ins => !ins.is_available && ins.free_slots?.length > 0).length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="text-xs text-amber-700 font-bold uppercase tracking-wider">Busy but has free time</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {availableInstructors.filter(ins => !ins.is_available && ins.free_slots?.length > 0).map((ins) => (
+                            <div
+                              key={ins.id}
+                              onClick={() => setSelectedInstructorId(ins.id)}
+                              className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
+                                selectedInstructorId === ins.id
+                                  ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                                  : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
+                              }`}
+                            >
+                              <Clock className="w-4 h-4 text-gray-400" />
+                              <div className="flex-1">
+                                <p className="line-clamp-1">{ins.name}</p>
+                                <div className="flex flex-wrap gap-1 mt-0.5 text-gray-500">
+                                  <span className="text-[10px] font-medium uppercase">Free:</span>
+                                  {ins.free_slots.slice(0, 2).map((s: any, i: number) => (
+                                    <span key={i} className="text-[10px] bg-gray-100 px-1 rounded">{to12h(s.start)}</span>
+                                  ))}
+                                  {ins.free_slots.length > 2 && <span className="text-[10px]">…</span>}
+                                </div>
+                              </div>
+                              {selectedInstructorId === ins.id && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {loadingInstructors && (
+                      <span className="text-sm text-gray-500 animate-pulse font-medium block text-center">Checking availability...</span>
+                    )}
+                    {!loadingInstructors && availableInstructors.length === 0 && (
+                      <span className="text-sm text-red-500 font-semibold block text-center">
+                        No instructors assigned to this program.
+                      </span>
+                    )}
                   </div>
                 )}
 
-                <div className="flex flex-col border-t border-primary/10 pt-4">
-                  <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic">
-                    {isCustomBooking ? "Student's Preferred Time" : "Requested Time Slot(s)"}
-                  </span>
-                  {booking.type === "regular" ? (
-                    <div className="space-y-2 mt-2 flex flex-col items-end md:items-start">
-                      {(booking.schedules && booking.schedules.length > 0
-                        ? booking.schedules
-                        : [booking.schedule]
-                      ).filter(Boolean).map((s: any, i: number) => (
-                        <span key={i} className="text-xs text-primary font-bold flex items-center gap-2 bg-white/60 px-4 py-2 rounded-lg border border-primary/10 w-fit italic shadow-sm">
-                          <Clock className="w-3.5 h-3.5 text-secondary" />
-                          {to12h(s.start_time)} - {to12h(s.end_time)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-secondary font-black flex items-center justify-end md:justify-start gap-2 italic underline decoration-secondary/30 mt-1 pl-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {to12h(booking.custom_start_time)} – {to12h(booking.custom_end_time)}
-                    </span>
-                  )}
-                  {booking.instructor && (
-                    <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic mt-3 block">
-                      Assigned Facilitator: <span className="text-primary">{booking.instructor.name}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+                {/* ── Selected instructor's busy time warning (customization only) ── */}
+                {isCustomBooking && selectedInstructorId && (selectedInstructor?.booked_slots?.length > 0 || freeSlots.length > 0) && (
+                  <div className="space-y-4 pt-4 border-t border-gray-200">
+                    {/* Booked / busy slots */}
+                    {selectedInstructor?.booked_slots?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                          {selectedInstructor?.name}'s Booked / Busy Windows
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedInstructor.booked_slots.map((seg: any, i: number) => (
+                            <span
+                              key={i}
+                              className="text-xs bg-gray-200 text-gray-700 font-semibold px-2.5 py-1 rounded-md"
+                            >
+                              {to12h(seg.start)} – {to12h(seg.end)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-            <div>
-              <h4 className="text-[11px] font-black text-primary/60 uppercase tracking-widest mb-4 italic">Current Status</h4>
-              <div className={`text-center px-4 py-3 rounded-xl border-2 shadow-sm font-black uppercase tracking-widest text-xs italic ${statusColors[booking.status]}`}>
-                {booking.status}
+                    {/* Free slots */}
+                    {freeSlots.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                          {selectedInstructor?.name}'s Remaining Free Windows
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {freeSlots.map((seg: any, i: number) => (
+                            <span
+                              key={i}
+                              className="text-xs bg-green-100 text-green-800 font-semibold px-2.5 py-1 rounded-md"
+                            >
+                              {to12h(seg.start)} – {to12h(seg.end)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Overlap warning */}
+                    {timeConflict && (
+                      <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800">
+                        <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
+                        <div className="space-y-1">
+                          <strong className="font-semibold block mb-1">⚠️ Scheduling Conflict Detected</strong>
+                          <p className="text-sm">
+                            The agreed time <strong>{to12h(agreedStart)} – {to12h(agreedEnd)}</strong> overlaps with another booking or is outside the instructor's free segments.
+                          </p>
+                          <p className="text-xs font-medium mt-1">
+                            Override Allowed: You can still approve this booking despite the conflict.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Editable agreed time (customization only) ── */}
+                {isCustomBooking && (
+                  <div className="pt-4 border-t border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-gray-500 uppercase">
+                        Agreed Class Time
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setEditingTime((v) => !v)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        {editingTime ? "Done editing" : "Edit time"}
+                      </button>
+                    </div>
+
+                    {editingTime ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium mb-1">From</p>
+                          <input
+                            type="time"
+                            value={agreedStart}
+                            onChange={(e) => setAgreedStart(e.target.value)}
+                            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium mb-1">To</p>
+                          <input
+                            type="time"
+                            value={agreedEnd}
+                            onChange={(e) => setAgreedEnd(e.target.value)}
+                            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-semibold text-sm ${
+                        timeConflict
+                          ? "bg-red-50 border-red-200 text-red-800"
+                          : "bg-white border-gray-200 text-gray-900"
+                      }`}>
+                        <Clock className="w-4 h-4 text-gray-500" />
+                        {agreedStart && agreedEnd
+                          ? `${to12h(agreedStart)} – ${to12h(agreedEnd)}`
+                          : <span className="text-gray-400 font-normal text-sm">No agreed time set — will use student's preferred time</span>
+                        }
+                      </div>
+                    )}
+
+                    {agreedStart && agreedEnd && agreedEnd <= agreedStart && (
+                      <p className="text-xs text-red-600 font-medium mt-1">End time must be after start time.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* ── Instructor Assignment Section ───────────────────────────── */}
-        {booking.status === "pending" && (
-          <div className="mt-8 pt-8 border-t border-primary/20">
-            <h4 className="text-[11px] font-black text-primary/60 uppercase tracking-widest mb-4 flex items-center gap-2 italic">
-              <User className="w-3.5 h-3.5 text-primary" /> Assign Instructor
-            </h4>
-            <div className="bg-white/40 rounded-xl p-6 border border-primary/20 space-y-6 shadow-sm">
+        {/* Footer */}
+        <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            className="px-6 h-11 text-black bg-white border border-gray-300 hover:bg-gray-100"
+          >
+            Close
+          </Button>
 
-              {booking.type === "regular" ? (
-                /* Regular bookings: Show specific fixed instructors for each assigned slot */
-                <div className="space-y-6">
-                  {(booking.schedules && booking.schedules.length > 0
-                    ? booking.schedules
-                    : [booking.schedule]
-                  ).filter(Boolean).map((s: any, idx: number) => (
-                    <div key={idx} className="space-y-3">
-                      <div className="flex items-center gap-2 border-l-2 border-primary/20 pl-3">
-                        <Clock className="w-3 h-3 text-secondary" />
-                        <span className="text-[9px] text-primary/60 font-black uppercase tracking-widest italic">
-                          Class Slot: {to12h(s.start_time)} – {to12h(s.end_time)}
-                        </span>
-                      </div>
-                      
-                      {s.instructor ? (
-                        <div
-                          onClick={() => setSelectedInstructorId(s.instructor.id)}
-                          className={`border rounded-xl px-4 py-3 text-sm font-bold italic shadow-sm flex items-center gap-3 cursor-pointer transition-all ${
-                            selectedInstructorId === s.instructor.id
-                              ? "bg-primary text-white border-primary scale-[1.02]"
-                              : "bg-primary/5 text-primary border-primary/20 hover:border-primary/40 text-primary/80"
-                          }`}
-                        >
-                          <User className="w-4 h-4" />
-                          <div className="flex-1">
-                            <p className="line-clamp-1 text-xs">{s.instructor.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className={`text-[8px] font-medium uppercase tracking-tighter ${selectedInstructorId === s.instructor.id ? "text-white/70" : "text-primary/60"}`}>
-                                Fixed Instructor for this Slot
-                              </span>
-                            </div>
-                          </div>
-                          {selectedInstructorId === s.instructor.id && <CheckCircle2 className="w-3 h-3" />}
-                        </div>
-                      ) : (
-                        <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl px-4 py-3 flex items-center gap-3">
-                          <AlertTriangle className="w-4 h-4 text-amber-500" />
-                          <span className="text-[10px] text-amber-600/70 font-bold italic">
-                            No fixed lead instructor assigned to this program slot.
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onStatusUpdate("pending")}
+            disabled={booking.status === "pending"}
+            className={cn(
+              "px-6 h-11",
+              booking.status === "pending" && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Set Pending
+          </Button>
 
-                  {/* Fallback: if slots don't have fixed instructors, show program-linked facilitators */}
-                  {(() => {
-                    const hasSomeNoFixed = (booking.schedules && booking.schedules.length > 0
-                      ? booking.schedules
-                      : [booking.schedule]
-                    ).filter(Boolean).some((s: any) => !s.instructor);
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => onStatusUpdate("rejected")}
+            disabled={booking.status === "rejected"}
+            className={cn(
+              "px-6 h-11",
+              booking.status === "rejected" && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <XCircle className="w-4 h-4 mr-2" />
+            Reject
+          </Button>
 
-                    if (hasSomeNoFixed && availableInstructors.length > 0) {
-                      return (
-                        <div className="pt-4 border-t border-primary/10">
-                          <span className="text-[10px] text-primary/60 font-black uppercase tracking-widest italic block mb-3">
-                            Available Program Facilitators
-                          </span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {availableInstructors.map((ins) => (
-                              <div
-                                key={ins.id}
-                                onClick={() => setSelectedInstructorId(ins.id)}
-                                className={`border rounded-xl px-4 py-3 text-sm font-bold italic shadow-sm flex items-center gap-3 cursor-pointer transition-all ${
-                                  selectedInstructorId === ins.id
-                                    ? "bg-primary text-white border-primary scale-[1.02]"
-                                    : "bg-primary/5 text-primary border-primary/20 hover:border-primary/40 text-primary/80"
-                                }`}
-                              >
-                                <User className="w-4 h-4" />
-                                <span className="line-clamp-1 text-xs">{ins.name}</span>
-                                {selectedInstructorId === ins.id && <CheckCircle2 className="ml-auto w-3 h-3" />}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {loadingInstructors && (
-                    <span className="text-[10px] text-primary/60 animate-pulse font-bold italic block mt-4 text-center">
-                      Refreshing instructor list...
-                    </span>
-                  )}
-                </div>
-              ) : (
-                /* Customization bookings: Show dynamic availability sections */
-                <div className="space-y-5">
-                  {/* Available instructors */}
-                  {availableInstructors.filter(ins => ins.is_available).length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-[9px] text-green-600 font-bold uppercase tracking-widest">Perfectly Available</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {availableInstructors.filter(ins => ins.is_available).map((ins) => (
-                          <div
-                            key={ins.id}
-                            onClick={() => setSelectedInstructorId(ins.id)}
-                            className={`border rounded-xl px-4 py-3 text-sm font-bold italic shadow-sm flex items-center gap-3 cursor-pointer transition-all ${
-                              selectedInstructorId === ins.id
-                                ? "bg-primary text-white border-primary scale-[1.02]"
-                                : "bg-green-500/5 text-primary border-green-500/10 hover:border-green-500/40 hover:bg-green-500/10"
-                            }`}
-                          >
-                            <User className={`w-4 h-4 ${selectedInstructorId === ins.id ? "text-white" : "text-green-600"}`} />
-                            <div className="flex-1">
-                              <p className="line-clamp-1">{ins.name}</p>
-                              <p className={`text-[9px] font-medium uppercase ${selectedInstructorId === ins.id ? "text-white/70" : "text-green-600/60"}`}>
-                                Free for requested time
-                              </p>
-                            </div>
-                            {selectedInstructorId === ins.id && <CheckCircle2 className="w-3 h-3" />}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Busy but has free slots */}
-                  {availableInstructors.filter(ins => !ins.is_available && ins.free_slots?.length > 0).length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest">Busy but has free time</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {availableInstructors.filter(ins => !ins.is_available && ins.free_slots?.length > 0).map((ins) => (
-                          <div
-                            key={ins.id}
-                            onClick={() => setSelectedInstructorId(ins.id)}
-                            className={`border rounded-xl px-4 py-3 text-sm font-bold italic shadow-sm flex items-center gap-3 cursor-pointer transition-all ${
-                              selectedInstructorId === ins.id
-                                ? "bg-primary text-white border-primary scale-[1.02]"
-                                : "bg-amber-500/5 text-primary border-amber-500/10 hover:border-amber-500/40 hover:bg-amber-500/10"
-                            }`}
-                          >
-                            <Clock className={`w-4 h-4 ${selectedInstructorId === ins.id ? "text-white" : "text-amber-600"}`} />
-                            <div className="flex-1">
-                              <p className="line-clamp-1">{ins.name}</p>
-                              <div className={`flex flex-wrap gap-1 mt-0.5 ${selectedInstructorId === ins.id ? "text-white/70" : "text-amber-600/70"}`}>
-                                <span className="text-[8px] font-medium uppercase">Free:</span>
-                                {ins.free_slots.slice(0, 2).map((s: any, i: number) => (
-                                  <span key={i} className="text-[8px] bg-black/5 px-1 rounded">{to12h(s.start)}</span>
-                                ))}
-                                {ins.free_slots.length > 2 && <span className="text-[8px]">…</span>}
-                              </div>
-                            </div>
-                            {selectedInstructorId === ins.id && <CheckCircle2 className="w-3 h-3" />}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {loadingInstructors && (
-                    <span className="text-[10px] text-primary/60 animate-pulse font-bold italic">Checking availability...</span>
-                  )}
-                  {!loadingInstructors && availableInstructors.length === 0 && (
-                    <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest italic">
-                      No instructors assigned to this program.
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* ── Selected instructor's busy time warning (customization only) ── */}
-              {isCustomBooking && selectedInstructorId && (selectedInstructor?.booked_slots?.length > 0 || freeSlots.length > 0) && (
-                <div className="space-y-4 pt-4 border-t border-primary/10">
-                  {/* Booked / busy slots */}
-                  {selectedInstructor?.booked_slots?.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-black text-amber-600/60 uppercase tracking-widest">
-                        {selectedInstructor?.name}'s Booked / Busy Windows
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedInstructor.booked_slots.map((seg: any, i: number) => (
-                          <span
-                            key={i}
-                            className="text-[11px] bg-amber-50 border border-amber-200 text-amber-700 font-bold px-3 py-1.5 rounded-lg"
-                          >
-                            {to12h(seg.start)} – {to12h(seg.end)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Free slots */}
-                  {freeSlots.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-black text-green-600/60 uppercase tracking-widest">
-                        {selectedInstructor?.name}'s Remaining Free Windows
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {freeSlots.map((seg: any, i: number) => (
-                          <span
-                            key={i}
-                            className="text-[11px] bg-green-50 border border-green-200 text-green-700 font-bold px-3 py-1.5 rounded-lg"
-                          >
-                            {to12h(seg.start)} – {to12h(seg.end)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Overlap warning */}
-                  {timeConflict && (
-                    <div className="flex items-start gap-3 bg-red-500/10 border-2 border-red-500/20 rounded-2xl px-5 py-4 text-xs text-red-700 shadow-lg shadow-red-500/5 animate-pulse">
-                      <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
-                      <div className="space-y-1">
-                        <strong className="text-sm font-black uppercase tracking-tighter block mb-1">⚠️ Scheduling Conflict Detected</strong>
-                        <p className="font-medium leading-normal">
-                          The agreed time <strong>{to12h(agreedStart)} – {to12h(agreedEnd)}</strong> overlaps with another booking or is outside the instructor's free segments.
-                        </p>
-                        <p className="text-[10px] font-black uppercase tracking-widest mt-2 bg-red-500 text-white w-fit px-2 py-0.5 rounded italic">
-                          Override Allowed: You can still approve this booking despite the conflict.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── Editable agreed time (customization only) ── */}
-              {isCustomBooking && (
-                <div className="pt-4 border-t border-primary/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest italic">
-                      Agreed Class Time
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setEditingTime((v) => !v)}
-                      className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-primary/50 hover:text-primary transition"
-                    >
-                      <Edit3 className="w-3 h-3" />
-                      {editingTime ? "Done editing" : "Edit time"}
-                    </button>
-                  </div>
-
-                  {editingTime ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[9px] text-primary/50 font-black uppercase tracking-widest mb-1">From</p>
-                        <input
-                          type="time"
-                          value={agreedStart}
-                          onChange={(e) => setAgreedStart(e.target.value)}
-                          className="w-full bg-white/60 border border-primary/20 rounded-xl px-4 py-3 text-sm text-primary font-bold focus:outline-none focus:border-primary transition"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-primary/50 font-black uppercase tracking-widest mb-1">To</p>
-                        <input
-                          type="time"
-                          value={agreedEnd}
-                          onChange={(e) => setAgreedEnd(e.target.value)}
-                          className="w-full bg-white/60 border border-primary/20 rounded-xl px-4 py-3 text-sm text-primary font-bold focus:outline-none focus:border-primary transition"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-black text-sm italic ${
-                      timeConflict
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-white/60 border-primary/20 text-primary"
-                    }`}>
-                      <Clock className="w-4 h-4" />
-                      {agreedStart && agreedEnd
-                        ? `${to12h(agreedStart)} – ${to12h(agreedEnd)}`
-                        : <span className="text-primary/30 font-normal italic text-xs">No agreed time set — will use student's preferred time</span>
-                      }
-                    </div>
-                  )}
-
-                  {agreedStart && agreedEnd && agreedEnd <= agreedStart && (
-                    <p className="text-[10px] text-red-500 font-bold italic">End time must be after start time.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-primary/20 mt-8">
-          <button
+          <Button
+            type="button"
             onClick={handleApprove}
             disabled={Boolean(
-              booking.status === "accepted" ||
               (booking.status === "pending" && !selectedInstructorId) ||
               (isCustomBooking && agreedStart && agreedEnd && agreedEnd <= agreedStart)
             )}
-            className={`flex-1 px-6 py-3.5 rounded-xl transition duration-300 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 italic shadow-md active:scale-95 ${
-              booking.status === "accepted"
-                ? "bg-green-500/20 text-green-600 border border-green-500/30 cursor-not-allowed shadow-none"
-                : booking.status === "pending" && !selectedInstructorId
-                  ? "bg-white/40 text-primary/30 border border-primary/10 cursor-not-allowed shadow-none"
-                  : "bg-green-500/10 text-green-600 border border-green-500/20 hover:bg-green-500 hover:text-white shadow-green-500/10 cursor-pointer"
-            }`}
+            className={cn(
+              "px-8 h-11 text-base font-medium shadow-sm bg-green-600 hover:bg-green-700 text-white"
+            )}
           >
-            <CheckCircle2 className="w-4 h-4" />
-            {booking.status === "accepted" ? "Booking Approved" : "Approve Booking"}
-          </button>
-          <button
-            onClick={() => onStatusUpdate("rejected")}
-            className="flex-1 px-6 py-3.5 bg-red-500/10 text-red-600 border border-red-500/20 rounded-xl hover:bg-red-500 hover:text-white transition duration-300 font-black uppercase tracking-widest text-[10px] flex items-center cursor-pointer justify-center gap-2 italic shadow-md shadow-red-500/10 active:scale-95"
-          >
-            <XCircle className="w-4 h-4" /> Reject Request
-          </button>
-          <button
-            onClick={onClose}
-            className="px-8 py-3.5 bg-white/40 cursor-pointer text-primary/60 border border-primary/10 rounded-xl hover:bg-white/60 hover:text-primary transition duration-300 font-black uppercase tracking-widest text-[10px] italic shadow-sm active:scale-95"
-          >
-            Close
-          </button>
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            {booking.status === "accepted" ? "Update Booking" : "Approve Booking"}
+          </Button>
         </div>
       </div>
     </div>

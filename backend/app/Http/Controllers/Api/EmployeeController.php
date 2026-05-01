@@ -204,6 +204,12 @@ class EmployeeController extends Controller
                 }
                 $path = $request->file('image')->store('employees', 'public');
                 $data['image'] = asset('storage/' . $path);
+            } elseif ($request->input('remove_image') == '1') {
+                if ($employee->image) {
+                    $oldPath = str_replace(asset('storage/'), '', $employee->image);
+                    Storage::disk('public')->delete($oldPath);
+                }
+                $data['image'] = null;
             }
 
             $employee->update($data);
