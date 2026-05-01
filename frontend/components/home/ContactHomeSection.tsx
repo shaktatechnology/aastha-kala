@@ -4,6 +4,7 @@ import React from "react";
 import { Phone, Mail, MapPin } from "lucide-react";
 import ScrollReveal from "@/components/client/ScrollReveal";
 import { motion } from "framer-motion";
+import ContactForm from "@/components/client/ContactForm";
 
 interface ContactHomeSectionProps {
   settings: any;
@@ -82,7 +83,7 @@ const ContactHomeSection: React.FC<ContactHomeSectionProps> = ({ settings }) => 
         {/* Header */}
         <ScrollReveal>
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-[#27A0CF] mb-3">
+            <h2 className="text-4xl font-bold text-primary mb-3">
               Get In Touch
             </h2>
             <h4 className="text-secondary text-base mx-auto">
@@ -156,29 +157,19 @@ const ContactHomeSection: React.FC<ContactHomeSectionProps> = ({ settings }) => 
             </div>
           </ScrollReveal>
 
-          {/* Map */}
-          {mapUrl && (
-            <ScrollReveal delay={400}>
-              <motion.div 
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="rounded-2xl overflow-hidden shadow-xl"
-              >
-                <div className="w-full h-[340px]">
-                  <iframe
-                    src={mapUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Aastha Kala Kendra Location"
-                  ></iframe>
-                </div>
-              </motion.div>
-            </ScrollReveal>
-          )}
+          {/* Contact Form */}
+          <ScrollReveal delay={400}>
+            <motion.div 
+              whileHover={{ y: -5 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-white/50"
+            >
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                Send us a Message
+              </h3>
+              <ContactForm />
+            </motion.div>
+          </ScrollReveal>
         </div>
       </div>
     </section>

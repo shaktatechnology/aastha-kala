@@ -83,7 +83,7 @@ const InstructorSection = ({
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <ScrollReveal once={true} direction="down">
+        <ScrollReveal once={true} direction="up">
           <div className="text-center space-y-3 mb-24 relative z-0">
             {/* Animated Decorative background element */}
             <motion.div 
