@@ -82,28 +82,26 @@ const HeroSlider: React.FC<HeroSliderProps> = ({ heroMedia, fill = false }) => {
             </div>
           )}
 
-          {/* Text Overlay - Only on the first slide (as per request) */}
-          {idx === 0 && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 px-6">
-              <div className="w-full max-w-5xl text-center text-white [text-shadow:_0_2px_10px_rgba(0,0,0,0.5)]">
-                <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight font-poppins mb-4 animate-slide-up">
-                  {media.title || "Aastha Kala Kendra"}
-                </h1>
-                <p className="text-base sm:text-lg md:text-xl font-medium tracking-wide !text-white max-w-2xl mx-auto animate-slide-up [animation-delay:200ms] [text-shadow:_0_1px_8px_rgba(0,0,0,0.8)]">
-                  {media.description || "Preserving Heritage, Inspiring Passion in Performing Arts, Dance & Music."}
-                </p>
-                
-                <div className="mt-10 animate-slide-up [animation-delay:400ms]">
-                   <a 
-                    href="/programs" 
-                    className="inline-block bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-full font-bold transition-all duration-300 transform hover:scale-105 shadow-lg"
-                   >
-                     Explore Programs
-                   </a>
-                </div>
+          {/* Text Overlay - Show on all slides */}
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 px-6">
+            <div className="w-full max-w-5xl text-center text-white [text-shadow:_0_2px_10px_rgba(0,0,0,0.5)]">
+              <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight font-poppins mb-4 animate-slide-up">
+                {media.title || "Aastha Kala Kendra"}
+              </h1>
+              <p className="text-base sm:text-lg md:text-xl font-medium tracking-wide !text-white max-w-2xl mx-auto animate-slide-up [animation-delay:200ms] [text-shadow:_0_1px_8px_rgba(0,0,0,0.8)]">
+                {media.description || "Preserving Heritage, Inspiring Passion in Performing Arts, Dance & Music."}
+              </p>
+              
+              <div className="mt-10 animate-slide-up [animation-delay:400ms]">
+                 <a 
+                  href="/programs" 
+                  className="inline-block bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-full font-bold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                 >
+                   Explore Programs
+                 </a>
               </div>
             </div>
-          )}
+          </div>
         </div>
       ))}
 
