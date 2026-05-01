@@ -14,7 +14,7 @@ import { ensureAbsoluteUrl } from "@/utils/url";
 const getSettings = async () => {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     const data = await res.json();
     return data?.data || { setting: null, social_links: null };
@@ -27,7 +27,7 @@ const getSettings = async () => {
 const getPrograms = async () => {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/programs`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     const data = await res.json();
     // Since index() uses pagination, programs are in data.data.data
@@ -55,6 +55,24 @@ const Footer = async () => {
   };
 
   const logoUrl = getLogoUrl(setting?.logo);
+  
+  const getMapLink = (input: string, isForRedirection: boolean = false) => {
+    if (!input) return "";
+    
+    let url = input;
+    if (input.includes("<iframe")) {
+      const match = input.match(/src="([^"]+)"/);
+      url = match ? match[1] : "";
+    }
+
+    // If it's for a link redirection and it's an embed URL, 
+    // it's better to fallback to a search for the address for a better mobile/app experience
+    if (isForRedirection && url.includes("/maps/embed")) {
+      return ""; // Returning empty will trigger the address-based search fallback in the component
+    }
+
+    return ensureAbsoluteUrl(url);
+  };
 
   const socials = [
     {
@@ -132,33 +150,33 @@ const Footer = async () => {
   return (
     <footer className="bg-white border-blue-100 mt-10">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 xl:gap-12">
           {/* Logo & Description */}
-          <div className="col-span-2 md:col-span-1 flex flex-col items-center md:items-start text-center md:text-left">
+          <div className="sm:col-span-2 lg:col-span-3 flex flex-col items-center sm:items-start text-center sm:text-left">
             <Link
               href="/"
-              className="flex items-center space-x-2 justify-center md:justify-start"
+              className="flex items-center space-x-2 justify-center sm:justify-start mb-4"
             >
-              {/* {logoUrl && (
+              {logoUrl && (
                 <img
                   src={logoUrl}
                   alt={setting?.company_name || "Aastha Kala Kendra"}
                   className="h-14 w-auto object-contain"
                 />
-              )} */}
+              )}
               <h2 className="text-xl font-semibold text-primary">
                 {setting?.company_name || "Aastha Kala Kendra"}
               </h2>
             </Link>
 
-            <p className="mt-4 text-gray-600 text-sm max-w-sm mx-auto md:mx-0">
+            <p className="text-gray-600 text-sm max-w-sm mx-auto sm:mx-0">
               {setting?.about_short ||
                 "Empowering artists and nurturing talent since 1999. Join our vibrant community and discover your creative potential."}
             </p>
 
             {/* Social Icons */}
             {socials.length > 0 && (
-              <div className="mt-4 flex gap-3 justify-center md:justify-start">
+              <div className="mt-6 flex gap-4 justify-center sm:justify-start">
                 {socials.map((social) => (
                   <a
                     key={social.id}
@@ -176,11 +194,11 @@ const Footer = async () => {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <div className="sm:col-span-1 lg:col-span-2">
             <h3 className="text-lg font-semibold text-primary mb-4">
               Quick Links
             </h3>
-            <ul className="space-y-2 text-gray-600 text-sm">
+            <ul className="space-y-3 text-gray-600 text-sm">
               <li>
                 <Link href="/about" className="hover:text-primary">
                   About Us
@@ -210,12 +228,12 @@ const Footer = async () => {
           </div>
 
           {/* Programs */}
-          <div>
+          <div className="sm:col-span-1 lg:col-span-4">
             <h3 className="text-lg font-semibold text-primary mb-4">
               Programs
             </h3>
-            <ul className="space-y-2 text-gray-600 text-sm">
-              {programs.slice(0, 6).map((program: any) => (
+            <ul className="space-y-3 text-gray-600 text-sm">
+              {programs.slice(0, 5).map((program: any) => (
                 <li key={program.id}>
                   <Link
                     href="/programs"
@@ -232,33 +250,45 @@ const Footer = async () => {
           </div>
 
           {/* Contact */}
-          <div>
+          <div className="sm:col-span-2 lg:col-span-3">
             <h3 className="text-lg font-semibold text-primary mb-4">
               Contact Details
             </h3>
-            <div className="space-y-4 text-sm text-gray-600">
-              <div className="flex items-center space-x-3">
-                <Phone className="h-4 w-4 text-primary" />
+            <div className="space-y-3 text-sm text-gray-600">
+              <a 
+                href={`tel:${setting?.phone || "+9779841305158"}`}
+                className="flex items-center space-x-3 hover:text-primary transition-colors"
+              >
+                <Phone className="h-4 w-4 text-primary flex-shrink-0" />
                 <span>{setting?.phone || "+977 9841305158"}</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Mail className="h-4 w-4 text-primary" />
-                <span>{setting?.email || "aasthakalakendra@gmail.com"}</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="h-4 w-4 text-primary" />
+              </a>
+              <a 
+                href={`mailto:${setting?.email || "aasthakalakendra@gmail.com"}`}
+                className="flex items-center space-x-3 hover:text-primary transition-colors"
+              >
+                <Mail className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="break-all">{setting?.email || "aasthakalakendra@gmail.com"}</span>
+              </a>
+              <a 
+                href={getMapLink(setting?.location_map, true) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(setting?.address || "Narayangopal Chowk, Kathmandu, Nepal")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start space-x-3 hover:text-primary transition-colors"
+              >
+                <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                 <span>
                   {setting?.address || "Narayangopal Chowk, Kathmandu, Nepal"}
                 </span>
-              </div>
+              </a>
+              
               {setting?.opening_hour && setting?.closing_hour && (
                 <div className="flex items-start space-x-3 pt-2">
                   <div className="text-primary font-semibold uppercase text-[10px] tracking-wider mt-1 px-1 border border-primary rounded">
-                    OPEN
+                    Open
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-800">Opening Hours</p>
-                    <p>
+                  <div className="text-sm">
+                    <p className="font-medium text-gray-900">Working Hours</p>
+                    <p className="text-gray-500">
                       {setting.opening_hour} - {setting.closing_hour}
                     </p>
                   </div>

@@ -35,9 +35,9 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
   const hasSubPrograms = program.sub_programs && program.sub_programs.length > 0;
 
   const getImageUrl = (path?: string | null) => {
-    if (!path) return "/placeholder-dance.png";
+    if (!path) return "/images/program-fallback.png";
     if (path.startsWith("http")) return path;
-    if (!IMAGE_BASE) return "/placeholder-dance.png";
+    if (!IMAGE_BASE) return "/images/program-fallback.png";
     return `${IMAGE_BASE?.replace(/\/$/, "")}/${path.replace(/^\/+/, "")}`;
   };
 
@@ -71,7 +71,7 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
               src={getImageUrl(program?.image)} 
               alt={program?.title}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder-dance.png" }}
+              onError={(e) => { (e.target as HTMLImageElement).src = "/images/program-fallback.png" }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-300" />
             
@@ -101,7 +101,6 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
         {/* BACK SIDE */}
         <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] w-full h-full">
           <div className="bg-white rounded-2xl p-8 flex flex-col h-full text-[#001f54] border border-gray-100 relative overflow-hidden text-center">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-50/50 rounded-full blur-3xl" />
             
             <h3 className="text-xl font-black mb-4 leading-tight border-b border-gray-50 pb-4 italic">{program?.title}</h3>
             

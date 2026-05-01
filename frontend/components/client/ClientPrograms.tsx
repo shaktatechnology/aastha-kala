@@ -41,7 +41,7 @@ const ProgramCard = ({ program, onBook }: { program: Program; onBook: () => void
   const hasSubPrograms = program.sub_programs && program.sub_programs.length > 0;
 
   const getImageUrl = (path?: string | null) => {
-    if (!path) return "/placeholder-dance.png";
+    if (!path) return "/images/program-fallback.png";
     if (path.startsWith("http")) return path;
     return `${IMAGE_BASE?.replace(/\/$/, "")}/${path.replace(/^\/+/, "")}`;
   };
@@ -69,7 +69,7 @@ const ProgramCard = ({ program, onBook }: { program: Program; onBook: () => void
           src={getImageUrl(program?.image)}
           alt={program?.title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder-dance.png" }}
+          onError={(e) => { (e.target as HTMLImageElement).src = "/images/program-fallback.png" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#001f54]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         {hasSubPrograms && (

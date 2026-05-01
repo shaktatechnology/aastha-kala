@@ -91,7 +91,7 @@ const Page = async () => {
         <TestimonialSlider />
       </Suspense>
 
-      {settings && <ContactHomeSection settings={settings} />}
+      {settings && <ContactHomeSection settings={settings} socialLinks={socialLinks} />}
     </div>
   );
 };
