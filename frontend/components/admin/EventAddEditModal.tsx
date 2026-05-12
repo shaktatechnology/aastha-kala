@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import InputField from "@/components/layout/InputField";
 import EditorComponent from "@/components/layout/EditorComponent";
-import { X, AlignLeft, Captions, MapPin, Calendar, User, Phone, CheckCircle, Info, Image as ImageIcon } from "lucide-react";
+import { X, AlignLeft, Captions, MapPin, Calendar, User, Phone, CheckCircle, Info, Image as ImageIcon, Save } from "lucide-react";
 import toast from "react-hot-toast";
+import { Portal } from "../global/Portal";
 
 interface EventData {
   id?: number;
@@ -48,61 +49,60 @@ const EventAddEditModal: React.FC<Props> = ({
   });
 
   const [previewBanner, setPreviewBanner] = useState<string | null>(null);
-const [errors, setErrors] = useState<{[key: string]: string[]}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-  if (!isOpen) return;
+    if (!isOpen) return;
 
-  if (event) {
-    setForm({
-      title: event.title || "",
-      description: event.description || "",
-      event_date: event.event_date
-        ? (() => {
-            const d = new Date(event.event_date);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-          })()
-        : "",
-      location: event.location || "",
-      status: event.status || "draft",
-      contact_person_name: event.contact_person_name || "",
-      contact_person_phone: event.contact_person_phone || "",
-      is_active: event.is_active || false,
-      banner: null,
-    });
+    if (event) {
+      setForm({
+        title: event.title || "",
+        description: event.description || "",
+        event_date: event.event_date
+          ? (() => {
+              const d = new Date(event.event_date);
+              const year = d.getFullYear();
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              const hours = String(d.getHours()).padStart(2, '0');
+              const minutes = String(d.getMinutes()).padStart(2, '0');
+              return `${year}-${month}-${day}T${hours}:${minutes}`;
+            })()
+          : "",
+        location: event.location || "",
+        status: event.status || "draft",
+        contact_person_name: event.contact_person_name || "",
+        contact_person_phone: event.contact_person_phone || "",
+        is_active: event.is_active || false,
+        banner: null,
+      });
 
-    setPreviewBanner(
-      event.banner
-        ? event.banner.startsWith("http")
-          ? event.banner
-          : `${IMAGE_BASE}/${event.banner}`
-        : null
-    );
-  } else {
-    setForm({
-      title: "",
-      description: "",
-      event_date: "",
-      location: "",
-      status: "draft",
-      contact_person_name: "",
-      contact_person_phone: "",
-      is_active: false,
-      banner: null,
-    });
+      setPreviewBanner(
+        event.banner
+          ? event.banner.startsWith("http")
+            ? event.banner
+            : `${IMAGE_BASE}/${event.banner}`
+          : null
+      );
+    } else {
+      setForm({
+        title: "",
+        description: "",
+        event_date: "",
+        location: "",
+        status: "draft",
+        contact_person_name: "",
+        contact_person_phone: "",
+        is_active: false,
+        banner: null,
+      });
 
-    setPreviewBanner(null);
-  }
+      setPreviewBanner(null);
+    }
 
-  //  clear errors when opening
-  setErrors({});
-}, [isOpen]); 
+    setErrors({});
+  }, [isOpen, event, IMAGE_BASE]);
 
   if (!isOpen) return null;
 
@@ -113,14 +113,12 @@ const [errors, setErrors] = useState<{[key: string]: string[]}>({});
       [key]: value,
     }));
 
-    //clear efrror fo rthat field
-    setErrors((prev) =>{
-      const newErrors = {...prev};
+    setErrors((prev) => {
+      const newErrors = { ...prev };
       delete newErrors[key];
       return newErrors;
-    })
+    });
   };
-
 
   const handleBannerChange = (file: File | null) => {
     if (loading) return;
@@ -131,8 +129,6 @@ const [errors, setErrors] = useState<{[key: string]: string[]}>({});
     }
   };
 
-
-  // REMOVE BANNER
   const handleRemoveBanner = () => {
     if (loading) return;
     setForm((prev) => ({
@@ -141,7 +137,6 @@ const [errors, setErrors] = useState<{[key: string]: string[]}>({});
     }));
     setPreviewBanner(null);
   };
-
 
   const handleSubmit = async () => {
     try {
@@ -156,17 +151,13 @@ const [errors, setErrors] = useState<{[key: string]: string[]}>({});
       formData.append("location", form.location);
       formData.append("status", form.status);
       formData.append("is_active", form.is_active ? "1" : "0");
-
-      // ✅ contact fields
       formData.append("contact_person_name", form.contact_person_name || "");
       formData.append("contact_person_phone", form.contact_person_phone || "");
 
-      // banner upload
       if (form.banner instanceof File) {
         formData.append("banner", form.banner);
       }
 
-      // optional: remove existing banner
       if (event && !previewBanner && !form.banner) {
         formData.append("remove_banner", "1");
       }
@@ -193,27 +184,21 @@ const [errors, setErrors] = useState<{[key: string]: string[]}>({});
 
       if (!res.ok) {
         if (result.errors) {
-          const validationErrors = result.errors as Record<string, string[]>;
-          setErrors(validationErrors);
-          
-          // Scroll to the first error field
-          const firstErrorKey = Object.keys(validationErrors)[0];
+          setErrors(result.errors);
+          const firstErrorKey = Object.keys(result.errors)[0];
           const elementId = firstErrorKey.replace(/\./g, "_");
-          
           setTimeout(() => {
             const element = document.getElementById(elementId);
             if (element) {
               element.scrollIntoView({ behavior: "smooth", block: "center" });
             }
           }, 100);
-          
           return;
         }
         throw new Error(result.message || "Something went wrong");
       }
 
       toast.success(event ? "Updated successfully" : "Created successfully");
-
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -224,180 +209,173 @@ const [errors, setErrors] = useState<{[key: string]: string[]}>({});
   };
 
   return (
-    <div
-      // onClick={onClose}
-      className="fixed inset-0 bg-white/5 backdrop-blur-lg border border-white/10 flex items-center justify-center z-50 cursor-pointer"
-    >
+    <Portal>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-primary/10 border border-primary/20 backdrop-blur-md w-full max-w-2xl rounded-xl md:p-6 py-15 px-6 relative overflow-y-auto max-h-[90vh] cursor-default"
+        className="fixed inset-0 z-[150] flex items-center justify-center bg-brand-deep/20 backdrop-blur-md cursor-pointer p-4"
+        onClick={onClose}
       >
-        {/* Close Modal */}
-        <button onClick={onClose} className="absolute right-4 md:top-4 top-17 text-primary hover:text-black transition-colors">
-          <X className="w-5 h-5" />
-        </button>
-
-        <h2 className="text-xl font-bold mb-6 text-primary">
-          {event ? "Edit Event" : "Add Event"}
-        </h2>
-
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Title"
-              icon={Captions}
-              required={true}
-              value={form.title}
-              onChange={(e) => handleChange("title", e.target.value)}
-              disabled={loading}
-              error={errors.title}
-            />
-
-            <InputField
-              label="Location"
-              icon={MapPin}
-              required={true}
-              value={form.location}
-              onChange={(e) => handleChange("location", e.target.value)}
-              disabled={loading}
-              error={errors.location}
-            />
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl max-h-[96vh] flex flex-col animate-scale-in cursor-default"
+        >
+          {/* Header */}
+          <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center sticky top-0 z-20">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {event ? 'Edit Event' : 'Add New Event'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Fill in the details below to {event ? 'update' : 'add'} an event
+              </p>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="p-2 rounded-full hover:bg-black/5 transition-colors group"
+            >
+              <X className="size-5 text-gray-400 group-hover:text-gray-900" />
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Event Date"
-              icon={Calendar}
-              type="datetime-local"
-              required={true}
-              value={form.event_date}
-              onChange={(e) => handleChange("event_date", e.target.value)}
-              disabled={loading}
-              error={errors.event_date}
-            />
-
-            <InputField
-              label="Status"
-              icon={Info}
-              type="select"
-              value={form.status}
-              onChange={(e) => handleChange("status", e.target.value)}
-              options={[
-                { label: "Draft", value: "draft" },
-                { label: "Published", value: "published" },
-              ]}
-              disabled={loading}
-              error={errors.status}
-            />
-          </div>
-
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Contact Person Name"
-              icon={User}
-              id="contact_person_name"
-              value={form.contact_person_name || ""}
-              onChange={(e) => handleChange("contact_person_name", e.target.value)}
-              disabled={loading}
-              error={errors.contact_person_name}
-              placeholder="e.g. John Doe"
-            />
-
-            <InputField
-              label="Contact Person Phone"
-              icon={Phone}
-              id="contact_person_phone"
-              value={form.contact_person_phone || ""}
-              onChange={(e) => handleChange("contact_person_phone", e.target.value)}
-              disabled={loading}
-              error={errors.contact_person_phone}
-              placeholder="e.g. +977-9800000000"
-            />
-          </div> */}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Overlay Ad Active"
-              icon={CheckCircle}
-              id="is_active"
-              type="select"
-              value={form.is_active ? "1" : "0"}
-              onChange={(e) => handleChange("is_active", e.target.value === "1")}
-              options={[
-                { label: "Disabled", value: "0" },
-                { label: "Active (Show as Popup)", value: "1" },
-              ]}
-              disabled={loading}
-              error={errors.is_active}
-            />
-          </div>
-
-          <EditorComponent
-            label="Description"
-            icon={AlignLeft}
-            value={form.description || ""}
-            onChange={(val: string) => handleChange("description", val)}
-          />
-
-
-          {/* Banner Upload */}
-          <div id="banner">
-            <label className="text-sm text-primary font-bold mb-1 block uppercase tracking-wider italic flex items-center gap-2">
-              <ImageIcon className="w-4 h-4" /> Banner Image
-            </label>
-
-            <div className="p-0.5 rounded-xl bg-linear-to-r from-primary/20 to-secondary/20">
-              <div className="rounded-xl px-3 py-1.5 bg-primary/10 backdrop-blur-md border border-primary/10 shadow-sm transition-all duration-300">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e: any) =>
-                    handleBannerChange(e.target.files?.[0] || null)
-                  }
+          {/* Form Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputField
+                  label="Title"
+                  icon={Captions}
+                  required
+                  value={form.title}
+                  onChange={(e) => handleChange("title", e.target.value)}
                   disabled={loading}
-                  className="text-black/60 file:mr-4 cursor-pointer file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                  error={errors.title}
+                  placeholder="Enter event title"
+                />
+
+                <InputField
+                  label="Location"
+                  icon={MapPin}
+                  required
+                  value={form.location}
+                  onChange={(e) => handleChange("location", e.target.value)}
+                  disabled={loading}
+                  error={errors.location}
+                  placeholder="e.g. Studio Hall A"
+                />
+
+                <InputField
+                  label="Event Date"
+                  icon={Calendar}
+                  type="datetime-local"
+                  required
+                  value={form.event_date}
+                  onChange={(e) => handleChange("event_date", e.target.value)}
+                  disabled={loading}
+                  error={errors.event_date}
+                />
+
+                <InputField
+                  label="Status"
+                  icon={Info}
+                  type="select"
+                  value={form.status}
+                  onChange={(e) => handleChange("status", e.target.value)}
+                  options={[
+                    { label: "Draft", value: "draft" },
+                    { label: "Published", value: "published" },
+                  ]}
+                  disabled={loading}
+                  error={errors.status}
+                />
+
+                <InputField
+                  label="Overlay Ad Active"
+                  icon={CheckCircle}
+                  type="select"
+                  value={form.is_active ? "1" : "0"}
+                  onChange={(e) => handleChange("is_active", e.target.value === "1")}
+                  options={[
+                    { label: "Disabled", value: "0" },
+                    { label: "Active (Show as Popup)", value: "1" },
+                  ]}
+                  disabled={loading}
+                  error={errors.is_active}
                 />
               </div>
+
+              <EditorComponent
+                label="Description"
+                icon={AlignLeft}
+                value={form.description || ""}
+                onChange={(val: string) => handleChange("description", val)}
+              />
+
+              {/* Banner Upload */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Banner Image
+                </label>
+                <div className="flex items-start gap-6">
+                  <div className="size-48 rounded-xl border-2 border-dashed border-gray-200 overflow-hidden flex items-center justify-center bg-gray-50 relative group transition-colors hover:border-primary/50">
+                    {previewBanner ? (
+                      <img src={previewBanner} alt="Banner preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="size-12 text-gray-300" />
+                    )}
+                    <label className="absolute inset-0 cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity">
+                      <input type="file" hidden onChange={(e) => handleBannerChange(e.target.files?.[0] || null)} accept="image/*" />
+                      <span className="text-xs text-white font-bold bg-primary/80 px-3 py-1.5 rounded-lg">Upload</span>
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 mb-3">
+                      Upload a high-quality banner image for the event. This will be shown on the public website. Recommended: 1920x1080px.
+                    </p>
+                    {previewBanner && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveBanner}
+                        className="text-xs text-red-500 font-bold uppercase hover:underline flex items-center gap-1"
+                      >
+                        <X className="size-3" /> Remove Banner
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="min-h-[14px]">
-              {errors.banner && (
-                <p className="text-red-500 text-[10px] font-bold leading-none mt-1">
-                  {errors.banner[0]}
-                </p>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 sticky bottom-0 z-20">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 h-11 rounded-lg text-sm font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-primary hover:bg-primary/90 text-white px-10 h-11 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="size-4" />
+                  <span>{event ? 'Update Event' : 'Create Event'}</span>
+                </>
               )}
-            </div>
-
-            {previewBanner && (
-              <div className="mt-3 relative w-full sm:w-48 aspect-video rounded-xl overflow-hidden border border-primary/20 bg-white/10 group">
-                <img
-                  src={previewBanner}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-
-                {/* Remove button */}
-                <button
-                  type="button"
-                  onClick={handleRemoveBanner}
-                  disabled={loading}
-                  className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg backdrop-blur-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+            </button>
           </div>
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full py-2 bg-gradient-to-r cursor-pointer from-primary to-secondary text-white rounded-lg"
-          >
-            {loading ? "Saving..." : event ? "Update" : "Create"}
-          </button>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 
