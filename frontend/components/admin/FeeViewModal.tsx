@@ -25,6 +25,7 @@ import toast from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "./ThermalBill";
 import { A4Bill } from "./A4Bill";
+import { Portal } from "../global/Portal";
 
 interface Props {
   isOpen: boolean;
@@ -151,8 +152,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
           return;
         }
         if (res.ok && result.data) {
-          // We merge the list record (which has the correct transaction-specific totals)
-          // with the detailed breakdown from the fee-info API
           const data = result.data;
           setEnrichedFee({
             ...fee,
@@ -163,7 +162,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
             admission_paid_amount:
               data.admission_paid_amount || fee.admission_paid_amount,
             programs_breakdown: data.program_fees?.programs_breakdown || [],
-            // Keep authoritative totals from the original fee record if it has them
             total_amount: fee.total_amount,
             paid_amount: fee.paid_amount,
             pending_amount: fee.pending_amount,
@@ -185,7 +183,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
       return;
     }
 
-    // If it's already a full record (e.g. from a recent payment), don't fetch
     const isEnriched =
       fee.programs_breakdown || fee.admission_fee || fee.program_payments;
 
@@ -196,7 +193,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     }
   }, [isOpen, fee, fetchFullDetails]);
 
-  // Use enriched data if available, fall back to passed fee
   const activeFee = enrichedFee || fee;
   const isIntegrated =
     activeFee?.fee_types?.includes("billing") ||
@@ -205,7 +201,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     METHOD_MAP[activeFee?.payment_method] || METHOD_MAP["Cash"];
   const MethodIcon = methodInfo.icon;
 
-  /* ── Parse admission ─────────────────────────────────── */
   const adm = useMemo(() => {
     if (!activeFee)
       return {
@@ -224,7 +219,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     const net = calcNet(base, disc, discType);
     const totalPaid = Number(activeFee.admission_paid_amount) || 0;
     const remaining = net - totalPaid;
-    // Only count admission if it was part of this billing (fee_types or fee_type)
     const wasInBilling =
       activeFee.fee_types?.includes("admission") ||
       activeFee.fee_type === "admission" ||
@@ -240,10 +234,8 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     };
   }, [activeFee, isIntegrated]);
 
-  /* ── Parse programs ──────────────────────────────────── */
   const programs = useMemo<ProgramItem[]>(() => {
     if (!activeFee) return [];
-    // Rich breakdown from server (same shape as fee-info endpoint)
     if (
       activeFee.programs_breakdown &&
       Array.isArray(activeFee.programs_breakdown)
@@ -267,7 +259,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
         };
       });
     }
-    // Map-based (FeeAddModal stores program_payments as {id: totalPaid})
     if (
       activeFee.program_payments &&
       typeof activeFee.program_payments === "object"
@@ -296,7 +287,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
         };
       });
     }
-    // Legacy: single program_fee field
     if (Number(activeFee.program_fee) > 0) {
       const base = Number(activeFee.program_fee);
       const disc = Number(activeFee.program_discount) || 0;
@@ -320,7 +310,6 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     return [];
   }, [activeFee]);
 
-  /* ── Aggregate totals (from items) ───────────────────── */
   const itemTotals = useMemo(() => {
     const baseSum =
       (adm.exists ? adm.base : 0) +
@@ -335,14 +324,13 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     return { baseSum, netSum, paidSum, discountSum };
   }, [adm, programs]);
 
-  // Footer: prefer authoritative server values, fall back to item calculations
   const footerBill = Number(activeFee?.total_amount) || itemTotals.netSum;
   const footerCollected = Number(activeFee?.paid_amount) || itemTotals.paidSum;
   const serverPending = Number(activeFee?.pending_amount);
   const footerDue = !isNaN(serverPending)
     ? serverPending
     : Math.max(0, footerBill - footerCollected);
-  const footerCost = itemTotals.baseSum || footerBill; // Fallback to bill if base cost is missing
+  const footerCost = itemTotals.baseSum || footerBill;
   const footerDiscount = footerCost - footerBill;
 
   const itemCount = (adm.exists ? 1 : 0) + programs.length;
@@ -382,12 +370,10 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
     documentTitle: `A4_Bill_${fee?.id}`,
   });
 
-  // Prepare fee object for ThermalBill
   const thermalFee = activeFee
     ? {
         ...activeFee,
         discount: footerDiscount,
-        // ensure student info is there
         student: activeFee?.student || {
           name: activeFee?.student_name || "N/A",
         },
@@ -397,459 +383,214 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
   if (!isOpen || !fee) return null;
 
   return (
-    <div
-      className="fixed inset-0 bg-brand-deep/30 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-fade-in"
-      onClick={onClose}
-    >
-      <style
-        dangerouslySetInnerHTML={{
-          __html:
-            "@media print { @page { margin: 0; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }",
-        }}
-      />
+    <Portal>
       <div
-        className="bg-surface w-full max-w-[800px] max-h-[94vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-white/20 animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-        id="receipt-content"
+        className="fixed inset-0 bg-brand-deep/30 backdrop-blur-md flex items-center justify-center z-[150] p-2 sm:p-4 animate-fade-in"
+        onClick={onClose}
       >
-        {/* ── Header ────────────────────────────────────── */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-surface/80 backdrop-blur-sm sticky top-0 z-20 print:hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shadow-inner">
-              <Receipt className="w-5 h-5 text-primary" />
+        <div
+          className="bg-surface w-full max-w-[850px] max-h-[98vh] sm:max-h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-white/20 animate-scale-in"
+          onClick={(e) => e.stopPropagation()}
+          id="receipt-content"
+        >
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-surface/80 backdrop-blur-sm sticky top-0 z-20 print:hidden">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shadow-inner">
+                <Receipt className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-text-primary tracking-tight">
+                  Payment Receipt
+                </h2>
+                <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
+                  Ref:{" "}
+                  <span className="text-text-primary">
+                    #TRS-{activeFee.id?.toString().padStart(6, "0")}
+                  </span>
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-black text-text-primary tracking-tight">
-                Payment Receipt
-              </h2>
-              <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
-                Ref:{" "}
-                <span className="text-text-primary">
-                  #TRS-{activeFee.id?.toString().padStart(6, "0")}
-                </span>
-              </p>
-            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center hover:bg-error/10 hover:text-error rounded-md transition-all duration-300 text-text-muted cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center hover:bg-error/10 hover:text-error rounded-md transition-all duration-300 text-text-muted cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* ── Body ──────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-5">
-            {/* Print-only branding */}
-            <div className="hidden print:block text-center mb-6 border-b border-gray-200 pb-5">
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                AASTHA KALA KENDRA
-              </h1>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
-                Professional Arts Center
-              </p>
-              {/* <div className="mt-2 flex justify-center gap-3 text-[9px] text-gray-400 uppercase tracking-widest">
-                <span>Kathmandu, Nepal</span>
-                <span>•</span>
-                <span>+977 98XXXXXXXX</span>
-              </div> */}
-            </div>
-
-            {/* Student card */}
-            <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-lg">
-              <div className="w-10 h-10 rounded-lg bg-gray-900 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-                {initials(
-                  activeFee.student?.name || activeFee.student_name || "??",
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-gray-900 truncate">
-                  {activeFee.student?.name || activeFee.student_name || "N/A"}
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 sm:p-6 space-y-6">
+              {/* Branding for print */}
+              <div className="hidden print:block text-center mb-8 border-b border-gray-200 pb-6">
+                <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                  AASTHA KALA KENDRA
+                </h1>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
+                  Professional Arts Center
                 </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-gray-400 font-bold">
-                    ID: #{activeFee.student_id}
-                  </span>
-                  {activeFee.student?.classes && (
-                    <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
-                      {activeFee.student.classes}
+              </div>
+
+              {/* Student Card */}
+              <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+                <div className="w-12 h-12 rounded-xl bg-gray-900 text-white flex items-center justify-center font-black text-sm flex-shrink-0">
+                  {initials(activeFee.student_name || "??")}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-black text-gray-900 truncate">
+                    {activeFee.student_name || "N/A"}
+                  </p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                      ID: #{activeFee.student_id}
                     </span>
-                  )}
+                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                    <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                      {activeFee.month_year}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${
+                      fullyPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {fullyPaid ? "Fully Paid" : "Partial Payment"}
+                  </span>
                 </div>
               </div>
-              <span
-                className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md flex-shrink-0 ${
-                  isIntegrated
-                    ? "bg-violet-50 text-violet-700 border border-violet-100"
-                    : activeFee.fee_type === "admission"
-                      ? "bg-blue-50 text-blue-700 border border-blue-100"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                }`}
-              >
-                {isIntegrated
-                  ? "Integrated"
-                  : activeFee.fee_type === "admission"
-                    ? "Admission"
-                    : "Program"}
-              </span>
-            </div>
 
-            {/* Meta row: Method · Period · Status */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 bg-white border border-gray-200 rounded-lg">
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1 flex items-center gap-1.5">
-                  <MethodIcon className="w-3 h-3" /> Method
-                </p>
-                <p className="text-[11px] font-black text-text-primary uppercase tracking-tight">
-                  {methodInfo.label}
-                </p>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                    <MethodIcon className="w-3 h-3" /> Method
+                  </p>
+                  <p className="text-xs font-black text-gray-900 uppercase">
+                    {methodInfo.label}
+                  </p>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                    <Calendar className="w-3 h-3" /> Date
+                  </p>
+                  <p className="text-xs font-black text-gray-900 uppercase">
+                    {new Date(activeFee.payment_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                    <Clock className="w-3 h-3" /> Status
+                  </p>
+                  <StatusBadge remaining={footerDue} net={footerBill} />
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                    <FileText className="w-3 h-3" /> Receipt
+                  </p>
+                  <p className="text-xs font-black text-gray-900 uppercase">
+                    #{activeFee.id}
+                  </p>
+                </div>
               </div>
-              <div className="p-3 bg-white border border-gray-200 rounded-lg">
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1 flex items-center gap-1.5">
-                  <Calendar className="w-3 h-3" /> Period
-                </p>
-                <p className="text-[11px] font-black text-text-primary uppercase tracking-tight truncate">
-                  {activeFee.month_year || "—"}
-                </p>
-              </div>
-              <div className="p-3 bg-white border border-gray-200 rounded-lg">
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3 h-3" /> Status
-                </p>
-                {fullyPaid ? (
-                  <span className="text-[11px] font-black uppercase text-emerald-600">
-                    Fully Paid
-                  </span>
-                ) : footerCollected === 0 ? (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] font-black uppercase text-red-600">
-                      Unpaid
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] font-black uppercase text-amber-600">
-                      Partial
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Breakdown Table */}
-            {loading ? (
-              <div className="py-20 flex flex-col items-center justify-center gap-3 border border-dashed border-gray-200 rounded-2xl">
-                <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                  Enriching Data...
-                </p>
-              </div>
-            ) : itemCount > 0 ? (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50/70">
-                        <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Item
-                        </th>
-                        <th className="text-right px-3 py-2.5 w-[85px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Base
-                        </th>
-                        <th className="text-center px-3 py-2.5 w-[150px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Discount
-                        </th>
-                        <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Net
-                        </th>
-                        <th className="text-right px-3 py-2.5 w-[85px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Paid
-                        </th>
-                        <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Balance
-                        </th>
-                        <th className="text-center px-3 py-2.5 w-[70px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Status
-                        </th>
+              {/* Breakdown Table */}
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50/70 border-b border-gray-100">
+                      <th className="text-left px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        Description
+                      </th>
+                      <th className="text-right px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {adm.exists && (
+                      <tr className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-5 py-4">
+                          <p className="text-[13px] font-black text-gray-800">Admission Fee</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">New Student Registration</p>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <p className="text-[13px] font-black text-gray-900">{fmt(adm.net)}</p>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {/* Admission */}
-                      {adm.exists && (
-                        <tr
-                          className={`${adm.remaining <= 0 && adm.net > 0 ? "bg-emerald-50/30" : ""} transition-colors`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                <Wallet className="w-3.5 h-3.5 text-blue-500" />
-                              </div>
-                              <p className="text-[13px] font-semibold text-gray-800">
-                                Admission Fee
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-[12px] text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-md">
-                              {fmtS(adm.base)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-center">
-                            <DiscountCell
-                              amount={adm.disc}
-                              type={adm.discType}
-                              saved={adm.base - adm.net}
-                            />
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-[13px] font-bold text-gray-900">
-                              {fmtS(adm.net)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-[12px] font-bold text-emerald-600">
-                              {fmtS(adm.totalPaid)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <BalanceCell value={adm.remaining} />
-                          </td>
-                          <td className="px-3 py-3 text-center">
-                            <StatusBadge
-                              remaining={adm.remaining}
-                              net={adm.net}
-                            />
-                          </td>
-                        </tr>
-                      )}
-
-                      {/* Programs */}
-                      {programs.map((p) => (
-                        <tr
-                          key={p.id}
-                          className={`${p.remaining <= 0 && p.net > 0 ? "bg-emerald-50/30" : "hover:bg-gray-50/50"} transition-colors`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
-                                <BookOpen className="w-3.5 h-3.5 text-violet-500" />
-                              </div>
-                              <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[180px]">
-                                {p.title}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-[12px] text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-md">
-                              {fmtS(p.base)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-center">
-                            <DiscountCell
-                              amount={p.disc}
-                              type={p.discType}
-                              saved={p.base - p.net}
-                            />
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-[13px] font-bold text-gray-900">
-                              {fmtS(p.net)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-[12px] font-bold text-emerald-600">
-                              {fmtS(p.totalPaid)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <BalanceCell value={p.remaining} />
-                          </td>
-                          <td className="px-3 py-3 text-center">
-                            <StatusBadge remaining={p.remaining} net={p.net} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    )}
+                    {programs.map((p) => (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-5 py-4">
+                          <p className="text-[13px] font-black text-gray-800">{p.title}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Monthly Tuition Fee</p>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <p className="text-[13px] font-black text-gray-900">{fmt(p.net)}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : null}
 
-            {/* Pending balance callout */}
-            {!loading && footerDue > 0 && (
-              <div className="px-5 py-4 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-amber-200 flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-amber-500" />
+              {activeFee.remarks && (
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Info className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Administrative Notes</span>
                   </div>
-                  <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
-                    Balance Due
-                  </span>
-                </div>
-                <span className="text-xl font-bold text-amber-600">
-                  {fmt(footerDue)}
-                </span>
-              </div>
-            )}
-
-            {/* Transaction History Section */}
-            {!loading &&
-              activeFee.payments &&
-              activeFee.payments.length > 0 && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-md bg-gray-900 text-white flex items-center justify-center text-[11px] font-bold">
-                      <History className="w-3 h-3" />
-                    </span>
-                    <h3 className="text-[13px] font-bold text-gray-800">
-                      Payment History
-                    </h3>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                          <th className="text-left px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            Date
-                          </th>
-                          <th className="text-left px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            Method
-                          </th>
-                          <th className="text-right px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            Amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {activeFee.payments
-                          .filter((p: any) => Number(p.paid_amount) > 0)
-                          .map((p: any, i: number) => (
-                            <tr key={i} className="hover:bg-gray-50/50">
-                              <td className="px-4 py-2.5 text-[12px] text-gray-600">
-                                {new Date(p.created_at).toLocaleDateString()}
-                              </td>
-                              <td className="px-4 py-2.5 text-[12px] text-gray-600">
-                                {p.payment_method || "Cash"}
-                              </td>
-                              <td className="px-4 py-2.5 text-right text-[12px] font-bold text-emerald-600">
-                                {fmt(p.paid_amount)}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600 italic leading-relaxed">
+                    "{activeFee.remarks}"
+                  </p>
                 </div>
               )}
-
-            {/* Remarks */}
-            {activeFee.remarks && (
-              <div className="flex gap-3 px-1">
-                <Info className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    Remarks
-                  </p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    {activeFee.remarks}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Footer ────────────────────────────────────── */}
-        <div className="px-6 py-4 border-t border-border bg-surface/80 backdrop-blur-sm sticky bottom-0">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex flex-col">
-                <p className="text-[8px] text-text-muted font-black uppercase tracking-widest mb-0.5">
-                  Total
-                </p>
-                <p className="text-xs font-black text-text-muted tracking-tight whitespace-nowrap">
-                  {fmt(footerCost)}
-                </p>
-              </div>
-              <div className="text-border text-xs font-light">−</div>
-              <div className="flex flex-col">
-                <p className="text-[8px] text-text-muted font-black uppercase tracking-widest mb-0.5">
-                  Disc
-                </p>
-                <p className="text-xs font-black text-primary tracking-tight whitespace-nowrap">
-                  {fmt(footerDiscount)}
-                </p>
-              </div>
-              <div className="text-border text-xs font-light">=</div>
-              <div className="flex flex-col">
-                <p className="text-[8px] text-text-muted font-black uppercase tracking-widest mb-0.5">
-                  Bill
-                </p>
-                <p className="text-xs font-black text-text-primary tracking-tight whitespace-nowrap">
-                  {fmt(footerBill)}
-                </p>
-              </div>
-              <div className="w-px h-6 bg-border mx-1" />
-              <div className="flex flex-col">
-                <p className="text-[8px] text-text-muted font-black uppercase tracking-widest mb-0.5">
-                  Paid
-                </p>
-                <p className="text-xs font-black text-success tracking-tight whitespace-nowrap">
-                  {fmt(footerCollected)}
-                </p>
-              </div>
-              <div className="w-px h-6 bg-border mx-1" />
-              <div className="flex flex-col">
-                <p className="text-[8px] text-text-muted font-black uppercase tracking-widest mb-0.5">
-                  Due
-                </p>
-                <p
-                  className={`text-xs font-black tracking-tight whitespace-nowrap ${footerDue > 0 ? "text-warning" : "text-success"}`}
-                >
-                  {footerDue > 0 ? fmt(footerDue) : "Rs. 0"}
-                </p>
-              </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2.5 flex-shrink-0">
+          {/* Footer Actions */}
+          <div className="px-6 py-5 border-t border-border bg-gray-50/80 backdrop-blur-md flex items-center justify-between print:hidden">
+            <div className="flex items-center gap-8">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Bill</span>
+                <span className="text-lg font-black text-gray-900 tracking-tight">{fmt(footerBill)}</span>
+              </div>
+              <div className="w-px h-8 bg-gray-200" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Collected</span>
+                <span className="text-lg font-black text-emerald-600 tracking-tight">{fmt(footerCollected)}</span>
+              </div>
+              {footerDue > 0 && (
+                <>
+                  <div className="w-px h-8 bg-gray-200" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Pending</span>
+                    <span className="text-lg font-black text-amber-600 tracking-tight">{fmt(footerDue)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => handleA4Print()}
-                className="flex items-center gap-2 px-4 py-2 border border-border hover:bg-surface-hover text-text-secondary hover:text-text-primary rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                className="px-6 py-3 border border-border bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-sm active:scale-95"
               >
-                Full Bill
+                A4 Receipt
               </button>
               <button
                 onClick={() => handleThermalPrint()}
-                className="flex items-center gap-2.5 px-5 py-2 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                className="px-6 py-3 bg-primary text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 cursor-pointer flex items-center gap-2"
               >
-                <Printer className="w-3.5 h-3.5" /> Thermal
+                <Printer className="w-4 h-4" /> Thermal
               </button>
             </div>
           </div>
-
-          {/* Progress bar */}
-          <div className="mt-4 bg-background border border-border rounded-full h-2 overflow-hidden shadow-inner print:hidden">
-            <div
-              className="h-full rounded-full transition-all duration-1000 ease-out"
-              style={{
-                width: `${footerBill > 0 ? Math.min(100, (footerCollected / footerBill) * 100) : 0}%`,
-                backgroundColor:
-                  footerCollected >= footerBill && footerBill > 0
-                    ? "var(--success)"
-                    : "var(--primary)",
-              }}
-            />
-          </div>
-
-          {/* Print-only signature line */}
-          <div className="hidden print:block pt-12 mt-8 text-center border-t border-border">
-            <p className="text-xs text-text-muted uppercase tracking-widest font-black">
-              Authorized Signature
-            </p>
-          </div>
         </div>
       </div>
+
+      {/* Hidden Print Content */}
       <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
         <div ref={printRef} className="print-wrapper">
           {thermalFee && (
@@ -859,12 +600,9 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
             </>
           )}
         </div>
-
-        {activeFee && (
-          <A4Bill ref={printRefA4} fee={activeFee} settings={settings} />
-        )}
+        {activeFee && <A4Bill ref={printRefA4} fee={activeFee} settings={settings} />}
       </div>
-    </div>
+    </Portal>
   );
 };
 

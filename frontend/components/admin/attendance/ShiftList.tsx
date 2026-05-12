@@ -94,7 +94,7 @@ const ShiftList = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-lg border border-gray-200 shadow-sm gap-4">
         <div>
           <h2 className="text-lg font-bold text-gray-900">Configured Shifts</h2>
           <p className="text-sm text-gray-500">Create blocks of time for attendance processing.</p>
@@ -104,9 +104,10 @@ const ShiftList = () => {
             setEditingShift(null);
             setFormModalOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-sm font-medium"
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-[11px] font-semibold uppercase tracking-wider shadow-sm"
         >
-          <Plus className="w-4 h-4" /> Add Shift
+          <Plus className="w-3.5 h-3.5" /> 
+          <span>Add Shift</span>
         </button>
       </div>
 

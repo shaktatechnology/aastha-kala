@@ -190,31 +190,35 @@ const ClientDressHire: React.FC<ClientDressHireProps> = ({ dresses }) => {
 
             {currentDress && (
               <div className="w-full mt-4 flex justify-center">
-                <div className="bg-primary/70 text-white px-4 py-3 rounded-md flex items-center gap-6 w-full max-w-2xl">
+                <div className="relative bg-primary/70 text-white px-4 py-3 rounded-md flex items-center justify-between w-full max-w-2xl overflow-hidden">
                   {/* title */}
-                  <h2 className="flex-1 min-w-0 text-sm md:text-base font-medium uppercase tracking-wide truncate">
+                  <h2 className="text-sm md:text-base font-medium uppercase tracking-wide truncate max-w-[35%]">
                     {currentDress.title}
                   </h2>
 
+                  {/* Counter in perfect center */}
+                  {currentImages.length > 0 && (
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] md:text-xs font-bold px-3 py-1 tracking-widest whitespace-nowrap">
+                      {currentIndex + 1} / {currentImages.length}
+                    </div>
+                  )}
+
                   {/* phone */}
-                  {currentDress.phone && (
+                  {currentDress.phone ? (
                     <a
                       href={`tel:${currentDress.phone}`}
-                      className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition whitespace-nowrap flex-shrink-0"
+                      className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition whitespace-nowrap max-w-[35%] justify-end"
                     >
-                      <Phone className="w-4 h-4" />
-                      {currentDress.phone}
+                      <Phone className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{currentDress.phone}</span>
                     </a>
+                  ) : (
+                    <div className="w-4 h-4 invisible" />
                   )}
                 </div>
               </div>
             )}
-            {/* Counter */}
-            {currentImages.length > 1 && (
-              <div className="absolute bottom-4 text-white/40 text-xs tracking-widest">
-                {currentIndex + 1} / {currentImages.length}
-              </div>
-            )}
+
           </div>
         </div>
       )}

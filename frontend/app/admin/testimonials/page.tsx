@@ -246,6 +246,7 @@ const Page = () => {
         }}
         initialData={editingItem}
         onSuccess={fetchData}
+        nextOrder={pagination.totalItems + 1}
       />
 
       {/* Delete Modal */}

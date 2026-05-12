@@ -228,19 +228,29 @@ export function ProgramForm({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-7xl mx-auto">
+    <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-7xl mx-auto flex flex-col">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-        <h2 className="text-2xl font-bold text-gray-900">
-          {initialData ? 'Edit Program' : 'Create New Program'}
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Fill in the details below to {initialData ? 'update' : 'create'} your program
-        </p>
+      <div className="px-5 sm:px-8 py-4 sm:py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              {isViewMode ? 'View Program' : (initialData ? 'Edit Program' : 'Create New Program')}
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              {isViewMode ? 'Detailed overview of the program' : `Fill in the details below to ${initialData ? 'update' : 'create'} your program`}
+            </p>
+          </div>
+          <button 
+            onClick={onCancel}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors sm:hidden"
+          >
+            <X className="size-5 text-gray-500" />
+          </button>
+        </div>
       </div>
 
       {/* Form Content */}
-      <div className={cn("p-8 space-y-8", isViewMode && "pointer-events-none")}>
+      <div className={cn("p-4 sm:p-8 space-y-6 sm:space-y-8 flex-1 overflow-y-auto custom-scrollbar", isViewMode && "pointer-events-none")}>
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -431,8 +441,8 @@ export function ProgramForm({
           
           <div className="space-y-3">
             {schedules.map((schedule, index) => (
-              <div key={index} className="flex gap-3 items-start">
-                <div className="flex-1 grid grid-cols-2 gap-3">
+              <div key={index} className="flex flex-col sm:flex-row gap-3 items-start bg-gray-50 sm:bg-transparent p-3 sm:p-0 rounded-lg border border-gray-100 sm:border-0">
+                <div className="w-full sm:flex-1 grid grid-cols-2 gap-3">
                   <div>
                     <Input
                       type="time"
@@ -466,7 +476,7 @@ export function ProgramForm({
                     )}
                   </div>
                 </div>
-                <div className="flex-1 relative">
+                <div className="w-full sm:flex-1 relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
                   <select
                     value={schedule.instructor_id}
@@ -647,8 +657,8 @@ export function ProgramForm({
                   
                   <div className="space-y-2">
                     {subProgram.schedules.map((schedule, slotIndex) => (
-                      <div key={slotIndex} className="flex gap-3 items-start">
-                        <div className="flex-1 grid grid-cols-2 gap-3">
+                      <div key={slotIndex} className="flex flex-col sm:flex-row gap-3 items-start bg-white sm:bg-transparent p-3 sm:p-0 rounded-lg border border-gray-100 sm:border-0">
+                        <div className="w-full sm:flex-1 grid grid-cols-2 gap-3">
                           <div>
                             <Input
                               type="time"
@@ -680,7 +690,7 @@ export function ProgramForm({
                             )}
                           </div>
                         </div>
-                        <div className="flex-1 relative">
+                        <div className="w-full sm:flex-1 relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />
                           <select
                             value={schedule.instructor_id}
@@ -721,12 +731,12 @@ export function ProgramForm({
       </div>
 
       {/* Footer */}
-      <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+      <div className="px-5 sm:px-8 py-4 sm:py-5 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-end gap-3">
         {isViewMode ? (
           <Button 
             type="button" 
             onClick={onCancel}
-            className="bg-gray-800 text-white px-8 h-11 text-base font-medium"
+            className="w-full sm:w-auto bg-gray-800 text-white px-8 h-11 text-base font-medium"
           >
             Close
           </Button>
@@ -736,7 +746,7 @@ export function ProgramForm({
               type="button" 
               variant="outline" 
               onClick={onCancel}
-              className="px-6 h-11 text-black bg-white border border-gray-300 hover:bg-gray-100 hover:cursor-pointer"
+              className="w-full sm:w-auto px-6 h-11 text-black bg-white border border-gray-300 hover:bg-gray-100 hover:cursor-pointer"
             >
               Cancel
             </Button>
@@ -744,7 +754,7 @@ export function ProgramForm({
               type="button" 
               onClick={handleSave} 
               disabled={isLoading}
-              className="bg-primary hover:bg-primary/90 text-white px-8 h-11 text-base font-medium shadow-sm hover:cursor-pointer"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-8 h-11 text-base font-medium shadow-sm hover:cursor-pointer"
             >
               {isLoading ? (
                 <>

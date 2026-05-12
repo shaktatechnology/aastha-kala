@@ -196,7 +196,7 @@ const AttendanceList = () => {
       )}
 
       {/* Filter and Action Bar */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+      <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4">
         <div className="flex flex-col md:flex-row gap-4 flex-1 w-full">
           <div className="w-full md:w-48">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
@@ -250,7 +250,7 @@ const AttendanceList = () => {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div className="flex flex-row sm:flex-row lg:flex-col xl:flex-row gap-2 w-full lg:w-auto">
           <button
             onClick={async () => {
               setProcessing(true);
@@ -269,19 +269,21 @@ const AttendanceList = () => {
               }
             }}
             disabled={processing}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium shadow-sm hover:shadow text-sm disabled:opacity-50 whitespace-nowrap w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-semibold shadow-sm hover:shadow text-[11px] uppercase tracking-wider disabled:opacity-50 flex-1 sm:flex-none"
           >
-            {processing ? <Spinner size="sm" className="text-white" /> : <RefreshCw className="w-4 h-4" />}
-            Fetch from Device
+            {processing ? <Spinner size="sm" className="text-white" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            <span>Fetch</span>
+            <span className="hidden sm:inline">from Device</span>
           </button>
 
           <button
             onClick={handleProcessLogs}
             disabled={processing || !filterDate}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all font-medium shadow-sm hover:shadow text-sm disabled:opacity-50 whitespace-nowrap w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all font-semibold shadow-sm hover:shadow text-[11px] uppercase tracking-wider disabled:opacity-50 flex-1 sm:flex-none"
           >
-            {processing ? <Spinner size="sm" className="text-white" /> : <RefreshCw className="w-4 h-4" />}
-            Process Logs for {filterDate}
+            {processing ? <Spinner size="sm" className="text-white" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            <span>Process</span>
+            <span className="hidden sm:inline">Logs</span>
           </button>
         </div>
       </div>

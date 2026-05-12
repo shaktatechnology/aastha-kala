@@ -326,220 +326,223 @@ const FeesPage = () => {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col lg:flex-row justify-between items-center p-6 bg-surface border border-border rounded-xl gap-6 shadow-sm">
-        <div className="flex flex-col text-center lg:text-left">
-          <h1 className="text-xl lg:text-2xl font-black text-text-primary tracking-tight">
-            Fees & Billing
-          </h1>
-          <p className="text-xs text-text-muted font-medium mt-1">
-            Manage student payments and billing records
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 w-full">
-          {/* Search */}
-          <div className="relative w-full sm:w-64 group">
-            <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search student..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none"
-            />
+    <>
+      <div className="space-y-6 animate-fade-in">
+        <header className="flex flex-col lg:flex-row justify-between items-center p-6 bg-surface border border-border rounded-xl gap-6 shadow-sm">
+          {/* ... header content ... */}
+          <div className="flex flex-col text-center lg:text-left">
+            <h1 className="text-xl lg:text-2xl font-black text-text-primary tracking-tight">
+              Fees & Billing
+            </h1>
+            <p className="text-xs text-text-muted font-medium mt-1">
+              Manage student payments and billing records
+            </p>
           </div>
 
-          {/* Status */}
-          <div className="relative flex-1 sm:flex-none">
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as any)}
-              className="w-full px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-bold appearance-none min-w-[120px]"
-            >
-              <option value="all">All Status</option>
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
-
-          {/* Shift Filter */}
-          <div className="relative flex-1 sm:flex-none">
-            <select
-              value={shiftFilter}
-              onChange={e => setShiftFilter(e.target.value)}
-              className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-            >
-              <option value="all">All Schedules</option>
-              {schedules.map(s => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Program Filter */}
-          <div className="relative flex-1 sm:flex-none">
-            <select
-              value={programFilter}
-              onChange={e => setProgramFilter(e.target.value)}
-              className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-            >
-              <option value="all">All Programs</option>
-              {programs.map(p => (
-                <React.Fragment key={p.id}>
-                  <option value={p.id} className="font-bold">{p.title}</option>
-                  {p.sub_programs?.map((sp: any) => (
-                    <option key={sp.id} value={sp.id}>&nbsp;&nbsp;— {sp.title}</option>
-                  ))}
-                </React.Fragment>
-              ))}
-            </select>
-          </div>
-
-          {/* Month/Year Filter */}
-          <div className="relative flex-1 sm:flex-none">
-            <div className="relative">
-              <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+          <div className="flex flex-wrap items-center gap-3 w-full">
+            {/* Search */}
+            <div className="relative w-full sm:w-64 group">
+              <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
               <input
-                type="month"
-                value={monthYearFilter}
-                onChange={e => setMonthYearFilter(e.target.value)}
-                className="w-full sm:w-44 pl-9 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none font-medium cursor-pointer"
+                type="text"
+                placeholder="Search student..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none"
               />
             </div>
-          </div>
 
-          {/* Reset button */}
-          {(shiftFilter !== 'all' || programFilter !== 'all' || monthYearFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
-            <button 
-              onClick={() => { 
-                setShiftFilter('all'); 
-                setProgramFilter('all'); 
-                setMonthYearFilter(''); 
-                setStatusFilter('all');
-                setSearchTerm('');
-              }}
-              className="text-[10px] font-black uppercase tracking-widest text-error hover:text-error/80 transition-colors ml-auto lg:ml-0"
-            >
-              Reset
-            </button>
-          )}
-
-          {/* Add New Button */}
-          <button
-            onClick={() => { setFeeToEdit(null); setFeeModalOpen(true); }}
-            className="px-6 py-2 text-[11px] bg-primary text-white rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest cursor-pointer whitespace-nowrap ml-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: "Total Collected",
-            value: summary.total_collected,
-            icon: TrendingUp,
-            color: "success",
-            prefix: "Rs. ",
-          },
-          {
-            label: "Total Pending",
-            value: summary.total_pending,
-            icon: TrendingDown,
-            color: "warning",
-            prefix: "Rs. ",
-          },
-          {
-            label: "Paid Entries",
-            value: summary.paid_count,
-            icon: BarChart3,
-            color: "success",
-          },
-          {
-            label: "Unpaid Entries",
-            value: summary.pending_count,
-            icon: CreditCard,
-            color: "warning",
-          },
-        ].map((stat, i) => (
-          <div
-            key={stat.label}
-            className="bg-surface rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-all duration-300 animate-slide-up group"
-            style={{ animationDelay: `${i * 100}ms` }}
-          >
-            <div className="flex items-center justify-between">
-              <div
-                className={`w-10 h-10 rounded-lg bg-${stat.color === "success" ? "success" : "warning"}/10 flex items-center justify-center transition-transform group-hover:scale-110`}
+            {/* Status */}
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as any)}
+                className="w-full px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-bold appearance-none min-w-[120px]"
               >
-                <stat.icon
-                  className={`w-5 h-5 text-${stat.color === "success" ? "success" : "warning"}`}
+                <option value="all">All Status</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+
+            {/* Shift Filter */}
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                value={shiftFilter}
+                onChange={e => setShiftFilter(e.target.value)}
+                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
+              >
+                <option value="all">All Schedules</option>
+                {schedules.map(s => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Program Filter */}
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                value={programFilter}
+                onChange={e => setProgramFilter(e.target.value)}
+                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
+              >
+                <option value="all">All Programs</option>
+                {programs.map(p => (
+                  <React.Fragment key={p.id}>
+                    <option value={p.id} className="font-bold">{p.title}</option>
+                    {p.sub_programs?.map((sp: any) => (
+                      <option key={sp.id} value={sp.id}>&nbsp;&nbsp;— {sp.title}</option>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </select>
+            </div>
+
+            {/* Month/Year Filter */}
+            <div className="relative flex-1 sm:flex-none">
+              <div className="relative">
+                <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                <input
+                  type="month"
+                  value={monthYearFilter}
+                  onChange={e => setMonthYearFilter(e.target.value)}
+                  className="w-full sm:w-44 pl-9 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none font-medium cursor-pointer"
                 />
               </div>
-              <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">
-                {stat.label}
-              </span>
             </div>
-            <div className="mt-3">
-              <h3 className="text-xl font-black text-text-primary tracking-tight">
-                {stat.prefix}
-                {stat.value.toLocaleString()}
-              </h3>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Table Card */}
-      <div className="overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-gray-100">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-            {pagination.totalItems} Records
-          </p>
+            {/* Reset button */}
+            {(shiftFilter !== 'all' || programFilter !== 'all' || monthYearFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
+              <button 
+                onClick={() => { 
+                  setShiftFilter('all'); 
+                  setProgramFilter('all'); 
+                  setMonthYearFilter(''); 
+                  setStatusFilter('all');
+                  setSearchTerm('');
+                }}
+                className="text-[10px] font-black uppercase tracking-widest text-error hover:text-error/80 transition-colors ml-auto lg:ml-0"
+              >
+                Reset
+              </button>
+            )}
+
+            {/* Add New Button */}
+            <button
+              onClick={() => { setFeeToEdit(null); setFeeModalOpen(true); }}
+              className="px-6 py-2 text-[11px] bg-primary text-white rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest cursor-pointer whitespace-nowrap ml-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: "Total Collected",
+              value: summary.total_collected,
+              icon: TrendingUp,
+              color: "success",
+              prefix: "Rs. ",
+            },
+            {
+              label: "Total Pending",
+              value: summary.total_pending,
+              icon: TrendingDown,
+              color: "warning",
+              prefix: "Rs. ",
+            },
+            {
+              label: "Paid Entries",
+              value: summary.paid_count,
+              icon: BarChart3,
+              color: "success",
+            },
+            {
+              label: "Unpaid Entries",
+              value: summary.pending_count,
+              icon: CreditCard,
+              color: "warning",
+            },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              className="bg-surface rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-all duration-300 animate-slide-up group"
+              style={{ animationDelay: `${i * 100}ms` }}
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  className={`w-10 h-10 rounded-lg bg-${stat.color === "success" ? "success" : "warning"}/10 flex items-center justify-center transition-transform group-hover:scale-110`}
+                >
+                  <stat.icon
+                    className={`w-5 h-5 text-${stat.color === "success" ? "success" : "warning"}`}
+                  />
+                </div>
+                <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">
+                  {stat.label}
+                </span>
+              </div>
+              <div className="mt-3">
+                <h3 className="text-xl font-black text-text-primary tracking-tight">
+                  {stat.prefix}
+                  {stat.value.toLocaleString()}
+                </h3>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <Table
-          columns={columns}
-          data={formattedData}
-          loading={loading}
-          actions={["view", "edit"]}
-          onView={(row) => {
-            const original = fees.find((f) => f.id === row.id);
-            setFeeToView(original);
-            setViewModalOpen(true);
-          }}
-          onEdit={(row) => {
-            const original = fees.find((f) => f.id === row.id);
-            setFeeToEdit(original);
-            setFeeModalOpen(true);
-          }}
-          onDelete={(row) => {
-            const original = fees.find((f) => f.id === row.id);
-            setSelectedFee(original || null);
-            setDeleteModalOpen(true);
-          }}
-          customActions={[
-            {
-              icon: <Printer className="w-4 h-4" />,
-              label: "Print Bill",
-              onClick: triggerPrint,
-              color: "text-purple-600",
-            },
-          ]}
-        />
+        {/* Table Card */}
+        <div className="overflow-hidden">
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-gray-100">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+              {pagination.totalItems} Records
+            </p>
+          </div>
 
-        <div className="px-6 py-4 border-gray-100">
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            totalItems={pagination.totalItems}
-            itemsPerPage={pagination.itemsPerPage}
-            onPageChange={(page) => fetchFees(page)}
+          <Table
+            columns={columns}
+            data={formattedData}
+            loading={loading}
+            actions={["view", "edit"]}
+            onView={(row) => {
+              const original = fees.find((f) => f.id === row.id);
+              setFeeToView(original);
+              setViewModalOpen(true);
+            }}
+            onEdit={(row) => {
+              const original = fees.find((f) => f.id === row.id);
+              setFeeToEdit(original);
+              setFeeModalOpen(true);
+            }}
+            onDelete={(row) => {
+              const original = fees.find((f) => f.id === row.id);
+              setSelectedFee(original || null);
+              setDeleteModalOpen(true);
+            }}
+            customActions={[
+              {
+                icon: <Printer className="w-4 h-4" />,
+                label: "Print Bill",
+                onClick: triggerPrint,
+                color: "text-purple-600",
+              },
+            ]}
           />
+
+          <div className="px-6 py-4 border-gray-100">
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              itemsPerPage={pagination.itemsPerPage}
+              onPageChange={(page) => fetchFees(page)}
+            />
+          </div>
         </div>
       </div>
 
@@ -569,21 +572,13 @@ const FeesPage = () => {
         onClose={() => setViewModalOpen(false)}
       />
 
-      {/* <DeleteConfirmationModal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Delete Payment Record"
-        loading={deleting}
-        description={`Are you sure you want to delete the payment record for ${selectedFee?.student?.name ?? "this student"}? This cannot be undone.`}
-      /> */}
       <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
         <div ref={printRef} className="print-wrapper">
           <ThermalBill fee={printingFee} settings={settings} />
           <ThermalBill fee={printingFee} settings={settings} />
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

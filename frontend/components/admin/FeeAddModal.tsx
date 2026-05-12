@@ -25,6 +25,7 @@ import {
   RotateCcw,
   ChevronDown,
 } from "lucide-react";
+import { Portal } from "../global/Portal";
 import toast from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "./ThermalBill";
@@ -619,8 +620,6 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
       return;
     }
 
-
-
     try {
       setLoading(true);
       const token = localStorage.getItem("token")!;
@@ -628,13 +627,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         ? `${BASE_URL}/admin/student-fees/${fee.id}`
         : `${BASE_URL}/admin/student-fees`;
 
-      // Determine fee type: 
-      // 1. If editing, use the existing fee_type (or calculate from fee_types if singular is missing)
-      // 2. If new, determine based on what is being paid
-      let activeFeeType: string = "program"; // Default fallback
-      
+      let activeFeeType: string = "program";
       if (fee) {
-        // If it's an existing record, we look at what it was
         const typesStr = fee.fee_type || fee.fee_types || "";
         if (typesStr.includes("admission") && typesStr.includes("program")) {
           activeFeeType = "billing";
@@ -646,7 +640,6 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
           activeFeeType = "program";
         }
       } else {
-        // For new records, we determine based on the current selection in the modal
         if (calculations.hasAdm && calculations.hasProg) {
           activeFeeType = "billing";
         } else if (calculations.hasAdm) {
@@ -700,8 +693,6 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
 
       toast.success("Payment processed successfully!");
 
-      // Auto-trigger Thermal Print
-      // Construct a temporary fee object for the receipt
       const printFee = {
         id: result.id || fee?.id || "N/A",
         student: selectedStudent,
@@ -748,765 +739,374 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-brand-deep/30 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-fade-in">
-      <div className="bg-surface w-full max-w-[1100px] max-h-[94vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-white/20 animate-scale-in">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-surface/80 backdrop-blur-sm sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shadow-inner">
-              <Receipt className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-text-primary tracking-tight">
-                {fee ? "Edit Payment Record" : "New Payment Entry"}
-              </h2>
-              <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
-                {selectedStudent ? (
-                  <>
-                    Processing for{" "}
-                    <span className="text-primary">{selectedStudent.name}</span>
-                  </>
-                ) : (
-                  "Manage fees and billing"
-                )}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center hover:bg-error/10 hover:text-error rounded-md transition-all duration-300 text-text-muted cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-5">
-            {/* 1. Student */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
-                  1
-                </span>
-                <h3 className="text-[15px] font-black text-text-primary tracking-tight">
-                  Student Selection
-                </h3>
+    <Portal>
+      <div className="fixed inset-0 bg-brand-deep/30 backdrop-blur-md flex items-center justify-center z-[100] p-2 sm:p-4 animate-fade-in">
+        <div className="bg-surface w-full max-w-[1100px] max-h-[98vh] sm:max-h-[94vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-white/20 animate-scale-in">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-surface/80 backdrop-blur-sm sticky top-0 z-20">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shadow-inner">
+                <Receipt className="w-5 h-5 text-primary" />
               </div>
-              {!fee && !selectedStudent ? (
-                <div ref={dropdownRef} className="relative">
-                  <div className="flex items-center gap-3 border border-border rounded-lg px-3 py-2 bg-background focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm group">
-                    <Search className="w-4 h-4 text-text-muted group-focus-within:text-primary transition-colors" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setDropdownOpen(true);
-                      }}
-                      onFocus={() => setDropdownOpen(true)}
-                      placeholder="Search by name or class..."
-                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-text-muted text-text-primary font-medium"
-                    />
-                  </div>
-                  {dropdownOpen && filteredStudents.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto py-1 animate-scale-in custom-scrollbar">
-                      {filteredStudents.slice(0, 50).map((s) => (
-                        <button
-                          key={s.id}
-                          onClick={() => {
-                            setSelectedStudent(s);
-                            setSelectedStudentId(s.id.toString());
-                            setDropdownOpen(false);
-                            fetchFeeInfo(s.id.toString());
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-surface-hover text-sm flex items-center justify-between transition-colors border-b border-border/50 last:border-0 group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary transition-transform group-hover:scale-110">
-                              {initials(s.name)}
-                            </div>
-                            <span className="font-bold text-text-primary group-hover:text-primary transition-colors">
-                              {s.name}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-text-muted bg-background px-2.5 py-1 rounded-lg font-black uppercase tracking-wider">
-                            {s.classes}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+              <div>
+                <h2 className="text-lg font-black text-text-primary tracking-tight">
+                  {fee ? "Edit Payment Record" : "New Payment Entry"}
+                </h2>
+                <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
+                  {selectedStudent ? (
+                    <>
+                      Processing for{" "}
+                      <span className="text-primary">{selectedStudent.name}</span>
+                    </>
+                  ) : (
+                    "Manage fees and billing"
                   )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-4 p-3 bg-primary/5 border border-primary/10 rounded-xl animate-fade-in group hover:bg-primary/10 transition-colors">
-                  <div className="w-12 h-12 rounded-lg bg-primary text-white flex items-center justify-center font-black text-base shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-                    {initials(selectedStudent?.name ?? "??")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-black text-text-primary tracking-tight">
-                      {selectedStudent?.name}
-                    </p>
-                    <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
-                      {selectedStudent?.classes}
-                    </p>
-                  </div>
-                  {!fee && (
-                    <button
-                      onClick={() => {
-                        setSelectedStudent(null);
-                        setSelectedStudentId("");
-                        setFeeInfo(null);
-                        setProgEntries([]);
-                        setCheckedIds(new Set());
-                        setTotalPayInput("");
-                      }}
-                      className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-white bg-white hover:bg-primary border border-primary/20 px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer"
-                    >
-                      Change
-                    </button>
-                  )}
-                </div>
-              )}
-            </section>
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center hover:bg-error/10 hover:text-error rounded-md transition-all duration-300 text-text-muted cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-            {/* 2. Fee Breakdown */}
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 sm:p-6 space-y-5">
+              {/* 1. Student */}
+              <section className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
-                    2
+                    1
                   </span>
                   <h3 className="text-[15px] font-black text-text-primary tracking-tight">
-                    Fee Breakdown
+                    Student Selection
                   </h3>
                 </div>
-                <div className="flex items-center gap-3">
-                  <MethodDropdown value={paymentMethod} onChange={setPaymentMethod} />
-                  <div className="flex items-center gap-3 border border-border rounded-xl px-4 py-2.5 bg-background shadow-inner relative">
-                    <Calendar className="w-4 h-4 text-text-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input 
-                      type="month" 
-                      value={progPeriod} 
-                      onChange={e => setProgPeriod(e.target.value)} 
-                      className="bg-transparent outline-none text-xs font-bold text-text-primary w-36 pl-6 cursor-pointer" 
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {loadingFeeInfo && selectedStudent ? (
-                <div className="text-center py-12 bg-gray-50 border border-gray-100 rounded-xl">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
-                  <p className="text-xs text-gray-400 font-medium">
-                    Loading fee details...
-                  </p>
-                </div>
-              ) : selectedStudent &&
-                (calculations.hasAdm || calculations.hasProg) ? (
-                <div className="space-y-3">
-                  {/* THE TABLE */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-100 bg-gray-50/70">
-                            <th className="w-10 px-3 py-2.5">
-                              <Checkbox
-                                checked={allChecked}
-                                onChange={toggleAll}
-                              />
-                            </th>
-                            <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                              Item
-                            </th>
-                            <th className="text-right px-3 py-2.5 w-[90px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                              Base
-                            </th>
-                            <th className="text-center px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                              Discount
-                            </th>
-                            <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                              Net
-                            </th>
-                            <th className="px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center">
-                              Paying Now
-                            </th>
-                            <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                              Balance
-                            </th>
-                            <th className="text-center px-3 py-2.5 w-[70px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {/* Admission Row */}
-                          {calculations.hasAdm && (
-                            <tr
-                              className={`group transition-colors ${calculations.admissionPaidGlobally ? "bg-emerald-50/40" : "hover:bg-gray-50/50"}`}
-                            >
-                              <td className="px-3 py-3">
-                                <Checkbox
-                                  checked={checkedIds.has("admission")}
-                                  onChange={() => toggleCheck("admission")}
-                                  disabled={calculations.admissionPaidGlobally}
-                                />
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                    <Wallet className="w-3.5 h-3.5 text-blue-500" />
-                                  </div>
-                                  <div>
-                                    <p className="text-[13px] font-semibold text-gray-800">
-                                      Admission Fee
-                                    </p>
-                                    {calculations.admissionPaidGlobally && (
-                                      <span className="text-[10px] text-emerald-600 font-bold">
-                                        FULLY PAID
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={admBase}
-                                  onChange={(e) =>
-                                    setAdmBase(clamp(e.target.value))
-                                  }
-                                  onKeyDown={blockNeg}
-                                  className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium disabled:opacity-50"
-                                  disabled={calculations.admissionPaidGlobally}
-                                />
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={admDisc || ""}
-                                    onChange={(e) =>
-                                      setAdmDisc(
-                                        Math.max(
-                                          0,
-                                          Number(e.target.value) || 0,
-                                        ),
-                                      )
-                                    }
-                                    onKeyDown={blockNeg}
-                                    className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 disabled:opacity-50"
-                                    placeholder="0"
-                                    disabled={
-                                      calculations.admissionPaidGlobally
-                                    }
-                                  />
-                                  <TogglePill
-                                    size="xs"
-                                    options={[
-                                      { label: "Rs.", value: "cash" },
-                                      { label: "%", value: "percentage" },
-                                    ]}
-                                    value={admDiscType}
-                                    onChange={(v) =>
-                                      setAdmDiscType(v as "cash" | "percentage")
-                                    }
-                                    disabled={
-                                      calculations.admissionPaidGlobally
-                                    }
-                                  />
-                                </div>
-                              </td>
-                              {/* Net — this is what the student actually owes total */}
-                              <td className="px-3 py-3 text-right">
-                                <span className="text-[13px] font-bold text-gray-900">
-                                  {fmtS(calculations.admNet)}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="space-y-1">
-                                  {initialAdmPaid > 0 && (
-                                    <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5">
-                                      <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
-                                        Prev paid
-                                      </span>
-                                      <span className="text-[11px] font-bold text-emerald-700">
-                                        {fmtS(initialAdmPaid)}
-                                      </span>
-                                    </div>
-                                  )}
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={admPayingNow}
-                                    onChange={(e) =>
-                                      setAdmPayingNow(clamp(e.target.value))
-                                    }
-                                    onKeyDown={blockNeg}
-                                    className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold disabled:opacity-50 placeholder:text-gray-300"
-                                    placeholder="0"
-                                    disabled={
-                                      calculations.admissionPaidGlobally
-                                    }
-                                  />
-                                </div>
-                              </td>
-                              {/* Balance = net − initialPaid − payingNow */}
-                              <td className="px-3 py-3 text-right">
-                                <span
-                                  className={`text-[13px] font-bold ${calculations.admRemaining > 0 ? "text-amber-600" : calculations.admRemaining < 0 ? "text-emerald-600" : "text-gray-300"}`}
-                                >
-                                  {calculations.admRemaining !== 0
-                                    ? calculations.admRemaining < 0
-                                      ? `+${fmtS(Math.abs(calculations.admRemaining))} CR`
-                                      : fmtS(calculations.admRemaining)
-                                    : "—"}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3 text-center">
-                                {calculations.admRemaining <= 0 &&
-                                calculations.admNet > 0 ? (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                                    PAID
-                                  </span>
-                                ) : calculations.admNet > 0 ? (
-                                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
-                                    DUE
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-300">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          )}
-
-                          {/* Program Rows */}
-                          {calculations.progData.map((p) => (
-                            <tr
-                              key={p.id}
-                              className="group hover:bg-gray-50/50 transition-colors"
-                            >
-                              <td className="px-3 py-3">
-                                <Checkbox
-                                  checked={checkedIds.has(String(p.id))}
-                                  onChange={() => toggleCheck(String(p.id))}
-                                />
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
-                                    <BookOpen className="w-3.5 h-3.5 text-violet-500" />
-                                  </div>
-                                  <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[180px]">
-                                    {p.title}
-                                  </p>
-                                </div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <input type="number" min={0} value={p.base} onChange={e => setProgEntries(prev => prev.map(o => o.id === p.id ? { ...o, base: Number(clamp(e.target.value)) || 0 } : o))} onKeyDown={blockNeg}
-                                  className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium" />
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={p.discount || ""}
-                                    onChange={(e) =>
-                                      setProgEntries((prev) =>
-                                        prev.map((o) =>
-                                          o.id === p.id
-                                            ? {
-                                                ...o,
-                                                discount: Math.max(
-                                                  0,
-                                                  Number(e.target.value) || 0,
-                                                ),
-                                              }
-                                            : o,
-                                        ),
-                                      )
-                                    }
-                                    onKeyDown={blockNeg}
-                                    className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300"
-                                    placeholder="0"
-                                  />
-                                  <TogglePill
-                                    size="xs"
-                                    options={[
-                                      { label: "Rs.", value: "cash" },
-                                      { label: "%", value: "percentage" },
-                                    ]}
-                                    value={p.discountType}
-                                    onChange={(v) =>
-                                      setProgEntries((prev) =>
-                                        prev.map((o) =>
-                                          o.id === p.id
-                                            ? {
-                                                ...o,
-                                                discountType: v as
-                                                  | "cash"
-                                                  | "percentage",
-                                              }
-                                            : o,
-                                        ),
-                                      )
-                                    }
-                                  />
-                                </div>
-                              </td>
-                              <td className="px-3 py-3 text-right">
-                                <span className="text-[13px] font-bold text-gray-900">
-                                  {fmtS(p.net)}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="space-y-1">
-                                  {(p.initialPaid ?? 0) > 0 && (
-                                    <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5">
-                                      <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
-                                        Prev paid
-                                      </span>
-                                      <span className="text-[11px] font-bold text-emerald-700">
-                                        {fmtS(p.initialPaid!)}
-                                      </span>
-                                    </div>
-                                  )}
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={p.payingNow}
-                                    onChange={(e) =>
-                                      setProgEntries((prev) =>
-                                        prev.map((o) =>
-                                          o.id === p.id
-                                            ? {
-                                                ...o,
-                                                payingNow: clamp(
-                                                  e.target.value,
-                                                ),
-                                              }
-                                            : o,
-                                        ),
-                                      )
-                                    }
-                                    onKeyDown={blockNeg}
-                                    className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold placeholder:text-gray-300"
-                                    placeholder="0"
-                                  />
-                                </div>
-                              </td>
-                              {/* Balance = net − initialPaid − payingNow */}
-                              <td className="px-3 py-3 text-right">
-                                <span
-                                  className={`text-[13px] font-bold ${p.remaining > 0 ? "text-amber-600" : p.remaining < 0 ? "text-emerald-600" : "text-gray-300"}`}
-                                >
-                                  {p.remaining !== 0
-                                    ? p.remaining < 0
-                                      ? `+${fmtS(Math.abs(p.remaining))} CR`
-                                      : fmtS(p.remaining)
-                                    : "—"}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3 text-center">
-                                {p.remaining <= 0 && p.net > 0 ? (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                                    PAID
-                                  </span>
-                                ) : p.net > 0 ? (
-                                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
-                                    DUE
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-300">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                {!fee && !selectedStudent ? (
+                  <div ref={dropdownRef} className="relative">
+                    <div className="flex items-center gap-3 border border-border rounded-lg px-3 py-2 bg-background focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm group">
+                      <Search className="w-4 h-4 text-text-muted group-focus-within:text-primary transition-colors" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setDropdownOpen(true);
+                        }}
+                        onFocus={() => setDropdownOpen(true)}
+                        placeholder="Search by name or class..."
+                        className="flex-1 bg-transparent outline-none text-sm placeholder:text-text-muted text-text-primary font-medium"
+                      />
                     </div>
-                  </div>
-
-                  {/* ─── SUMMARY BAR with inline total-pay input ─── */}
-                  <div
-                    className={`rounded-xl px-4 py-3 border transition-colors ${hasExcess ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}
-                  >
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
-                      {/* Left: stats */}
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] text-gray-400 font-medium">
-                            Selected
-                          </span>
-                          <span className="text-[13px] font-bold text-gray-900">
-                            {selectedCheckedCount}
-                            <span className="text-gray-400 font-medium text-[11px]">
-                              /{totalItemCount}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="w-px h-5 bg-gray-200" />
-                        <div>
-                          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">Gross Total</span>
-                          <span className="text-[15px] font-extrabold text-gray-500">{fmt(selectedGrossTotal)}</span>
-                        </div>
-                        <div className="w-px h-5 bg-gray-200" />
-                        <div>
-                          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">Due This Session</span>
-                          <span className={`text-[15px] font-extrabold ${selectedDueTotal > 0 ? "text-gray-900" : "text-emerald-600"}`}>{fmt(selectedDueTotal)}</span>
-                        </div>
-                        {calculations.totalDiscount > 0 && (
-                          <>
-                            <div className="w-px h-5 bg-gray-200" />
-                            <div>
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">
-                                Discount
-                              </span>
-                              <span className="text-[13px] font-bold text-gray-500">
-                                −{fmt(calculations.totalDiscount)}
+                    {dropdownOpen && filteredStudents.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto py-1 animate-scale-in custom-scrollbar">
+                        {filteredStudents.slice(0, 50).map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              setSelectedStudent(s);
+                              setSelectedStudentId(s.id.toString());
+                              setDropdownOpen(false);
+                              fetchFeeInfo(s.id.toString());
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-surface-hover text-sm flex items-center justify-between transition-colors border-b border-border/50 last:border-0 group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary transition-transform group-hover:scale-110">
+                                {initials(s.name)}
+                              </div>
+                              <span className="font-bold text-text-primary group-hover:text-primary transition-colors">
+                                {s.name}
                               </span>
                             </div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Right: pay input + actions */}
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        {/* Excess / return indicator */}
-                        {hasExcess && (
-                          <div className="flex items-center gap-1.5 bg-white border border-amber-200 rounded-lg px-2.5 py-1.5">
-                            <RotateCcw className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                            <div>
-                              <span className="text-[8px] text-amber-500 font-bold uppercase tracking-widest block leading-none mb-0.5">
-                                Return
-                              </span>
-                              <span className="text-[13px] font-extrabold text-amber-600 leading-none">
-                                {fmt(excessAmount)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Clear */}
-                        <button
-                          onClick={handleClear}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:text-red-500 rounded-lg text-[11px] font-medium transition-colors border border-transparent hover:border-red-100 hover:bg-red-50"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          Clear
-                        </button>
-
-                        {/* Pay Full shortcut */}
-                        <button
-                          onClick={handlePayFull}
-                          disabled={
-                            selectedCheckedCount === 0 || selectedDueTotal <= 0
-                          }
-                          className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          Pay Full
-                        </button>
-
-                        {/* Total-to-pay input — auto-distributes on every keystroke */}
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400 pointer-events-none">
-                            Rs.
-                          </span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={totalPayInput}
-                            onChange={(e) =>
-                              handleTotalPayChange(e.target.value)
-                            }
-                            onKeyDown={blockNeg}
-                            placeholder={
-                              selectedDueTotal > 0
-                                ? fmtS(selectedDueTotal)
-                                : "0"
-                            }
-                            disabled={selectedCheckedCount === 0}
-                            className={`w-[160px] bg-white border rounded-xl pl-7 pr-3 py-2 text-[14px] font-bold outline-none transition-all placeholder:text-gray-300 placeholder:font-medium disabled:opacity-40
-                              ${
-                                hasExcess
-                                  ? "border-amber-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 text-amber-700"
-                                  : Number(totalPayInput) > 0
-                                    ? "border-emerald-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-emerald-700"
-                                    : "border-gray-300 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 text-gray-900"
-                              }`}
-                          />
-                          {Number(totalPayInput) > 0 && (
-                            <span className="absolute -top-2 left-3 text-[9px] font-bold bg-white px-1 text-gray-400 uppercase tracking-widest">
-                              Total paying
+                            <span className="text-[10px] text-text-muted bg-background px-2.5 py-1 rounded-lg font-black uppercase tracking-wider">
+                              {s.classes}
                             </span>
-                          )}
-                        </div>
+                          </button>
+                        ))}
                       </div>
-                    </div>
-
-                    {/* Hint when nothing selected */}
-                    {selectedCheckedCount === 0 && (
-                      <p className="text-[11px] text-gray-400 mt-2">
-                        ☝ Check items above to activate payment entry
-                      </p>
                     )}
                   </div>
-                </div>
-              ) : !selectedStudent ? (
-                <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl">
-                  <User className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                  <p className="text-xs text-gray-400 font-medium">
-                    Select a student to view fee breakdown
-                  </p>
-                </div>
-              ) : !loadingFeeInfo ? (
-                <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl">
-                  <Receipt className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                  <p className="text-xs text-gray-400 font-medium">
-                    No fee items found for this student
-                  </p>
-                </div>
-              ) : null}
-            </section>
-
-            {/* 3. Notes */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
-                  <MessageSquare className="w-4 h-4" />
-                </span>
-                <h3 className="text-[15px] font-black text-text-primary tracking-tight">
-                  Additional Notes
-                </h3>
-              </div>
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder="Add any specific details or remarks about this payment..."
-                className="w-full border border-border rounded-2xl px-5 py-4 text-sm font-medium outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all resize-none h-24 bg-background placeholder:text-text-muted"
-                rows={3}
-              />
-            </section>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-8 py-6 border-t border-border bg-surface/80 backdrop-blur-sm sticky bottom-0">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
-                  Total cost
-                </span>
-                <span className="text-xl font-black text-text-primary tracking-tight">
-                  {fmt(
-                    calculations.progBaseSum +
-                      (calculations.hasAdm ? calculations.admBaseNum : 0),
-                  )}
-                </span>
-              </div>
-              <div className="text-border text-lg font-light hidden sm:block">
-                −
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
-                  Discount
-                </span>
-                <span className="text-xl font-black text-primary tracking-tight">
-                  {fmt(calculations.totalDiscount)}
-                </span>
-              </div>
-              <div className="text-border text-lg font-light hidden sm:block">
-                =
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
-                  Final Bill
-                </span>
-                <span className="text-xl font-black text-text-primary tracking-tight">
-                  {fmt(calculations.grandTotal)}
-                </span>
-              </div>
-              <div className="w-px h-10 bg-border hidden sm:block mx-1" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
-                  Collecting
-                </span>
-                <span className="text-xl font-black text-success tracking-tight">
-                  {fmt(calculations.totalCollected)}
-                </span>
-              </div>
-              <div className="w-px h-10 bg-border hidden sm:block mx-1" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
-                  Balance Due
-                </span>
-                <span
-                  className={`text-xl font-black tracking-tight ${calculations.grandDue > 0 ? "text-warning" : "text-success"}`}
-                >
-                  {calculations.grandDue < 0
-                    ? `+${fmt(Math.abs(calculations.grandDue))} Credit`
-                    : fmt(calculations.grandDue)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-              <button
-                onClick={onClose}
-                className="flex-1 sm:flex-none px-6 py-3.5 text-sm font-black uppercase tracking-widest text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-2xl transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !selectedStudentId}
-                className={`flex-1 sm:flex-none px-8 py-3.5 bg-primary text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/25 hover:bg-primary-hover hover:-translate-y-1 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer`}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Processing...</span>
-                  </>
                 ) : (
-                  <>
-                    <CreditCard className="w-4 h-4" />
-                    <span>{fee ? "Update Payment" : "Record Payment"}</span>
-                  </>
+                  <div className="flex items-center gap-4 p-3 bg-primary/5 border border-primary/10 rounded-xl animate-fade-in group hover:bg-primary/10 transition-colors">
+                    <div className="w-12 h-12 rounded-lg bg-primary text-white flex items-center justify-center font-black text-base shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
+                      {initials(selectedStudent?.name ?? "??")}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[15px] font-black text-text-primary tracking-tight">
+                        {selectedStudent?.name}
+                      </p>
+                      <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
+                        {selectedStudent?.classes}
+                      </p>
+                    </div>
+                    {!fee && (
+                      <button
+                        onClick={() => {
+                          setSelectedStudent(null);
+                          setSelectedStudentId("");
+                          setFeeInfo(null);
+                          setProgEntries([]);
+                          setCheckedIds(new Set());
+                          setTotalPayInput("");
+                        }}
+                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-white bg-white hover:bg-primary border border-primary/20 px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer"
+                      >
+                        Change
+                      </button>
+                    )}
+                  </div>
                 )}
-              </button>
+              </section>
+
+              {/* 2. Fee Breakdown */}
+              <section className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
+                      2
+                    </span>
+                    <h3 className="text-[15px] font-black text-text-primary tracking-tight">
+                      Fee Breakdown
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <MethodDropdown value={paymentMethod} onChange={setPaymentMethod} />
+                    <div className="flex items-center gap-2 border border-border rounded-xl px-3 sm:px-4 py-2 bg-background shadow-inner relative">
+                      <Calendar className="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input 
+                        type="month" 
+                        value={progPeriod} 
+                        onChange={e => setProgPeriod(e.target.value)} 
+                        className="bg-transparent outline-none text-[11px] font-bold text-text-primary w-28 sm:w-32 pl-5 cursor-pointer" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {loadingFeeInfo && selectedStudent ? (
+                  <div className="text-center py-12 bg-gray-50 border border-gray-100 rounded-xl">
+                    <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-xs text-gray-400 font-medium">
+                      Loading fee details...
+                    </p>
+                  </div>
+                ) : selectedStudent && (calculations.hasAdm || calculations.hasProg) ? (
+                  <div className="space-y-3">
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/70">
+                              <th className="w-10 px-3 py-2.5">
+                                <Checkbox checked={allChecked} onChange={toggleAll} />
+                              </th>
+                              <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Item</th>
+                              <th className="text-right px-3 py-2.5 w-[90px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Base</th>
+                              <th className="text-center px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Discount</th>
+                              <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Net</th>
+                              <th className="px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center">Paying Now</th>
+                              <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Balance</th>
+                              <th className="text-center px-3 py-2.5 w-[70px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {calculations.hasAdm && (
+                              <tr className={`group transition-colors ${calculations.admissionPaidGlobally ? "bg-emerald-50/40" : "hover:bg-gray-50/50"}`}>
+                                <td className="px-3 py-3">
+                                  <Checkbox checked={checkedIds.has("admission")} onChange={() => toggleCheck("admission")} disabled={calculations.admissionPaidGlobally} />
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><Wallet className="w-3.5 h-3.5 text-blue-500" /></div>
+                                    <div>
+                                      <p className="text-[13px] font-semibold text-gray-800">Admission Fee</p>
+                                      {calculations.admissionPaidGlobally && <span className="text-[10px] text-emerald-600 font-bold">FULLY PAID</span>}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3">
+                                  <input type="number" min={0} value={admBase} onChange={(e) => setAdmBase(clamp(e.target.value))} onKeyDown={blockNeg} disabled={calculations.admissionPaidGlobally} className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium disabled:opacity-50" />
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <input type="number" min={0} value={admDisc || ""} onChange={(e) => setAdmDisc(Math.max(0, Number(e.target.value) || 0))} onKeyDown={blockNeg} disabled={calculations.admissionPaidGlobally} placeholder="0" className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 disabled:opacity-50" />
+                                    <TogglePill size="xs" options={[{ label: "Rs.", value: "cash" }, { label: "%", value: "percentage" }]} value={admDiscType} onChange={(v) => setAdmDiscType(v as "cash" | "percentage")} disabled={calculations.admissionPaidGlobally} />
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 text-right"><span className="text-[13px] font-bold text-gray-900">{fmtS(calculations.admNet)}</span></td>
+                                <td className="px-3 py-3">
+                                  <div className="space-y-1">
+                                    {initialAdmPaid > 0 && <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5"><span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Prev paid</span><span className="text-[11px] font-bold text-emerald-700">{fmtS(initialAdmPaid)}</span></div>}
+                                    <input type="number" min={0} value={admPayingNow} onChange={(e) => setAdmPayingNow(clamp(e.target.value))} onKeyDown={blockNeg} disabled={calculations.admissionPaidGlobally} placeholder="0" className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold disabled:opacity-50 placeholder:text-gray-300" />
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 text-right">
+                                  <span className={`text-[13px] font-bold ${calculations.admRemaining > 0 ? "text-amber-600" : calculations.admRemaining < 0 ? "text-emerald-600" : "text-gray-300"}`}>
+                                    {calculations.admRemaining !== 0 ? (calculations.admRemaining < 0 ? `+${fmtS(Math.abs(calculations.admRemaining))} CR` : fmtS(calculations.admRemaining)) : "—"}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3 text-center">
+                                  {calculations.admRemaining <= 0 && calculations.admNet > 0 ? (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">PAID</span>
+                                  ) : calculations.admNet > 0 ? (
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">DUE</span>
+                                  ) : <span className="text-gray-300">—</span>}
+                                </td>
+                              </tr>
+                            )}
+
+                            {calculations.progData.map((p) => (
+                              <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
+                                <td className="px-3 py-3">
+                                  <Checkbox checked={checkedIds.has(String(p.id))} onChange={() => toggleCheck(String(p.id))} />
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0"><BookOpen className="w-3.5 h-3.5 text-violet-500" /></div>
+                                    <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[180px]">{p.title}</p>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3">
+                                  <input type="number" min={0} value={p.base} onChange={e => setProgEntries(prev => prev.map(o => o.id === p.id ? { ...o, base: Number(clamp(e.target.value)) || 0 } : o))} onKeyDown={blockNeg} className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium" />
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <input type="number" min={0} value={p.discount || ""} onChange={(e) => setProgEntries((prev) => prev.map((o) => o.id === p.id ? { ...o, discount: Math.max(0, Number(e.target.value) || 0) } : o))} onKeyDown={blockNeg} placeholder="0" className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300" />
+                                    <TogglePill size="xs" options={[{ label: "Rs.", value: "cash" }, { label: "%", value: "percentage" }]} value={p.discountType} onChange={(v) => setProgEntries((prev) => prev.map((o) => o.id === p.id ? { ...o, discountType: v as "cash" | "percentage" } : o))} />
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 text-right"><span className="text-[13px] font-bold text-gray-900">{fmtS(p.net)}</span></td>
+                                <td className="px-3 py-3">
+                                  <div className="space-y-1">
+                                    {(p.initialPaid ?? 0) > 0 && <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5"><span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Prev paid</span><span className="text-[11px] font-bold text-emerald-700">{fmtS(p.initialPaid!)}</span></div>}
+                                    <input type="number" min={0} value={p.payingNow} onChange={(e) => setProgEntries((prev) => prev.map((o) => o.id === p.id ? { ...o, payingNow: clamp(e.target.value) } : o))} onKeyDown={blockNeg} placeholder="0" className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold placeholder:text-gray-300" />
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 text-right">
+                                  <span className={`text-[13px] font-bold ${p.remaining > 0 ? "text-amber-600" : p.remaining < 0 ? "text-emerald-600" : "text-gray-300"}`}>
+                                    {p.remaining !== 0 ? (p.remaining < 0 ? `+${fmtS(Math.abs(p.remaining))} CR` : fmtS(p.remaining)) : "—"}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3 text-center">
+                                  {p.remaining <= 0 && p.net > 0 ? (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">PAID</span>
+                                  ) : p.net > 0 ? (
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">DUE</span>
+                                  ) : <span className="text-gray-300">—</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className={`rounded-xl px-4 py-3 border transition-colors ${hasExcess ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5"><span className="text-[11px] text-gray-400 font-medium">Selected</span><span className="text-[13px] font-bold text-gray-900">{selectedCheckedCount}<span className="text-gray-400 font-medium text-[11px]">/{totalItemCount}</span></span></div>
+                          <div className="w-px h-5 bg-gray-200" />
+                          <div><span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">Gross Total</span><span className="text-[15px] font-extrabold text-gray-500">{fmt(selectedGrossTotal)}</span></div>
+                          <div className="w-px h-5 bg-gray-200" />
+                          <div><span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">Due This Session</span><span className={`text-[15px] font-extrabold ${selectedDueTotal > 0 ? "text-gray-900" : "text-emerald-600"}`}>{fmt(selectedDueTotal)}</span></div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          {hasExcess && (
+                            <div className="flex items-center gap-1.5 bg-white border border-amber-200 rounded-lg px-2.5 py-1.5">
+                              <RotateCcw className="w-3 h-3 text-amber-500" />
+                              <div><span className="text-[8px] text-amber-500 font-bold uppercase tracking-widest block leading-none mb-0.5">Return</span><span className="text-[13px] font-extrabold text-amber-600 leading-none">{fmt(excessAmount)}</span></div>
+                            </div>
+                          )}
+                          <button onClick={handleClear} className="flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:text-red-500 rounded-lg text-[11px] font-medium transition-colors border border-transparent hover:border-red-100 hover:bg-red-50"><RotateCcw className="w-3 h-3" />Clear</button>
+                          <button onClick={handlePayFull} disabled={selectedCheckedCount === 0 || selectedDueTotal <= 0} className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-30">Pay Full</button>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400 pointer-events-none">Rs.</span>
+                            <input type="number" min={0} value={totalPayInput} onChange={(e) => handleTotalPayChange(e.target.value)} onKeyDown={blockNeg} placeholder={selectedDueTotal > 0 ? fmtS(selectedDueTotal) : "0"} disabled={selectedCheckedCount === 0} className={`w-[160px] bg-white border rounded-xl pl-7 pr-3 py-2 text-[14px] font-bold outline-none transition-all placeholder:text-gray-300 disabled:opacity-40 ${hasExcess ? "border-amber-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 text-amber-700" : Number(totalPayInput) > 0 ? "border-emerald-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-emerald-700" : "border-gray-300 focus:border-gray-400"}`} />
+                          </div>
+                        </div>
+                      </div>
+                      {selectedCheckedCount === 0 && <p className="text-[11px] text-gray-400 mt-2">☝ Check items above to activate payment entry</p>}
+                    </div>
+                  </div>
+                ) : !selectedStudent ? (
+                  <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl"><User className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-xs text-gray-400 font-medium">Select a student to view fee breakdown</p></div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl"><Receipt className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-xs text-gray-400 font-medium">No fee items found for this student</p></div>
+                )}
+              </section>
+
+              {/* 3. Notes */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
+                    <MessageSquare className="w-4 h-4" />
+                  </span>
+                  <h3 className="text-[15px] font-black text-text-primary tracking-tight">Additional Notes</h3>
+                </div>
+                <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Add any specific details or remarks about this payment..." className="w-full border border-border rounded-2xl px-5 py-4 text-sm font-medium outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all resize-none h-24 bg-background placeholder:text-text-muted" rows={3} />
+              </section>
             </div>
           </div>
 
-          <div className="mt-4 bg-background border border-border rounded-full h-2 overflow-hidden shadow-inner">
-            <div
-              className="h-full rounded-full transition-all duration-1000 ease-out"
-              style={{
-                width: `${calculations.grandTotal > 0 ? Math.min(100, (calculations.totalCollected / calculations.grandTotal) * 100) : 0}%`,
-                backgroundColor:
-                  calculations.totalCollected >= calculations.grandTotal &&
-                  calculations.grandTotal > 0
-                    ? "var(--success)"
-                    : "var(--primary)",
-              }}
-            />
+          {/* Footer */}
+          <div className="p-4 sm:p-6 border-t border-border bg-surface/80 backdrop-blur-sm sticky bottom-0 z-20">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 justify-center sm:justify-start">
+                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Total cost</span><span className="text-xl font-black text-text-primary tracking-tight">{fmt(calculations.progBaseSum + (calculations.hasAdm ? calculations.admBaseNum : 0))}</span></div>
+                <div className="text-border text-lg font-light hidden sm:block">−</div>
+                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Discount</span><span className="text-xl font-black text-primary tracking-tight">{fmt(calculations.totalDiscount)}</span></div>
+                <div className="text-border text-lg font-light hidden sm:block">=</div>
+                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Final Bill</span><span className="text-xl font-black text-text-primary tracking-tight">{fmt(calculations.grandTotal)}</span></div>
+                <div className="w-px h-10 bg-border hidden sm:block mx-1" />
+                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Collecting</span><span className="text-xl font-black text-success tracking-tight">{fmt(calculations.totalCollected)}</span></div>
+                <div className="w-px h-10 bg-border hidden sm:block mx-1" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Balance Due</span>
+                  <span className={`text-xl font-black tracking-tight ${calculations.grandDue > 0 ? "text-warning" : "text-success"}`}>
+                    {calculations.grandDue < 0 ? `+${fmt(Math.abs(calculations.grandDue))} Credit` : fmt(calculations.grandDue)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                <button onClick={onClose} className="flex-1 sm:flex-none px-6 py-3.5 text-sm font-black uppercase tracking-widest text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-2xl transition-all cursor-pointer">Cancel</button>
+                <button onClick={handleSubmit} disabled={loading || !selectedStudentId} className="flex-1 sm:flex-none px-8 py-3.5 bg-primary text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/25 hover:bg-primary-hover hover:-translate-y-1 active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer">
+                  {loading ? (
+                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Processing...</span></>
+                  ) : (
+                    <><CreditCard className="w-4 h-4" /><span>{fee ? "Update Payment" : "Record Payment"}</span></>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 bg-background border border-border rounded-full h-2 overflow-hidden shadow-inner">
+              <div
+                className="h-full rounded-full transition-all duration-1000 ease-out"
+                style={{
+                  width: `${calculations.grandTotal > 0 ? Math.min(100, (calculations.totalCollected / calculations.grandTotal) * 100) : 0}%`,
+                  backgroundColor: calculations.totalCollected >= calculations.grandTotal && calculations.grandTotal > 0 ? "var(--success)" : "var(--primary)",
+                }}
+              />
+            </div>
           </div>
         </div>
-      </div>
-      <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-        {thermalFee && (
-          <div ref={printRef} className="print-wrapper">
-            <ThermalBill fee={thermalFee} settings={settings} />
 
-            <ThermalBill fee={thermalFee} settings={settings} />
-          </div>
-        )}
+        {/* Print Template - Hidden from UI */}
+        <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+          {thermalFee && (
+            <div ref={printRef} className="print-wrapper">
+              <ThermalBill fee={thermalFee} settings={settings} />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 

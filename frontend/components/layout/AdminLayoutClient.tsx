@@ -81,7 +81,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutProps) {
           </header>
 
           <main className="flex-1 p-4 lg:p-8 overflow-y-auto transition-all duration-300 custom-scrollbar">
-            <div className="relative w-full h-full min-h-screen z-10 animate-fade-in">
+            <div className="w-full h-full min-h-screen">
               {children}
             </div>
           </main>
