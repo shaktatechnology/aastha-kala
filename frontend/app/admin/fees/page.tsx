@@ -428,13 +428,13 @@ const FeesPage = () => {
             )}
 
             {/* Add New Button */}
-            <button
+            {/* <button
               onClick={() => { setFeeToEdit(null); setFeeModalOpen(true); }}
               className="px-6 py-2 text-[11px] bg-primary text-white rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest cursor-pointer whitespace-nowrap ml-auto"
             >
               <Plus className="w-4 h-4" />
               <span>Add New</span>
-            </button>
+            </button> */}
           </div>
         </header>
 
