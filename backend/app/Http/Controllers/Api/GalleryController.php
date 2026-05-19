@@ -142,13 +142,12 @@ public function update(Request $request, $id)
 
     if (!empty($removedImages)) {
         foreach ($removedImages as $removedImage) {
-
+            $filename = basename($removedImage);
             
-            Storage::disk('public')->delete($removedImage);
+            Storage::disk('public')->delete('gallery/' . $filename);
 
-            
-            $existingImages = array_filter($existingImages, function ($img) use ($removedImage) {
-                return $img !== $removedImage;
+            $existingImages = array_filter($existingImages, function ($img) use ($filename) {
+                return basename($img) !== $filename;
             });
         }
     }

@@ -11,6 +11,7 @@ import GalleryAddEditModal from "@/components/admin/GalleryAddEditModal";
 import GalleryViewModal from "@/components/admin/GalleryViewModal";
 import { Pagination } from "@/components/global/Pagination";
 import { getYouTubeId } from "@/utils/url";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 interface Gallery {
   id: number;
@@ -29,17 +30,22 @@ const Page = () => {
 const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
 
   const handleApplyFilters = () => {
     setSearchTerm(searchInput);
+    setCategoryFilter(categoryInput);
   };
 
   const handleClearFilters = () => {
     setSearchInput("");
+    setCategoryInput("");
     setSearchTerm("");
+    setCategoryFilter("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -156,12 +162,21 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
     fetchCategories();
   }, []);
 
-  const filteredGalleries = galleries.filter((item) =>
-    (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.type || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.category?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.position || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGalleries = galleries.filter((item) => {
+    const matchesSearch = (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.type || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.category?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.position || "").toLowerCase().includes(searchTerm.toLowerCase());
+      
+    const matchesCategory = !categoryFilter || (item.category?.id?.toString() === categoryFilter);
+    
+    return matchesSearch && matchesCategory;
+  });
+
+  const categoryFilterOptions = [
+    { value: "", label: "All Categories" },
+    ...categories.map((c) => ({ value: c.id.toString(), label: c.name }))
+  ];
 
   const formattedData = filteredGalleries.map((item, index) => ({
     ...item,
@@ -268,8 +283,8 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
           </span>
           <span className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-0.5">Manage photos and videos</span>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-          <div className="relative w-full lg:w-80">
+        <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row items-center gap-4 w-full lg:w-auto">
+          <div className="relative w-full lg:w-64">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
@@ -279,7 +294,15 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
               className="w-full bg-white border border-gray-200 rounded-xl px-10 py-2.5 text-sm text-black focus:outline-none focus:border-primary transition shadow-sm"
             />
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="w-full lg:w-48">
+            <CustomSelect
+              value={categoryInput}
+              onChange={(val) => setCategoryInput(val)}
+              options={categoryFilterOptions}
+              placeholder="Filter by Category"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
             <button
               type="submit"
               className="px-5 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-bold cursor-pointer"
@@ -287,7 +310,7 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
               Apply
             </button>
 
-            {(searchInput !== "" || searchTerm !== "") && (
+            {(searchInput !== "" || categoryInput !== "" || searchTerm !== "" || categoryFilter !== "") && (
               <button
                 type="button"
                 onClick={handleClearFilters}
@@ -298,14 +321,14 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
             )}
 
             <Link href="/admin/gallery/category" className="flex-1 sm:flex-none">
-              <button type="button" className="w-full px-6 py-2.5 text-sm bg-gradient-to-r cursor-pointer from-primary to-secondary text-white rounded-lg flex gap-2 items-center justify-center">
+              <button type="button" className="w-full px-6 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-bold flex gap-2 items-center justify-center cursor-pointer">
                 <Tag className="h-4 w-4" /> Categories
               </button>
             </Link>
             <button
               type="button"
               onClick={handleAddClick}
-              className="flex-1 sm:flex-none px-6 py-2.5 text-sm cursor-pointer  bg-gradient-to-r from-primary to-secondary text-white rounded-lg flex gap-2 items-center justify-center"
+              className="flex-1 sm:flex-none px-6 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-bold flex gap-2 items-center justify-center cursor-pointer"
             >
               <Plus className="h-4 w-4" /> Add
             </button>
@@ -340,7 +363,9 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
         onClose={() => setModalOpen(false)}
         onSuccess={() => {
           setSearchInput("");
+          setCategoryInput("");
           setSearchTerm("");
+          setCategoryFilter("");
           fetchGalleries();
         }}
         editData={editData}

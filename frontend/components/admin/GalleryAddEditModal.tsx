@@ -140,9 +140,17 @@ const GalleryAddEditModal: React.FC<Props> = ({
       URL.revokeObjectURL(img);
     } else {
       // It's an existing server-side image
-      const relativePath = img.startsWith("http")
-        ? img.replace(`${IMAGE_BASE?.replace(/\/$/, "")}/`, "")
-        : img.replace(/^\/+/, "");
+      let relativePath = img;
+      if (img.startsWith("http")) {
+        const storageIdx = img.indexOf("/storage/");
+        if (storageIdx !== -1) {
+          relativePath = img.substring(storageIdx + "/storage/".length);
+        } else {
+          relativePath = img.replace(`${IMAGE_BASE?.replace(/\/$/, "")}/`, "");
+        }
+      } else {
+        relativePath = img.replace(/^\/+/, "");
+      }
 
       setRemovedImages((prev) => [...prev, relativePath]);
     }
