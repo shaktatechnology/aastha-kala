@@ -35,8 +35,13 @@ interface Employee {
 const EmployeesPage = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "staff" | "instructor">("all");
+
+  // Local filter input states (only updated inside the form; actual API query is triggered on "Apply" or Enter press)
+  const [searchInput, setSearchInput] = useState("");
+  const [typeInput, setTypeInput] = useState<"all" | "staff" | "instructor">("all");
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -122,16 +127,30 @@ const EmployeesPage = () => {
       toast.error(error.message);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   }, [searchTerm, typeFilter]);
 
   useEffect(() => {
-    // Debounce search
-    const timer = setTimeout(() => {
-      fetchEmployees(1);
-    }, 500);
-    return () => clearTimeout(timer);
+    fetchEmployees(1);
   }, [searchTerm, typeFilter, fetchEmployees]);
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+    setTypeFilter(typeInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setTypeInput("all");
+    setSearchTerm("");
+    setTypeFilter("all");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
 
   const handleView = useCallback((employee: Employee) => {
     setEditingEmployee(employee);
@@ -170,7 +189,7 @@ const EmployeesPage = () => {
     }
   };
 
-  if (loading && employees.length === 0) {
+  if (initialLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Spinner size="lg" />
@@ -221,20 +240,20 @@ const EmployeesPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <CustomSelect
-            value={typeFilter}
-            onChange={(val) => setTypeFilter(val as any)}
+            value={typeInput}
+            onChange={(val) => setTypeInput(val as any)}
             options={[
               { value: 'all', label: 'All Types' },
               { value: 'staff', label: 'Staff' },
@@ -242,10 +261,32 @@ const EmployeesPage = () => {
             ]}
             className="w-full sm:w-48"
           />
-        </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              type="submit"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2 bg-primary hover:bg-primary/80 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+            >
+              Apply
+            </button>
+            {(searchInput !== "" || typeInput !== "all" || searchTerm !== "" || typeFilter !== "all") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 text-sm font-medium rounded-lg transition-all cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </form>
 
         {/* Table */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm relative">
+          {loading && !initialLoading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+              <Spinner size="md" />
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

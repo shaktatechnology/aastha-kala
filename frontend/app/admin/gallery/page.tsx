@@ -30,6 +30,23 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Local filter buffers
+  const [searchInput, setSearchInput] = useState("");
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setSearchTerm("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -251,31 +268,49 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
           </span>
           <span className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-0.5">Manage photos and videos</span>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
           <div className="relative w-full lg:w-80">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
               placeholder="Search..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full bg-white border border-gray-200 rounded-xl px-10 py-2.5 text-sm text-black focus:outline-none focus:border-primary transition shadow-sm"
             />
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="submit"
+              className="px-5 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-bold cursor-pointer"
+            >
+              Apply
+            </button>
+
+            {(searchInput !== "" || searchTerm !== "") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-4 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-all font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+
             <Link href="/admin/gallery/category" className="flex-1 sm:flex-none">
-              <button className="w-full px-6 py-2.5 text-sm bg-gradient-to-r cursor-pointer from-primary to-secondary text-white rounded-lg flex gap-2 items-center justify-center">
+              <button type="button" className="w-full px-6 py-2.5 text-sm bg-gradient-to-r cursor-pointer from-primary to-secondary text-white rounded-lg flex gap-2 items-center justify-center">
                 <Tag className="h-4 w-4" /> Categories
               </button>
             </Link>
             <button
+              type="button"
               onClick={handleAddClick}
               className="flex-1 sm:flex-none px-6 py-2.5 text-sm cursor-pointer  bg-gradient-to-r from-primary to-secondary text-white rounded-lg flex gap-2 items-center justify-center"
             >
               <Plus className="h-4 w-4" /> Add
             </button>
           </div>
-        </div>
+        </form>
       </div>
 
       <div className="mt-6">
@@ -304,6 +339,7 @@ const [galleries, setGalleries] = useState<Gallery[]>([]);
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSuccess={() => {
+          setSearchInput("");
           setSearchTerm("");
           fetchGalleries();
         }}

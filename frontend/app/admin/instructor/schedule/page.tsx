@@ -92,6 +92,23 @@ const InstructorSchedulePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedInstructor, setExpandedInstructor] = useState<number | null>(null);
 
+  // Local filter buffers
+  const [searchInput, setSearchInput] = useState("");
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setSearchTerm("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -197,18 +214,36 @@ const InstructorSchedulePage = () => {
         </div>
 
         {/* Filters Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by instructor or program..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white shadow-sm"
             />
           </div>
-        </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="px-5 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-bold cursor-pointer"
+            >
+              Apply
+            </button>
+
+            {(searchInput !== "" || searchTerm !== "") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-4 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-all font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </form>
 
         {/* Instructors Table */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">

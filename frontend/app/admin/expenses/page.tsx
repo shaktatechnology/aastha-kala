@@ -52,6 +52,27 @@ const ExpensesPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [globalRecentCategory, setGlobalRecentCategory] = useState<string>("");
+
+  // Local filter buffers
+  const [searchInput, setSearchInput] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+    setCategoryFilter(categoryInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setCategoryInput("");
+    setSearchTerm("");
+    setCategoryFilter("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
   
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -112,10 +133,7 @@ const ExpensesPage = () => {
   }, [searchTerm, categoryFilter]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchExpenses(1);
-    }, 500);
-    return () => clearTimeout(timer);
+    fetchExpenses(1);
   }, [searchTerm, categoryFilter, fetchExpenses]);
 
   const handleEdit = (expense: Expense) => {
@@ -197,27 +215,46 @@ const ExpensesPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-full">
           <div className="flex-1 min-w-[200px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search expenses..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
             />
           </div>
           
           <div className="w-full sm:w-48">
              <CustomSelect
-                value={categoryFilter}
-                onChange={(val) => setCategoryFilter(val)}
+                value={categoryInput}
+                onChange={(val) => setCategoryInput(val)}
                 options={CATEGORY_OPTIONS}
                 placeholder="Filter by Category"
              />
           </div>
-        </div>
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="px-5 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-medium cursor-pointer"
+            >
+              Apply
+            </button>
+
+            {(searchInput !== "" || categoryInput !== "" || searchTerm !== "" || categoryFilter !== "") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-4 py-2 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-all font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </form>
 
         {/* Table */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
@@ -327,7 +364,13 @@ const ExpensesPage = () => {
       <ExpenseAddEditModal
         isOpen={formModalOpen}
         onClose={() => setFormModalOpen(false)}
-        onSuccess={() => fetchExpenses()}
+        onSuccess={() => {
+          setSearchInput("");
+          setCategoryInput("");
+          setSearchTerm("");
+          setCategoryFilter("");
+          fetchExpenses(1);
+        }}
         expense={editingExpense}
       />
       <ExpenseViewModal

@@ -61,6 +61,43 @@ const FeesPage = () => {
   const [programFilter, setProgramFilter] = useState("all");
   const [monthYearFilter, setMonthYearFilter] = useState("");
 
+  // Local filter buffers
+  const [searchInput, setSearchInput] = useState("");
+  const [statusInput, setStatusInput] = useState<"all" | "paid" | "pending">("all");
+  const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">("all");
+  const [shiftInput, setShiftInput] = useState("all");
+  const [programInput, setProgramInput] = useState("all");
+  const [monthYearInput, setMonthYearInput] = useState("");
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+    setStatusFilter(statusInput);
+    setTypeFilter(typeInput);
+    setShiftFilter(shiftInput);
+    setProgramFilter(programInput);
+    setMonthYearFilter(monthYearInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setStatusInput("all");
+    setTypeInput("all");
+    setShiftInput("all");
+    setProgramInput("all");
+    setMonthYearInput("");
+    setSearchTerm("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setShiftFilter("all");
+    setProgramFilter("all");
+    setMonthYearFilter("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
+
   const [programs, setPrograms] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
 
@@ -339,15 +376,15 @@ const FeesPage = () => {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full">
+          <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 w-full">
             {/* Search */}
             <div className="relative w-full sm:w-64 group">
               <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
               <input
                 type="text"
                 placeholder="Search student..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none"
               />
             </div>
@@ -355,8 +392,8 @@ const FeesPage = () => {
             {/* Status */}
             <div className="relative flex-1 sm:flex-none">
               <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as any)}
+                value={statusInput}
+                onChange={e => setStatusInput(e.target.value as any)}
                 className="w-full px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-bold appearance-none min-w-[120px]"
               >
                 <option value="all">All Status</option>
@@ -368,8 +405,8 @@ const FeesPage = () => {
             {/* Shift Filter */}
             <div className="relative flex-1 sm:flex-none">
               <select
-                value={shiftFilter}
-                onChange={e => setShiftFilter(e.target.value)}
+                value={shiftInput}
+                onChange={e => setShiftInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Schedules</option>
@@ -382,8 +419,8 @@ const FeesPage = () => {
             {/* Program Filter */}
             <div className="relative flex-1 sm:flex-none">
               <select
-                value={programFilter}
-                onChange={e => setProgramFilter(e.target.value)}
+                value={programInput}
+                onChange={e => setProgramInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Programs</option>
@@ -404,38 +441,32 @@ const FeesPage = () => {
                 <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                 <input
                   type="month"
-                  value={monthYearFilter}
-                  onChange={e => setMonthYearFilter(e.target.value)}
+                  value={monthYearInput}
+                  onChange={e => setMonthYearInput(e.target.value)}
                   className="w-full sm:w-44 pl-9 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none font-medium cursor-pointer"
                 />
               </div>
             </div>
 
-            {/* Reset button */}
-            {(shiftFilter !== 'all' || programFilter !== 'all' || monthYearFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
-              <button 
-                onClick={() => { 
-                  setShiftFilter('all'); 
-                  setProgramFilter('all'); 
-                  setMonthYearFilter(''); 
-                  setStatusFilter('all');
-                  setSearchTerm('');
-                }}
-                className="text-[10px] font-black uppercase tracking-widest text-error hover:text-error/80 transition-colors ml-auto lg:ml-0"
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
               >
-                Reset
+                Apply
               </button>
-            )}
 
-            {/* Add New Button */}
-            {/* <button
-              onClick={() => { setFeeToEdit(null); setFeeModalOpen(true); }}
-              className="px-6 py-2 text-[11px] bg-primary text-white rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest cursor-pointer whitespace-nowrap ml-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New</span>
-            </button> */}
-          </div>
+              {(shiftInput !== 'all' || programInput !== 'all' || monthYearInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || monthYearFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
+                <button 
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="text-[10px] font-black uppercase tracking-widest text-error hover:text-error/80 transition-colors cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </form>
         </header>
 
         {/* Stats Cards */}
@@ -558,10 +589,12 @@ const FeesPage = () => {
           ) {
             fetchFees(pagination.currentPage);
           } else {
+            setSearchInput("");
+            setStatusInput("all");
+            setTypeInput("all");
             setSearchTerm("");
             setStatusFilter("all");
             setTypeFilter("all");
-            // useEffect will trigger fetchFees()
           }
         }}
       />

@@ -68,7 +68,7 @@ export function CustomSelect({
       {isOpen && (
         <div 
           role="listbox"
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xl animate-in fade-in zoom-in-95 duration-100"
+          className="absolute z-50 mt-1 max-h-60 min-w-full w-max max-w-[250px] overflow-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xl animate-in fade-in zoom-in-95 duration-100"
         >
           {options.length === 0 ? (
             <div className="px-2 py-4 text-center text-sm text-gray-500 italic">

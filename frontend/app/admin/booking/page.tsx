@@ -31,6 +31,27 @@ const BookingManagementPage = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
 
+    // Local filter state buffers
+    const [searchInput, setSearchInput] = useState("");
+    const [statusInput, setStatusInput] = useState<"all" | "pending" | "accepted" | "rejected">("all");
+
+    const handleApplyFilters = () => {
+        setSearchTerm(searchInput);
+        setStatusFilter(statusInput);
+    };
+
+    const handleClearFilters = () => {
+        setSearchInput("");
+        setStatusInput("all");
+        setSearchTerm("");
+        setStatusFilter("all");
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleApplyFilters();
+    };
+
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
@@ -186,20 +207,20 @@ const BookingManagementPage = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
+                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search by name, email or program..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                     </div>
                     <CustomSelect
-                        value={statusFilter}
-                        onChange={(val) => setStatusFilter(val as any)}
+                        value={statusInput}
+                        onChange={(val) => setStatusInput(val as any)}
                         options={[
                             { value: 'all', label: 'All Status' },
                             { value: 'pending', label: 'Pending' },
@@ -208,7 +229,24 @@ const BookingManagementPage = () => {
                         ]}
                         className="w-full sm:w-48"
                     />
-                </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <button
+                            type="submit"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2 bg-primary hover:bg-primary/80 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+                        >
+                            Apply
+                        </button>
+                        {(searchInput !== "" || statusInput !== "all" || searchTerm !== "" || statusFilter !== "all") && (
+                            <button
+                                type="button"
+                                onClick={handleClearFilters}
+                                className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 text-sm font-medium rounded-lg transition-all cursor-pointer"
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                </form>
 
                 {/* Table */}
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">

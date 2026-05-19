@@ -31,6 +31,27 @@ const Page = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
 
+  // Local filter buffers
+  const [searchInput, setSearchInput] = useState("");
+  const [statusInput, setStatusInput] = useState<"all" | "draft" | "published">("all");
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+    setStatusFilter(statusInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setStatusInput("all");
+    setSearchTerm("");
+    setStatusFilter("all");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -242,28 +263,47 @@ const Page = () => {
           </span>
           <span className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-0.5">Search title/location, filter by status</span>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
               placeholder="Search..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition shadow-sm"
             />
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "all" | "draft" | "published")}
+              value={statusInput}
+              onChange={(e) => setStatusInput(e.target.value as "all" | "draft" | "published")}
               className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-white cursor-pointer border border-gray-200 rounded-xl focus:outline-none focus:border-primary transition shadow-sm min-w-[120px]"
             >
               <option value="all">Status</option>
               <option value="draft">Draft</option>
               <option value="published">Published</option>
             </select>
+            
             <button
+              type="submit"
+              className="px-5 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all font-bold cursor-pointer"
+            >
+              Apply
+            </button>
+
+            {(searchInput !== "" || statusInput !== "all" || searchTerm !== "" || statusFilter !== "all") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-4 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-all font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+
+            <button
+              type="button"
               onClick={() => {
                 setEditingEvent(null);
                 setFormModalOpen(true);
@@ -274,7 +314,7 @@ const Page = () => {
               <span>Add</span>
             </button>
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Table */}
@@ -311,7 +351,10 @@ const Page = () => {
         }}
         event={editingEvent}
         onSuccess={() => {
+            setSearchInput("");
+            setStatusInput("all");
             setSearchTerm("");
+            setStatusFilter("all");
             fetchEvents();
         }}
       />

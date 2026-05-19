@@ -33,6 +33,27 @@ const StudentPage = () => {
     const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "graduated">("all");
     const [viewMode, setViewMode] = useState<"students" | "programs">("students");
   
+    // Local filter state buffers
+    const [searchInput, setSearchInput] = useState("");
+    const [statusInput, setStatusInput] = useState<"all" | "active" | "inactive" | "graduated">("all");
+
+    const handleApplyFilters = () => {
+      setSearchTerm(searchInput);
+      setStatusFilter(statusInput);
+    };
+
+    const handleClearFilters = () => {
+      setSearchInput("");
+      setStatusInput("all");
+      setSearchTerm("");
+      setStatusFilter("all");
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      handleApplyFilters();
+    };
+  
     const [pagination, setPagination] = useState({
       currentPage: 1,
       totalPages: 1,
@@ -188,21 +209,21 @@ const StudentPage = () => {
             </div>
           </div>
 
-          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          <form onSubmit={handleSubmit} className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
             <div className="relative w-full sm:w-64 group/search">
               <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within/search:text-primary transition-colors" />
               <input 
                 type="text" 
                 placeholder="Search students..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-sm placeholder:text-text-muted"
               />
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <select 
-                value={statusFilter}
-                onChange={(e: any) => setStatusFilter(e.target.value)}
+                value={statusInput}
+                onChange={(e: any) => setStatusInput(e.target.value as any)}
                 className="flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-widest bg-background border border-border rounded-lg focus:outline-none focus:border-primary transition-all shadow-sm cursor-pointer"
               >
                 <option value="all">Status</option>
@@ -210,15 +231,34 @@ const StudentPage = () => {
                 <option value="inactive">Inactive</option>
                 <option value="graduated">Graduated</option>
               </select>
+              
               <button
+                type="submit"
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+              >
+                Apply
+              </button>
+
+              {(searchInput !== "" || statusInput !== "all" || searchTerm !== "" || statusFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="px-3 py-2 border border-border text-text-muted text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-background/80 transition-all cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+
+              <button
+                type="button"
                 onClick={() => { setEditingStudent(null); setFormModalOpen(true); }}
-                className="flex-1 sm:flex-none px-6 py-2 bg-primary text-white rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all flex gap-2 items-center justify-center text-[10px] font-black uppercase tracking-widest cursor-pointer whitespace-nowrap"
+                className="flex-1 sm:flex-none px-6 py-2 bg-primary text-white rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all flex gap-2 items-center justify-center text-[10px] font-black uppercase tracking-widest cursor-pointer whitespace-nowrap ml-1"
               >
                 <Plus className="h-4 w-4" strokeWidth={3} />
                 <span>Add Student</span>
               </button>
             </div>
-          </div>
+          </form>
         </header>
   
         {viewMode === "students" ? (

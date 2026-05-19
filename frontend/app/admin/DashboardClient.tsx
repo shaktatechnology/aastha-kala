@@ -181,13 +181,13 @@ const Dashboard = () => {
         <div className="lg:col-span-8 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)]">Expense Categories</h2>
-            <div className="flex gap-2 text-xs w-48">
+            <div className="flex gap-2 text-xs w-fit">
               <CustomSelect 
                 options={monthOptions} 
                 value={expenseFilter.month} 
                 onChange={(val) => setExpenseFilter({...expenseFilter, month: val})} 
                 placeholder="Month" 
-                className="w-24"
+                className="w-28"
               />
               <CustomSelect 
                 options={yearOptions} 

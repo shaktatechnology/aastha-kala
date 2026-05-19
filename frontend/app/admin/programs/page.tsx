@@ -56,6 +56,10 @@ const ProgramsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
+  // Local filter buffers
+  const [searchInput, setSearchInput] = useState("");
+  const [statusInput, setStatusInput] = useState<"all" | "active" | "inactive">("all");
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -172,12 +176,24 @@ const ProgramsPage = () => {
     }
   };
 
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+    setStatusFilter(statusInput);
+  };
+
   const clearFilters = () => {
+    setSearchInput("");
+    setStatusInput("all");
     setSearchTerm("");
     setStatusFilter("all");
   };
 
-  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all";
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
+
+  const hasActiveFilters = searchInput !== "" || statusInput !== "all" || searchTerm !== "" || statusFilter !== "all";
 
   // Render loading state
   if (loading && programs.length === 0) {
@@ -235,40 +251,48 @@ const ProgramsPage = () => {
           </div>
 
           {/* Filters Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search programs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-                className="px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                value={statusInput}
+                onChange={(e) => setStatusInput(e.target.value as "all" | "active" | "inactive")}
+                className="px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white cursor-pointer"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
 
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center px-5 py-2.5 bg-primary hover:bg-primary/80 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                Apply
+              </button>
+
               {hasActiveFilters && (
                 <button
+                  type="button"
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-1 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center justify-center gap-1 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                   Clear
                 </button>
               )}
             </div>
-          </div>
+          </form>
 
           {/* Table Section */}
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
