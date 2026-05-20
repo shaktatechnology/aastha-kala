@@ -15,7 +15,11 @@ const Navbar: React.FC = () => {
 
     if (logoPath.startsWith("http")) {
       // Defensive check: If production returns localhost URL due to misconfigured APP_URL, fix it
-      if (typeof window !== "undefined" && !window.location.host.includes("localhost") && logoPath.includes("localhost")) {
+      if (
+        typeof window !== "undefined" &&
+        !window.location.host.includes("localhost") &&
+        logoPath.includes("localhost")
+      ) {
         const base = process.env.NEXT_PUBLIC_IMAGE_URL || "";
         const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
         const relativePath = logoPath.split("/storage/")[1] || "";
@@ -24,7 +28,8 @@ const Navbar: React.FC = () => {
       return logoPath;
     }
 
-    const base = process.env.NEXT_PUBLIC_IMAGE_URL || "http://localhost:8000/storage/";
+    const base =
+      process.env.NEXT_PUBLIC_IMAGE_URL || "http://localhost:8000/storage/";
     const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
     const cleanPath = logoPath.startsWith("/") ? logoPath.slice(1) : logoPath;
     return `${cleanBase}/${cleanPath}`;
@@ -65,29 +70,34 @@ const Navbar: React.FC = () => {
     <nav className="w-full bg-primary text-white sticky top-0 z-[100] shadow-sm">
       <div className="px-4 md:px-5 lg:px-6 py-1.5 flex items-center justify-between max-w-7xl mx-auto">
         {/* Logo — far left, fixed width */}
-        <div className="flex items-center shrink-0">
+        <div className="flex items-center shrink-0 gap-2">
           <Link href="/">
             {logo && <img src={logo} alt="Logo" className="h-14 w-auto" />}
           </Link>
+
+          <span className="hidden md:block lg:hidden text-white font-semibold text-lg">
+            Astha Kala Kendra
+          </span>
         </div>
 
         <button
-          className="md:hidden relative z-[60] text-white"
+          className="lg:hidden relative z-[60] text-white"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
 
         {/* Nav links + Contact — takes remaining space, items spread to the right */}
-        <div className="hidden md:flex items-center justify-end flex-1 gap-x-6 lg:gap-x-10 font-medium">
+        <div className="hidden lg:flex items-center justify-end flex-1 gap-x-6 lg:gap-x-10 font-medium">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             return (
               <Link
                 key={item.name}
                 href={item.path}
-                className={`whitespace-nowrap transition hover:text-gray-200 ${isActive ? "font-semibold underline underline-offset-4" : ""
-                  }`}
+                className={`whitespace-nowrap transition hover:text-gray-200 ${
+                  isActive ? "font-semibold underline underline-offset-4" : ""
+                }`}
               >
                 {item.name}
               </Link>
@@ -102,7 +112,7 @@ const Navbar: React.FC = () => {
         </div>
 
         {isOpen && (
-          <div className="fixed inset-0 z-50 bg-blue-700 flex flex-col px-6 mt-15 py-6 animate-slideDown md:hidden">
+          <div className="fixed inset-0 z-50 bg-primary flex flex-col px-6 mt-16 py-6 animate-slideDown lg:hidden">
             {navItems.map((item) => {
               const isActive = pathname === item.path;
 
@@ -111,10 +121,11 @@ const Navbar: React.FC = () => {
                   key={item.name}
                   href={item.path}
                   onClick={() => setIsOpen(false)}
-                  className={`py-2 px-3 rounded-md transition ${isActive
+                  className={`py-2 px-3 rounded-md transition ${
+                    isActive
                       ? "bg-white text-blue-700 font-semibold"
                       : "hover:bg-blue-600"
-                    }`}
+                  }`}
                 >
                   {item.name}
                 </Link>

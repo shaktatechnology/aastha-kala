@@ -10,9 +10,14 @@ interface AboutIntroProps {
   image2: string;
 }
 
-const AboutIntro = ({ companyName, aboutText, image1, image2 }: AboutIntroProps) => {
+const AboutIntro = ({
+  companyName,
+  aboutText,
+  image1,
+  image2,
+}: AboutIntroProps) => {
   return (
-    <section className="max-w-6xl mx-auto px-6 pt-12 pb-20">
+    <section className="max-w-6xl mx-auto px-6 pt-12 pb-20 overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         {/* Left: text */}
         <motion.div
@@ -41,7 +46,7 @@ const AboutIntro = ({ companyName, aboutText, image1, image2 }: AboutIntroProps)
         {/* Right: overlapping images with animation */}
         <div className="relative h-[450px] md:h-[500px]">
           {/* Main image — top right */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8, rotate: 2 }}
             whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -54,9 +59,9 @@ const AboutIntro = ({ companyName, aboutText, image1, image2 }: AboutIntroProps)
               className="w-full h-full object-cover"
             />
           </motion.div>
-          
+
           {/* Overlapping image — bottom left */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8, x: -20, y: 20 }}
             whileInView={{ opacity: 1, scale: 1, x: 0, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -71,21 +76,21 @@ const AboutIntro = ({ companyName, aboutText, image1, image2 }: AboutIntroProps)
           </motion.div>
 
           {/* Decorative element */}
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               rotate: 360,
               scale: [1, 1.1, 1],
             }}
-            transition={{ 
+            transition={{
               rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-              scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+              scale: { duration: 4, repeat: Infinity, ease: "easeInOut" },
             }}
             className="absolute -top-4 -left-4 w-24 h-24 bg-primary/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 z-[-1]"
           />
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.2, 1],
-              x: [0, 10, 0]
+              x: [0, 10, 0],
             }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             className="absolute -bottom-4 -right-4 w-32 h-32 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 z-[-1]"

@@ -81,7 +81,7 @@ const AboutPage = async () => {
       : defaultWhyUs;
 
   return (
-    <div className="bg-white font-poppins selection:bg-blue-100 selection:text-blue-600">
+    <div className=" font-poppins selection:bg-blue-100 selection:text-blue-600">
       <Heading 
         title="About Us"
         subtitle="Discover our story, mission, and the passion behind Aastha Kala Kendra."
@@ -113,4 +113,4 @@ const AboutPage = async () => {
   );
 };
 
-export default AboutPage;
+export default AboutPage;
