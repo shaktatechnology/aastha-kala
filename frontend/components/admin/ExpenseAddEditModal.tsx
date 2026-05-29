@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Spinner } from '@/components/ui/spinner';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { NepaliDateInput } from '@/components/ui/NepaliDateInput';
 
 interface Expense {
   id?: number;
@@ -126,7 +127,7 @@ const ExpenseAddEditModal: React.FC<Props> = ({
         [key]: value,
       }));
     }
-    
+
     if (errors[key as string]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -208,10 +209,10 @@ const ExpenseAddEditModal: React.FC<Props> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-2xl mx-auto my-8"
+        className="bg-white rounded-2xl shadow-xl overflow-visible w-full max-w-2xl mx-auto my-8"
       >
         {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+        <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center rounded-t-2xl">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
               {isEdit ? 'Edit Expense Record' : 'Record New Expense'}
@@ -255,15 +256,15 @@ const ExpenseAddEditModal: React.FC<Props> = ({
 
             <div>
               <FieldLabel label="Expense Date" required />
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-                <Input
-                  type="date"
-                  value={form.expense_date}
-                  onChange={(e) => handleChange("expense_date", e.target.value)}
-                  className="pl-10 h-11"
-                />
-              </div>
+              <NepaliDateInput
+                value={form.expense_date}
+                onChange={(val) => handleChange("expense_date", val)}
+              />
+              {form.expense_date && (
+                <p className="text-[10px] text-gray-500 mt-1 px-1">
+                  Selected: <span className="font-semibold text-gray-700">{formatDate(form.expense_date)}</span>
+                </p>
+              )}
               <ErrorMessage message={errors.expense_date?.[0]} />
             </div>
 
@@ -338,18 +339,18 @@ const ExpenseAddEditModal: React.FC<Props> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-          <Button 
-            type="button" 
-            variant="outline" 
+        <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+          <Button
+            type="button"
+            variant="outline"
             onClick={onClose}
             className="px-6 h-11 text-black bg-white border border-gray-300 hover:bg-gray-100"
           >
             Cancel
           </Button>
-          <Button 
-            type="button" 
-            onClick={handleSubmit} 
+          <Button
+            type="button"
+            onClick={handleSubmit}
             disabled={loading}
             className="bg-primary hover:bg-primary/90 text-white px-8 h-11 text-base font-medium shadow-sm"
           >

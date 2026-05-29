@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import Table from "@/components/layout/Table";
+import { formatDateTime } from "@/lib/utils";
 import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
 import { Plus, Image as ImageIcon } from "lucide-react";
 import toast from "react-hot-toast";
@@ -186,14 +187,7 @@ const Page = () => {
       </span>
     ),
 
-    event_date: new Date(event.event_date).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    }),
+    event_date: formatDateTime(event.event_date),
   }));
 
   // View handler

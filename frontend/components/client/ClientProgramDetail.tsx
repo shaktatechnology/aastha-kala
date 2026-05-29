@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { CustomSelect } from "@/components/ui/custom-select";
-import { cn } from "@/lib/utils";
+import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
+import { cn, formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -300,13 +301,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ program, onClose }) => {
 
                 <div>
                   <FieldLabel label="Preferred Start Date" required />
-                  <Input
-                    required
-                    type="date"
-                    min={new Date().toLocaleDateString('en-CA')}
-                    className="h-11 text-base"
+                  <NepaliDateInput
                     value={form.booking_date}
-                    onChange={(e) => set("booking_date", e.target.value)}
+                    onChange={(value) => set("booking_date", value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    placeholder="Select your preferred start date"
+                    className="w-full"
                   />
                 </div>
 

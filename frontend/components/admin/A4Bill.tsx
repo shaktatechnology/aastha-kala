@@ -1,6 +1,7 @@
 "use client";
 
 import React, { forwardRef, useMemo } from "react";
+import { formatDate, formatMonthYear } from "@/lib/utils";
 
 interface A4BillProps {
   fee: any;
@@ -20,18 +21,10 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
   const balanceDue = Math.max(0, netBill - paidAmount);
   
   // Derived data
-  const billDate = fee.created_at ? new Date(fee.created_at).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }) : new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const billDate = formatDate(fee.created_at || new Date());
 
   const studentName = fee.student?.name || "N/A";
-  const period = fee.month_year || "N/A";
+  const period = fee.month_year ? formatMonthYear(fee.month_year) : "N/A";
   const billNo = `#FEE-${fee.id?.toString().padStart(2, "0")}`;
 
   const getLogoUrl = (logoPath: string | null | undefined) => {

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { formatDate } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { CalendarDays, Filter, RefreshCw, X, AlertCircle } from "lucide-react";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -157,10 +158,9 @@ const AttendanceList = () => {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatAttendanceDate = (dateStr: string) => {
     if (!dateStr) return "";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return formatDate(dateStr);
   };
 
   return (
@@ -323,7 +323,7 @@ const AttendanceList = () => {
                 records.map((record) => (
                   <TableRow key={record.id} className="hover:bg-gray-50 transition-colors">
                     <TableCell>
-                      <div className="font-medium text-gray-900">{formatDate(record.date)}</div>
+                      <div className="font-medium text-gray-900">{formatAttendanceDate(record.date)}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-semibold text-gray-900">{record.employee?.name || "Unknown"}</div>

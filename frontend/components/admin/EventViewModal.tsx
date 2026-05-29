@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
 
 interface EventData {
   id?: number;
@@ -91,14 +92,7 @@ const EventViewModal: React.FC<Props> = ({ isOpen, onClose, event }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Event Date">
-            {new Date(event.event_date).toLocaleString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })}
+            {formatDateTime(event.event_date)}
           </Field>
 
           <Field label="Status">

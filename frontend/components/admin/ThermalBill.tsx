@@ -1,6 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
+import { formatDate, formatMonthYear } from "@/lib/utils";
 
 interface ThermalBillProps {
   fee: any;
@@ -31,17 +32,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
     const paidAmount = Number(fee.paid_amount || 0);
     const balanceDue = Math.max(0, netBill - paidAmount);
 
-    const billDate = fee.created_at
-      ? new Date(fee.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      : new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+    const billDate = formatDate(fee.created_at || new Date());
 
     const billNo = `#FEE-${fee.id}`;
 
@@ -71,19 +62,23 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
     }
 
     .print-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 6mm;
-      padding: 4mm;
+      display: block;
+      width: 80mm;
+      box-sizing: border-box;
+      padding: 0;
     }
 
     .thermal-print-container {
       width: 72mm !important;
-      margin: 0 !important;
+      margin: 0 auto !important;
       padding: 4mm !important;
       background: white !important;
       color: black !important;
-      position: relative !important; /* important fix */
+      position: relative !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-after: avoid !important;
+      page-break-before: avoid !important;
     }
 
     .thermal-bill-text {
@@ -177,7 +172,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 <strong>Student:</strong> {fee.student?.name || "N/A"}
               </p>
               <p style={{ margin: "1px 0" }}>
-                <strong>Period:</strong> {fee.month_year || "N/A"}
+                <strong>Period:</strong> {fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
               </p>
             </div>
           </div>
@@ -381,7 +376,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                         padding: "1px 0",
                       }}
                     >
-                      <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                      <span>{formatDate(p.created_at)}</span>
                       <span>{p.payment_method || "Cash"}</span>
                       <span style={{ fontWeight: 700 }}>
                         {fmt(p.paid_amount)}

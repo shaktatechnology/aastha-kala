@@ -1,4 +1,5 @@
 import { User, Phone, Calendar, MapPin } from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const IMAGE_URL = process.env.NEXT_PUBLIC_IMAGE_URL;
@@ -94,7 +95,7 @@ export default async function EventPage({
             <div className="flex flex-wrap gap-6 text-sm text-secondary">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date(event.event_date).toLocaleString()}</span>
+                <span>{formatDateTime(event.event_date)}</span>
               </div>
 
               <div className="flex items-center gap-2">

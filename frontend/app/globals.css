@@ -94,7 +94,7 @@
   --color-fb: var(--fb);
   
   --font-poppins: var(--font-poppins);
-  --font-sans: var(--font-poppins);
+  --font-sans: var(--font-poppins), var(--font-devanagari);
   
   --radius-xl: var(--radius-xl);
   --radius-2xl: var(--radius-2xl);

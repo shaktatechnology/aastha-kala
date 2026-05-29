@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Search, Plus, CreditCard, Eye, Edit2, Trash2, Wallet, Calendar, User, Download } from "lucide-react";
+import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -15,7 +16,6 @@ import { toast } from "sonner";
 import { Pagination } from "@/components/global/Pagination";
 import { SalaryForm } from "@/components/admin/salary/salaryform";
 import { AnimatePresence, motion } from "framer-motion";
-import { Spinner } from "@/components/ui/spinner";
 import { CustomSelect } from "@/components/ui/custom-select";
 
 interface SalaryPayment {
@@ -37,14 +37,16 @@ interface SalaryPayment {
 const SalaryManagementPage = () => {
   const [payments, setPayments] = useState<SalaryPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentBs = getBsDateParts(new Date()) || { month: 1, year: 2083 };
+  const [monthFilter, setMonthFilter] = useState<string>("");
+  const [yearFilter, setYearFilter] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [monthFilter, setMonthFilter] = useState<string>( (new Date().getMonth() + 1).toString() );
-  const [yearFilter, setYearFilter] = useState<string>( new Date().getFullYear().toString() );
+  const [storedYears, setStoredYears] = useState<number[]>([]);
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
-  const [monthInput, setMonthInput] = useState<string>( (new Date().getMonth() + 1).toString() );
-  const [yearInput, setYearInput] = useState<string>( new Date().getFullYear().toString() );
+  const [monthInput, setMonthInput] = useState<string>("");
+  const [yearInput, setYearInput] = useState<string>("");
 
   const handleApplyFilters = () => {
     setSearchTerm(searchInput);
@@ -54,11 +56,11 @@ const SalaryManagementPage = () => {
 
   const handleClearFilters = () => {
     setSearchInput("");
-    setMonthInput((new Date().getMonth() + 1).toString());
-    setYearInput(new Date().getFullYear().toString());
+    setMonthInput("");
+    setYearInput("");
     setSearchTerm("");
-    setMonthFilter((new Date().getMonth() + 1).toString());
-    setYearFilter(new Date().getFullYear().toString());
+    setMonthFilter("");
+    setYearFilter("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -80,6 +82,27 @@ const SalaryManagementPage = () => {
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<SalaryPayment | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
+
+  const fetchYears = useCallback(async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/salary-payments/years`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Accept: "application/json",
+        },
+      });
+      const result = await res.json();
+      if (result.success) {
+        setStoredYears(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch years", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchYears();
+  }, [fetchYears]);
 
   const fetchPayments = useCallback(async (page: number = 1) => {
     try {
@@ -164,7 +187,7 @@ const SalaryManagementPage = () => {
   };
 
   const getMonthName = (m: number) => {
-    return new Date(0, m - 1).toLocaleString('default', { month: 'long' });
+    return nepaliMonthNames[m - 1] || "Unknown";
   };
 
   return (
@@ -177,7 +200,7 @@ const SalaryManagementPage = () => {
             <p className="text-sm text-gray-500 mt-1">Track payments, pre-pays, and bonuses</p>
           </div>
           <div className="flex gap-2">
-             <button
+            <button
               onClick={() => {
                 setEditingPayment(null);
                 setIsViewMode(false);
@@ -218,23 +241,28 @@ const SalaryManagementPage = () => {
             <CustomSelect
               value={monthInput}
               onChange={(val) => setMonthInput(val)}
-              options={Array.from({ length: 12 }, (_, i) => ({
-                value: (i + 1).toString(),
-                label: getMonthName(i + 1)
-              }))}
+              options={[
+                { value: "", label: "Select Month" },
+                ...Array.from({ length: 12 }, (_, i) => ({
+                  value: (i + 1).toString(),
+                  label: getMonthName(i + 1)
+                }))
+              ]}
               className="w-40"
             />
             <CustomSelect
               value={yearInput}
               onChange={(val) => setYearInput(val)}
-              options={[2024, 2025, 2026].map(y => ({
-                value: y.toString(),
-                label: y.toString()
-              }))}
+              options={[
+                { value: "", label: "Select Year" },
+                ...(storedYears.length > 0
+                  ? storedYears.map(y => ({ value: y.toString(), label: toNepaliDigits(y) }))
+                  : [{ value: currentBs.year.toString(), label: toNepaliDigits(currentBs.year) }])
+              ]}
               className="w-28"
             />
           </div>
-          
+
           <div className="flex-1 min-w-[200px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -254,7 +282,7 @@ const SalaryManagementPage = () => {
               Apply
             </button>
 
-            {(searchInput !== "" || monthInput !== (new Date().getMonth() + 1).toString() || yearInput !== new Date().getFullYear().toString() || searchTerm !== "" || monthFilter !== (new Date().getMonth() + 1).toString() || yearFilter !== new Date().getFullYear().toString()) && (
+            {(searchInput !== "" || monthInput !== "" || yearInput !== "" || searchTerm !== "" || monthFilter !== "" || yearFilter !== "") && (
               <button
                 type="button"
                 onClick={handleClearFilters}
@@ -324,18 +352,17 @@ const SalaryManagementPage = () => {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm font-medium text-gray-700">
-                            {getMonthName(payment.month)}, {payment.year}
+                            {getMonthName(payment.month)}, {toNepaliDigits(payment.year)}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-gray-600">{new Date(payment.payment_date).toLocaleDateString()}</div>
+                          <div className="text-sm text-gray-600">{formatDate(payment.payment_date)}</div>
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${
-                            payment.payment_type === 'salary' ? 'bg-green-100 text-green-700' :
+                          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${payment.payment_type === 'salary' ? 'bg-green-100 text-green-700' :
                             payment.payment_type === 'pre-pay' ? 'bg-blue-100 text-blue-700' :
-                            'bg-purple-100 text-purple-700'
-                          }`}>
+                              'bg-purple-100 text-purple-700'
+                            }`}>
                             {payment.payment_type}
                           </span>
                         </TableCell>
@@ -409,12 +436,7 @@ const SalaryManagementPage = () => {
                   isViewMode={isViewMode}
                   onSuccess={() => {
                     setFormModalOpen(false);
-                    setSearchInput("");
-                    setMonthInput((new Date().getMonth() + 1).toString());
-                    setYearInput(new Date().getFullYear().toString());
-                    setSearchTerm("");
-                    setMonthFilter((new Date().getMonth() + 1).toString());
-                    setYearFilter(new Date().getFullYear().toString());
+                    fetchYears(); // Refresh years list after adding new payment
                     fetchPayments(1);
                   }}
                   onCancel={() => setFormModalOpen(false)}

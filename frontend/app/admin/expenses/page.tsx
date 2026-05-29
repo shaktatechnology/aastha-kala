@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Search, Plus, Banknote, Eye, Edit2, Trash2, Wallet, Calendar, Tag, Filter } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -308,7 +309,7 @@ const ExpensesPage = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-gray-600">{new Date(expense.expense_date).toLocaleDateString()}</div>
+                          <div className="text-sm text-gray-600">{formatDate(expense.expense_date)}</div>
                         </TableCell>
                         <TableCell>
                           <div className="text-xs font-medium text-gray-500 uppercase tracking-widest">{expense.payment_method || "N/A"}</div>

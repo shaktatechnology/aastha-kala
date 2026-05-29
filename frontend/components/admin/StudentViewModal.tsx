@@ -2,6 +2,7 @@
 
 import React from "react";
 import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, CreditCard } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 interface Props {
   isOpen: boolean;
@@ -101,8 +102,8 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
                 <DetailItem icon={Phone} label="Phone" value={student.phone} />
                 <DetailItem icon={Mail} label="Email" value={student.email || "N/A"} />
                 <DetailItem icon={MapPin} label="Address" value={student.address || "N/A"} />
-                <DetailItem icon={Calendar} label="D.O.B" value={student.dob ? new Date(student.dob).toLocaleDateString() : "N/A"} />
-                <DetailItem icon={Calendar} label="Enrollment Date" value={student.enrollment_date ? new Date(student.enrollment_date).toLocaleDateString() : "N/A"} />
+                <DetailItem icon={Calendar} label="D.O.B" value={student.dob ? formatDate(student.dob) : "N/A"} />
+                <DetailItem icon={Calendar} label="Enrollment Date" value={student.enrollment_date ? formatDate(student.enrollment_date) : "N/A"} />
             </div>
             <div className="space-y-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Other Info</p>
@@ -124,7 +125,7 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
                                 </div>
                                 <div>
                                     <p className="text-sm font-bold text-gray-900 capitalize">{fee.fee_type} {fee.month_year && `(${fee.month_year})`}</p>
-                                    <p className="text-[10px] text-gray-500">{new Date(fee.created_at).toLocaleDateString()}</p>
+                                    <p className="text-[10px] text-gray-500">{formatDate(fee.created_at)}</p>
                                 </div>
                             </div>
                             <div className="text-right">

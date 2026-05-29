@@ -55,14 +55,14 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
           <div className="flex justify-end gap-3 px-5 py-4 border-t border-border bg-background/30">
             <button
               onClick={onClose}
-              className="px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-text-muted hover:text-text-primary border border-border hover:bg-surface-hover transition-all"
+              className="px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest cursor-pointer text-text-muted hover:text-text-primary border border-border hover:bg-surface-hover transition-all"
             >
               Cancel
             </button>
             <button
               onClick={onConfirm}
               disabled={loading}
-              className="px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white bg-error hover:bg-red-600 transition-all shadow-lg shadow-error/20 active:scale-95 disabled:opacity-50"
+              className="px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white bg-error hover:bg-red-600 transition-all shadow-lg shadow-error/20 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               {loading ? "Deleting..." : "Delete Now"}
             </button>

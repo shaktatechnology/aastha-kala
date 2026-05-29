@@ -22,6 +22,8 @@ import FeeViewModal from "@/components/admin/FeeViewModal";
 import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "@/components/admin/ThermalBill";
+import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
+import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits, formatMonthYear, bsMonthYearToAdMonthYear } from "@/lib/utils";
 
 interface Student {
   id: number;
@@ -57,9 +59,8 @@ const FeesPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "admission" | "program">("all");
-  const [shiftFilter, setShiftFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
-  const [monthYearFilter, setMonthYearFilter] = useState("");
+  const [shiftFilter, setShiftFilter] = useState("all");
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
@@ -67,7 +68,10 @@ const FeesPage = () => {
   const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">("all");
   const [shiftInput, setShiftInput] = useState("all");
   const [programInput, setProgramInput] = useState("all");
-  const [monthYearInput, setMonthYearInput] = useState("");
+  const [nepaliYearInput, setNepaliYearInput] = useState("");
+  const [nepaliMonthInput, setNepaliMonthInput] = useState("");
+  const [nepaliYearFilter, setNepaliYearFilter] = useState("");
+  const [nepaliMonthFilter, setNepaliMonthFilter] = useState("");
 
   const handleApplyFilters = () => {
     setSearchTerm(searchInput);
@@ -75,7 +79,8 @@ const FeesPage = () => {
     setTypeFilter(typeInput);
     setShiftFilter(shiftInput);
     setProgramFilter(programInput);
-    setMonthYearFilter(monthYearInput);
+    setNepaliYearFilter(nepaliYearInput);
+    setNepaliMonthFilter(nepaliMonthInput);
   };
 
   const handleClearFilters = () => {
@@ -84,13 +89,15 @@ const FeesPage = () => {
     setTypeInput("all");
     setShiftInput("all");
     setProgramInput("all");
-    setMonthYearInput("");
+    setNepaliYearInput("");
+    setNepaliMonthInput("");
     setSearchTerm("");
     setStatusFilter("all");
     setTypeFilter("all");
     setShiftFilter("all");
     setProgramFilter("all");
-    setMonthYearFilter("");
+    setNepaliYearFilter("");
+    setNepaliMonthFilter("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -212,11 +219,23 @@ const FeesPage = () => {
       if (typeFilter !== "all") url += `&fee_type=${typeFilter}`;
       if (shiftFilter !== "all") url += `&shift=${shiftFilter}`;
       if (programFilter !== "all") url += `&program_id=${programFilter}`;
-      if (monthYearFilter) {
-        const [y, m] = monthYearFilter.split("-");
-        const date = new Date(parseInt(y), parseInt(m) - 1);
-        const formatted = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-        url += `&month_year=${formatted}`;
+      if (nepaliYearFilter && nepaliMonthFilter) {
+        const formatted = bsMonthYearToAdMonthYear(parseInt(nepaliYearFilter), parseInt(nepaliMonthFilter));
+        if (formatted) {
+          url += `&month_year=${encodeURIComponent(formatted)}`;
+        }
+      } else if (nepaliYearFilter) {
+        // If only year is selected, we can't easily map to a single AD month-year string,
+        // but we can try to send the year. However, BS year spans two AD years.
+        // For now, let's keep it simple or just not filter if not both are present
+        // or send the BS year if the backend supports it (it likely won't if data is in AD).
+        // Let's try to find the year part of the AD equivalent.
+        const midYearAD = bsMonthYearToAdMonthYear(parseInt(nepaliYearFilter), 6); // Mid year (Ashwinish)
+        const adYear = midYearAD.split(" ")[1];
+        url += `&month_year=${encodeURIComponent(adYear)}`;
+      } else if (nepaliMonthFilter) {
+        // This is even harder as a Nepali month maps to two AD months.
+        // We'll skip filtering if only month is selected for now to avoid incorrect results.
       }
       if (studentIdParam) url += `&student_id=${studentIdParam}`;
       if (searchTerm) url += `&search=${searchTerm}`;
@@ -252,7 +271,7 @@ const FeesPage = () => {
   useEffect(() => {
     setLoading(true);
     fetchFees();
-  }, [statusFilter, typeFilter, shiftFilter, programFilter, monthYearFilter, studentIdParam, searchTerm]);
+  }, [statusFilter, typeFilter, shiftFilter, programFilter, nepaliYearFilter, nepaliMonthFilter, studentIdParam, searchTerm]);
 
   const handleDelete = async () => {
     if (!selectedFee) return;
@@ -298,11 +317,10 @@ const FeesPage = () => {
         ),
         fee_type: (
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-              fee.fee_type === "admission"
-                ? "bg-secondary/10 text-secondary"
-                : "bg-info/10 text-info"
-            }`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fee.fee_type === "admission"
+              ? "bg-secondary/10 text-secondary"
+              : "bg-info/10 text-info"
+              }`}
           >
             {fee.fee_type === "admission"
               ? "Admission"
@@ -313,7 +331,12 @@ const FeesPage = () => {
         ),
         month_year: (
           <span className="text-xs text-gray-600 font-medium">
-            {fee.month_year ?? "—"}
+            {fee.month_year ? (
+              // Check if fee.month_year looks like a date or just month-year
+              fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year) ?
+                (/\d{1,2}\s/.test(fee.month_year) ? formatDate(fee.month_year) : formatMonthYear(fee.month_year))
+                : fee.month_year
+            ) : "—"}
           </span>
         ),
         total_amount: (
@@ -346,11 +369,10 @@ const FeesPage = () => {
         ),
         status: (
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-              fee.status === "paid"
-                ? "bg-success/10 text-success"
-                : "bg-warning/10 text-warning"
-            }`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fee.status === "paid"
+              ? "bg-success/10 text-success"
+              : "bg-warning/10 text-warning"
+              }`}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${fee.status === "paid" ? "bg-success" : "bg-warning"}`}
@@ -435,16 +457,38 @@ const FeesPage = () => {
               </select>
             </div>
 
-            {/* Month/Year Filter */}
-            <div className="relative flex-1 sm:flex-none">
-              <div className="relative">
-                <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                <input
-                  type="month"
-                  value={monthYearInput}
-                  onChange={e => setMonthYearInput(e.target.value)}
-                  className="w-full sm:w-44 pl-9 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none font-medium cursor-pointer"
-                />
+            {/* Nepali Month/Year Filter */}
+            <div className="flex gap-2 w-full sm:w-auto">
+              {/* Year Select */}
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={nepaliYearInput}
+                  onChange={(e) => setNepaliYearInput(e.target.value)}
+                  className="w-full sm:w-28 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
+                >
+                  <option value="">Year</option>
+                  {Array.from({ length: 11 }, (_, i) => 2080 + i).map((year) => (
+                    <option key={year} value={year}>
+                      {toNepaliDigits(year)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month Select */}
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={nepaliMonthInput}
+                  onChange={(e) => setNepaliMonthInput(e.target.value)}
+                  className="w-full sm:w-32 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
+                >
+                  <option value="">Month</option>
+                  {nepaliMonthNames.map((name, index) => (
+                    <option key={name} value={index + 1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -456,8 +500,8 @@ const FeesPage = () => {
                 Apply
               </button>
 
-              {(shiftInput !== 'all' || programInput !== 'all' || monthYearInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || monthYearFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
-                <button 
+              {(shiftInput !== 'all' || programInput !== 'all' || nepaliYearInput !== '' || nepaliMonthInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || nepaliYearFilter !== '' || nepaliMonthFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
+                <button
                   type="button"
                   onClick={handleClearFilters}
                   className="text-[10px] font-black uppercase tracking-widest text-error hover:text-error/80 transition-colors cursor-pointer"

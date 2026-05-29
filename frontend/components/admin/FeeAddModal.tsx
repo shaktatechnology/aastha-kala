@@ -26,6 +26,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Portal } from "../global/Portal";
+import { formatMonthYear } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "./ThermalBill";
@@ -199,23 +200,26 @@ const METHODS = [
   { key: "Bank Transfer", icon: Building, label: "Bank Transfer" },
   { key: "Digital Wallet", icon: Smartphone, label: "Digital Wallet" },
   { key: "Cheque", icon: FileText, label: "Cheque" },
+  { key: "Esewa", icon: Smartphone, label: "Esewa" },
 ] as const;
 
 const MethodDropdown: React.FC<{
-  value: string;
-  onChange: (v: string) => void;
+  value: string[];
+  onChange: (v: string[]) => void;
 }> = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const cur = METHODS.find((m) => m.key === value) ?? METHODS[0];
+
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  const label = value.length > 0 ? value.join(", ") : "Select methods";
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -223,9 +227,8 @@ const MethodDropdown: React.FC<{
         onClick={() => setOpen(!open)}
         className="flex items-center gap-3 border border-border rounded-lg px-3 py-2 bg-background hover:bg-surface-hover hover:border-primary/50 transition-all cursor-pointer shadow-sm"
       >
-        <cur.icon className="w-3.5 h-3.5 text-primary" />
-        <span className="text-xs font-black uppercase tracking-wider text-text-primary">
-          {cur.label}
+        <span className="text-xs font-black uppercase tracking-wider text-text-primary truncate max-w-[140px]">
+          {label}
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 text-text-muted transition-transform duration-300 ${open ? "rotate-180" : ""}`}
@@ -235,19 +238,22 @@ const MethodDropdown: React.FC<{
         <div className="absolute left-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl z-50 py-1 w-48 animate-scale-in">
           {METHODS.map((m) => {
             const Ic = m.icon;
+            const selected = value.includes(m.key);
             return (
               <button
                 key={m.key}
                 type="button"
                 onClick={() => {
-                  onChange(m.key);
-                  setOpen(false);
+                  const next = selected
+                    ? value.filter((item) => item !== m.key)
+                    : [...value, m.key];
+                  onChange(next.length ? next : ["Cash"]);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-black uppercase tracking-wider transition-all ${m.key === value ? "bg-primary/10 text-primary" : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"}`}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-black uppercase tracking-wider transition-all ${selected ? "bg-primary/10 text-primary" : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"}`}
               >
                 <Ic className="w-3.5 h-3.5" />
                 <span className="flex-1 text-left">{m.label}</span>
-                {m.key === value && <Check className="w-3.5 h-3.5" />}
+                {selected && <Check className="w-3.5 h-3.5" />}
               </button>
             );
           })}
@@ -279,7 +285,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
 
   const [progEntries, setProgEntries] = useState<ProgramFeeEntry[]>([]);
   const [progPeriod, setProgPeriod] = useState(getCurrentPeriod());
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(["Cash"]);
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -357,11 +363,16 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
           setTotalPayInput("");
           if (d.period_record) {
             setRemarks((prev) => prev || d.period_record?.remarks || "");
-            setPaymentMethod((prev) =>
-              prev === "Cash"
-                ? d.period_record?.payment_method || "Cash"
-                : prev,
-            );
+            setPaymentMethods((prev) => {
+              if (prev.length === 1 && prev[0] === "Cash") {
+                const methods = String(d.period_record?.payment_method || "Cash")
+                  .split(",")
+                  .map((m) => m.trim())
+                  .filter(Boolean);
+                return methods.length > 0 ? methods : ["Cash"];
+              }
+              return prev;
+            });
           }
           if (d.program_fees?.programs_breakdown) {
             setProgEntries(
@@ -420,7 +431,11 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
       setSelectedStudent(fee.student ?? null);
       setSearchQuery(fee.student?.name ?? "");
       setProgPeriod(fee.month_year ?? "");
-      setPaymentMethod(fee.payment_method ?? "Cash");
+      const methods = String(fee.payment_method || "Cash")
+        .split(",")
+        .map((m: string) => m.trim())
+        .filter(Boolean);
+      setPaymentMethods(methods.length > 0 ? methods : ["Cash"]);
       setRemarks(fee.remarks ?? "");
       fetchFeeInfo(fee.student_id?.toString(), fee.month_year);
     }
@@ -652,9 +667,9 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
       const payload: Record<string, any> = {
         student_id: selectedStudentId,
         fee_type: activeFeeType,
-        month_year: formatPeriodToReadable(progPeriod),
-        payment_method: paymentMethod,
-        remarks: remarks || `${activeFeeType} — ${formatPeriodToReadable(progPeriod)}`,
+        month_year: progPeriod,
+        payment_method: paymentMethods.join(", "),
+        remarks: remarks || `${activeFeeType} — ${formatMonthYear(progPeriod)}`,
       };
 
       if (calculations.hasAdm) {
@@ -697,7 +712,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         id: result.id || fee?.id || "N/A",
         student: selectedStudent,
         month_year: progPeriod,
-        payment_method: paymentMethod,
+        payment_method: paymentMethods.join(", "),
         fee_type: activeFeeType,
         total_amount: calculations.grandTotal,
         gross_amount:
@@ -708,7 +723,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         payments: [
           {
             created_at: new Date().toISOString(),
-            payment_method: paymentMethod,
+            payment_method: paymentMethods.join(", "),
             paid_amount: calculations.totalCollected,
           },
         ],
@@ -874,14 +889,18 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                     </h3>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <MethodDropdown value={paymentMethod} onChange={setPaymentMethod} />
-                    <div className="flex items-center gap-2 border border-border rounded-xl px-3 sm:px-4 py-2 bg-background shadow-inner relative">
-                      <Calendar className="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <input 
-                        type="month" 
-                        value={progPeriod} 
-                        onChange={e => setProgPeriod(e.target.value)} 
-                        className="bg-transparent outline-none text-[11px] font-bold text-text-primary w-28 sm:w-32 pl-5 cursor-pointer" 
+                    <MethodDropdown value={paymentMethods} onChange={setPaymentMethods} />
+                    <div className="relative flex items-center gap-2 border border-border rounded-xl px-3 sm:px-4 py-2 bg-background shadow-inner">
+                      <Calendar className="w-3.5 h-3.5 text-text-muted" />
+                      <span className="text-[11px] font-bold text-text-primary">
+                        {formatMonthYear(progPeriod || getCurrentPeriod())}
+                      </span>
+                      <input
+                        type="month"
+                        value={progPeriod}
+                        onChange={(e) => setProgPeriod(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        aria-label="Select month and year"
                       />
                     </div>
                   </div>

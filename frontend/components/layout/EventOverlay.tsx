@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Calendar, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { formatDate } from "@/lib/utils";
 
 interface Event {
     id: number;
@@ -125,11 +126,7 @@ const EventOverlay = () => {
                             </div>
                             <div>
                                 <p className="font-bold text-gray-900 uppercase text-[10px] tracking-tighter">Date & Time</p>
-                                <span>{new Date(currentEvent.event_date).toLocaleDateString(undefined, {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                })}</span>
+                                <span>{formatDate(currentEvent.event_date)}</span>
                             </div>
                         </div>
                         <div className="flex items-center text-gray-600 text-sm">

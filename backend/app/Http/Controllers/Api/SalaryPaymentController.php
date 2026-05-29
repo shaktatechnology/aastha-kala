@@ -147,4 +147,13 @@ class SalaryPaymentController extends Controller
             'message' => 'Salary payment deleted successfully'
         ]);
     }
+
+    public function getStoredYears()
+    {
+        $years = SalaryPayment::distinct()->orderBy('year', 'desc')->pluck('year');
+        return response()->json([
+            'success' => true,
+            'data' => $years
+        ]);
+    }
 }

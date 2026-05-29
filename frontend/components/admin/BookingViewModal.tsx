@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, AlertTriangle, Edit3, Layout,
 } from "lucide-react";
 import { to12h } from "@/lib/timeFormat";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface BookingViewModalProps {
@@ -17,7 +17,7 @@ interface BookingViewModalProps {
 }
 
 const statusColors: any = {
-  pending:  "bg-yellow-50 text-yellow-700 border-yellow-200",
+  pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
   accepted: "bg-green-50 text-green-700 border-green-200",
   rejected: "bg-red-50 text-red-700 border-red-200",
 };
@@ -39,12 +39,12 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
   onStatusUpdate,
 }) => {
   const [availableInstructors, setAvailableInstructors] = React.useState<any[]>([]);
-  const [loadingInstructors, setLoadingInstructors]     = React.useState(false);
+  const [loadingInstructors, setLoadingInstructors] = React.useState(false);
   const [selectedInstructorId, setSelectedInstructorId] = React.useState<number | "">("");
 
   // Editable agreed time (customization bookings only)
   const [agreedStart, setAgreedStart] = React.useState("");
-  const [agreedEnd,   setAgreedEnd]   = React.useState("");
+  const [agreedEnd, setAgreedEnd] = React.useState("");
   const [editingTime, setEditingTime] = React.useState(false);
 
   React.useEffect(() => {
@@ -156,9 +156,9 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                 </h3>
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-5">
                   {[
-                    { label: "Full Name",       value: booking.name,    icon: <User className="w-4 h-4 text-gray-400" /> },
-                    { label: "Contact Email",   value: booking.email,   icon: <Mail className="w-4 h-4 text-gray-400" /> },
-                    { label: "Phone Number",    value: booking.phone,   icon: <Phone className="w-4 h-4 text-gray-400" /> },
+                    { label: "Full Name", value: booking.name, icon: <User className="w-4 h-4 text-gray-400" /> },
+                    { label: "Contact Email", value: booking.email, icon: <Mail className="w-4 h-4 text-gray-400" /> },
+                    { label: "Phone Number", value: booking.phone, icon: <Phone className="w-4 h-4 text-gray-400" /> },
                     { label: "Current Address", value: booking.address || "Not provided", icon: <MapPin className="w-4 h-4 text-gray-400" /> },
                   ].map(({ label, value, icon }) => (
                     <div key={label} className="flex flex-col gap-1">
@@ -202,7 +202,7 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                   <div className="flex flex-col gap-1 border-t border-gray-200 pt-4">
                     <span className="text-xs font-medium text-gray-500 uppercase">Requested Date</span>
                     <span className="text-sm text-gray-900 font-medium flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-gray-400" /> {booking.booking_date}
+                      <Calendar className="w-4 h-4 text-gray-400" /> {booking.booking_date ? formatDate(booking.booking_date) : "N/A"}
                     </span>
                   </div>
 
@@ -277,15 +277,14 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                             Class Slot: {to12h(s.start_time)} – {to12h(s.end_time)}
                           </span>
                         </div>
-                        
+
                         {s.instructor ? (
                           <div
                             onClick={() => setSelectedInstructorId(s.instructor.id)}
-                            className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
-                              selectedInstructorId === s.instructor.id
+                            className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${selectedInstructorId === s.instructor.id
                                 ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
                                 : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
-                            }`}
+                              }`}
                           >
                             <User className="w-5 h-5" />
                             <div className="flex-1">
@@ -327,11 +326,10 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                                 <div
                                   key={ins.id}
                                   onClick={() => setSelectedInstructorId(ins.id)}
-                                  className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
-                                    selectedInstructorId === ins.id
+                                  className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${selectedInstructorId === ins.id
                                       ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
                                       : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
-                                  }`}
+                                    }`}
                                 >
                                   <User className="w-4 h-4" />
                                   <span className="line-clamp-1">{ins.name}</span>
@@ -366,11 +364,10 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                             <div
                               key={ins.id}
                               onClick={() => setSelectedInstructorId(ins.id)}
-                              className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
-                                selectedInstructorId === ins.id
+                              className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${selectedInstructorId === ins.id
                                   ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
                                   : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
-                              }`}
+                                }`}
                             >
                               <User className="w-4 h-4 text-gray-400" />
                               <div className="flex-1">
@@ -398,11 +395,10 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                             <div
                               key={ins.id}
                               onClick={() => setSelectedInstructorId(ins.id)}
-                              className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${
-                                selectedInstructorId === ins.id
+                              className={`border rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 cursor-pointer transition-all ${selectedInstructorId === ins.id
                                   ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
                                   : "bg-white border-gray-200 text-gray-700 hover:border-blue-300"
-                              }`}
+                                }`}
                             >
                               <Clock className="w-4 h-4 text-gray-400" />
                               <div className="flex-1">
@@ -531,11 +527,10 @@ const BookingViewModal: React.FC<BookingViewModalProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-semibold text-sm ${
-                        timeConflict
+                      <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-semibold text-sm ${timeConflict
                           ? "bg-red-50 border-red-200 text-red-800"
                           : "bg-white border-gray-200 text-gray-900"
-                      }`}>
+                        }`}>
                         <Clock className="w-4 h-4 text-gray-500" />
                         {agreedStart && agreedEnd
                           ? `${to12h(agreedStart)} – ${to12h(agreedEnd)}`

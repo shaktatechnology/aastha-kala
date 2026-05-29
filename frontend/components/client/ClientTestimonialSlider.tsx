@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { formatDateShort } from "@/lib/utils";
 import { Autoplay, Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
@@ -116,7 +117,7 @@ const ClientTestimonialSlider: React.FC<ClientTestimonialSliderProps> = ({ data 
 
             {/* Date */}
             <p className="text-xs text-gray-400 mt-4">
-              {new Date(item.created_at).toDateString()}
+              {formatDateShort(item.created_at)}
             </p>
           </div>
         </SwiperSlide>

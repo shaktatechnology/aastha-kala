@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/Table";
+import { formatDate } from "@/lib/utils";
 import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
 import { toast } from "sonner";
 import { Pagination } from "@/components/global/Pagination";
@@ -294,7 +295,7 @@ const BookingManagementPage = () => {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="text-sm font-medium text-gray-900">{b.booking_date}</div>
+                                                    <div className="text-sm font-medium text-gray-900">{b.booking_date ? formatDate(b.booking_date) : "-"}</div>
                                                     <div className="text-xs text-gray-500 mt-0.5">
                                                         {b.type === 'regular' ? (
                                                             b.schedule ? `${to12h(b.schedule.start_time)} - ${to12h(b.schedule.end_time)}` : 

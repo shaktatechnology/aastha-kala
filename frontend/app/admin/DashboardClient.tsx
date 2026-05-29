@@ -34,6 +34,7 @@ import GalleryAddEditModal from "@/components/admin/GalleryAddEditModal";
 import StudentAddEditModal from "@/components/admin/StudentAddEditModal";
 import BookingViewModal from "@/components/admin/BookingViewModal";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { formatDate as convertToNepaliDate } from "@/lib/utils";
 
 const PIE_COLORS = ["#6366f1", "#ec4899", "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6"];
 
@@ -57,7 +58,7 @@ const PulseCard = ({
   alert?: boolean;
   onClick?: () => void;
 }) => (
-  <div 
+  <div
     onClick={onClick}
     className={`bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200 group overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
   >
@@ -145,20 +146,20 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 pb-8 animate-fade-in font-poppins">
-      
+
       {/* ──── TOP BAR: PULSE METRICS ──── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <PulseCard
           title="Total Employees"
           value={stats.total_employees || 0}
           icon={Users}
-          subtitle={<span className="flex items-center text-[var(--primary)] gap-2"><Activity className="w-4 h-4"/> Active Staff</span>}
+          subtitle={<span className="flex items-center text-[var(--primary)] gap-2"><Activity className="w-4 h-4" /> Active Staff</span>}
         />
         <PulseCard
           title="Active Students"
           value={stats.total_students || 0}
           icon={Users}
-          subtitle={<span className="flex items-center text-[var(--primary)] gap-2"><Activity className="w-4 h-4 animate-pulse"/> Live</span>}
+          subtitle={<span className="flex items-center text-[var(--primary)] gap-2"><Activity className="w-4 h-4 animate-pulse" /> Live</span>}
         />
         <PulseCard
           title="Outstanding Fees"
@@ -176,24 +177,24 @@ const Dashboard = () => {
 
       {/* ──── MIDDLE SECTION: CHARTS ──── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        
+
         {/* LEFT: Expense Categories Flow */}
         <div className="lg:col-span-8 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)]">Expense Categories</h2>
             <div className="flex gap-2 text-xs w-fit">
-              <CustomSelect 
-                options={monthOptions} 
-                value={expenseFilter.month} 
-                onChange={(val) => setExpenseFilter({...expenseFilter, month: val})} 
-                placeholder="Month" 
+              <CustomSelect
+                options={monthOptions}
+                value={expenseFilter.month}
+                onChange={(val) => setExpenseFilter({ ...expenseFilter, month: val })}
+                placeholder="Month"
                 className="w-28"
               />
-              <CustomSelect 
-                options={yearOptions} 
-                value={expenseFilter.year} 
-                onChange={(val) => setExpenseFilter({...expenseFilter, year: val})} 
-                placeholder="Year" 
+              <CustomSelect
+                options={yearOptions}
+                value={expenseFilter.year}
+                onChange={(val) => setExpenseFilter({ ...expenseFilter, year: val })}
+                placeholder="Year"
                 className="w-24"
               />
             </div>
@@ -202,8 +203,8 @@ const Dashboard = () => {
             {expenseCategories.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={expenseCategories} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{fill: 'var(--text-main)', opacity: 0.6, fontSize: 12}} dy={10} />
-                  <Tooltip 
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--text-main)', opacity: 0.6, fontSize: 12 }} dy={10} />
+                  <Tooltip
                     contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow)' }}
                     itemStyle={{ fontWeight: 600, color: '#f87171' }}
                     labelStyle={{ fontWeight: 700, color: 'var(--text-main)' }}
@@ -224,25 +225,25 @@ const Dashboard = () => {
             <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] shrink-0">Employee Attendance</h2>
           </div>
           <div className="flex flex-wrap gap-2 mb-4 text-[10px] w-full">
-            <CustomSelect 
-              options={dayOptions} 
-              value={attendanceFilter.day} 
-              onChange={(val) => setAttendanceFilter({...attendanceFilter, day: val})} 
-              placeholder="Day" 
+            <CustomSelect
+              options={dayOptions}
+              value={attendanceFilter.day}
+              onChange={(val) => setAttendanceFilter({ ...attendanceFilter, day: val })}
+              placeholder="Day"
               className="flex-1 min-w-[70px]"
             />
-            <CustomSelect 
-              options={monthOptions} 
-              value={attendanceFilter.month} 
-              onChange={(val) => setAttendanceFilter({...attendanceFilter, month: val})} 
-              placeholder="Month" 
+            <CustomSelect
+              options={monthOptions}
+              value={attendanceFilter.month}
+              onChange={(val) => setAttendanceFilter({ ...attendanceFilter, month: val })}
+              placeholder="Month"
               className="flex-1 min-w-[80px]"
             />
-            <CustomSelect 
-              options={yearOptions} 
-              value={attendanceFilter.year} 
-              onChange={(val) => setAttendanceFilter({...attendanceFilter, year: val})} 
-              placeholder="Year" 
+            <CustomSelect
+              options={yearOptions}
+              value={attendanceFilter.year}
+              onChange={(val) => setAttendanceFilter({ ...attendanceFilter, year: val })}
+              placeholder="Year"
               className="flex-1 min-w-[70px]"
             />
           </div>
@@ -264,7 +265,7 @@ const Dashboard = () => {
                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: 'var(--card-bg)', border: 'none', borderRadius: '8px', boxShadow: 'var(--shadow)' }}
                     itemStyle={{ fontWeight: 600, color: 'var(--text-main)' }}
                   />
@@ -315,7 +316,7 @@ const Dashboard = () => {
 
       {/* ──── LOWER SECTION: OPERATIONAL GRID ──── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        
+
         {/* Schedule */}
         <div className="lg:col-span-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
           <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] mb-3">Instructor Schedule (Today)</h2>
@@ -331,7 +332,7 @@ const Dashboard = () => {
                 </div>
               ))
             ) : (
-               <div className="text-sm text-[var(--text-main)] opacity-50 font-medium py-4 text-center">No classes scheduled</div>
+              <div className="text-sm text-[var(--text-main)] opacity-50 font-medium py-4 text-center">No classes scheduled</div>
             )}
           </div>
         </div>
@@ -361,7 +362,7 @@ const Dashboard = () => {
                   {eventsData.map((evt: any, i: number) => (
                     <tr key={i} className="hover:bg-[#f8fafc] transition-colors relative group">
                       <td className="px-4 py-3 text-sm font-semibold text-[var(--text-main)] text-center border-l-4 border-transparent group-hover:border-[var(--primary)] truncate" title={evt.title}>{evt.title}</td>
-                      <td className="px-4 py-3 text-xs font-black text-[var(--primary)] text-center truncate">{evt.date}</td>
+                      <td className="px-4 py-3 text-xs font-black text-[var(--primary)] text-center truncate">{convertToNepaliDate(evt.date)}</td>
                       <td className="px-4 py-3 text-xs font-semibold text-[var(--text-main)] opacity-60 text-center truncate" title={evt.location}>{evt.location}</td>
                     </tr>
                   ))}
@@ -377,7 +378,7 @@ const Dashboard = () => {
         <div className="lg:col-span-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
           <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] mb-3">Quick Actions</h2>
           <div className="flex flex-col gap-2">
-            <button 
+            <button
               onClick={() => openModal('student')}
               className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
             >
@@ -387,7 +388,7 @@ const Dashboard = () => {
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-70" />
             </button>
-            <button 
+            <button
               onClick={() => openModal('program')}
               className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
             >
@@ -397,7 +398,7 @@ const Dashboard = () => {
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-70" />
             </button>
-            <button 
+            <button
               onClick={() => router.push('/admin/expenses')}
               className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
             >
@@ -407,7 +408,7 @@ const Dashboard = () => {
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-70" />
             </button>
-            <button 
+            <button
               onClick={() => router.push('/admin/fees')}
               className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
             >
@@ -458,7 +459,7 @@ const Dashboard = () => {
         isOpen={modals.viewBooking}
         onClose={() => closeModal("viewBooking")}
         booking={selectedBooking}
-        onStatusUpdate={(status, instId, start, end) => {}}
+        onStatusUpdate={(status, instId, start, end) => { }}
       />
     </div>
   );

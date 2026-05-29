@@ -17,10 +17,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Banknote,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import toast from "react-hot-toast";
 
 interface SidebarProps {
@@ -33,7 +33,8 @@ const menuItems = [
   { name: "Employees", icon: Users, href: "/admin/employees" },
   { name: "Salary Management", icon: CreditCard, href: "/admin/salary" },
   { name: "Inhouse Expenses", icon: Banknote, href: "/admin/expenses" },
-  
+  { name: "Company Income", icon: TrendingUp, href: "/admin/company-income" },
+
   {
     name: "Instructor Schedule",
     icon: Calendar,
@@ -87,9 +88,8 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
   };
   return (
     <aside
-      className={`h-screen flex flex-col transition-all duration-500 ease-in-out bg-brand-deep text-white shadow-2xl z-40 sticky top-0 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
+      className={`h-screen flex flex-col transition-all duration-500 ease-in-out bg-brand-deep text-white shadow-2xl z-40 sticky top-0 ${collapsed ? "w-20" : "w-64"
+        }`}
     >
       {/* Sidebar content */}
       <div className="flex flex-col h-screen relative z-10 overflow-hidden">
@@ -123,17 +123,15 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={`flex items-center p-3 rounded-xl transition-all duration-300 group
-                      ${
-                        isActive
-                          ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]"
-                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      ${isActive
+                        ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
                       }
                     `}
                   >
                     <item.icon
-                      className={`w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110 ${
-                        isActive ? "text-white" : "text-white/40 group-hover:text-white"
-                      }`}
+                      className={`w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110 ${isActive ? "text-white" : "text-white/40 group-hover:text-white"
+                        }`}
                     />
 
                     {!collapsed && (
@@ -146,7 +144,7 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
                       <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                     )}
                   </Link>
-                  
+
                   {collapsed && (
                     <div className="absolute left-full ml-2 px-2 py-1 bg-brand-deep border border-white/10 rounded-md text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       {item.name}
@@ -163,11 +161,10 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
           <button
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-              isLoggingOut
-                ? "opacity-50 cursor-not-allowed"
-                : "text-error hover:bg-error/10 hover:text-error"
-            } ${collapsed ? "justify-center" : ""}`}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold text-sm transition-all duration-300 ${isLoggingOut
+              ? "opacity-50 cursor-not-allowed"
+              : "text-error hover:bg-error/10 hover:text-error"
+              } ${collapsed ? "justify-center" : ""}`}
           >
             {isLoggingOut ? (
               <div className="w-5 h-5 border-2 border-error/30 border-t-error rounded-full animate-spin" />

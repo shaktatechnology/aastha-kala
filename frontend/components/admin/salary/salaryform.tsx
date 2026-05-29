@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import { 
+import {
   User, Wallet, AlertCircle, Save, Calendar, Info
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatBsMonthYear, getBsDateParts, toNepaliDigits } from '@/lib/utils';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { NepaliDateInput } from '@/components/ui/NepaliDateInput';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -33,12 +34,12 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
   );
 }
 
-export function SalaryForm({ 
-  initialData, 
+export function SalaryForm({
+  initialData,
   onSuccess,
   onCancel,
   isViewMode = false
-}: { 
+}: {
   initialData?: any,
   onSuccess: () => void,
   onCancel: () => void,
@@ -48,13 +49,15 @@ export function SalaryForm({
   const [employees, setEmployees] = React.useState<any[]>([]);
   const [fetchingEmployees, setFetchingEmployees] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string[]>>({});
-  
+
+  const currentBs = getBsDateParts(new Date()) || { month: 1, year: 2083 };
+
   // Form state
   const [employeeId, setEmployeeId] = React.useState(initialData?.employee_id || "");
   const [amount, setAmount] = React.useState(initialData?.amount || "");
   const [paymentDate, setPaymentDate] = React.useState(initialData?.payment_date || new Date().toISOString().split('T')[0]);
-  const [month, setMonth] = React.useState(initialData?.month || new Date().getMonth() + 1);
-  const [year, setYear] = React.useState(initialData?.year || new Date().getFullYear());
+  const [month, setMonth] = React.useState(initialData?.month || currentBs.month);
+  const [year, setYear] = React.useState(initialData?.year || currentBs.year);
   const [paymentType, setPaymentType] = React.useState(initialData?.payment_type || "salary");
   const [remarks, setRemarks] = React.useState(initialData?.remarks || "");
 
@@ -82,7 +85,7 @@ export function SalaryForm({
   const handleSave = async () => {
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       if (Number(amount) <= 0) {
         setErrors({ amount: ["Please enter a valid positive amount"] });
@@ -101,10 +104,10 @@ export function SalaryForm({
 
       const response = await fetch(`${API_URL}/admin/salary-payments${initialData ? `/${initialData.id}` : ''}`, {
         method: initialData ? 'PUT' : 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json', 
-          'Authorization': `Bearer ${localStorage.getItem("token")}` 
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem("token")}`
         },
         body: JSON.stringify(payload)
       });
@@ -160,12 +163,12 @@ export function SalaryForm({
               placeholder="Select an employee"
             />
             <ErrorMessage message={errors.employee_id?.[0]} />
-            
+
             {selectedEmployee && (
               <div className="mt-2 p-3 bg-blue-50 rounded-lg flex items-start gap-2 border border-blue-100">
                 <Info className="size-4 text-blue-500 mt-0.5" />
                 <div className="text-sm text-blue-700">
-                  <span className="font-semibold">{selectedEmployee.name}</span>'s standard {selectedEmployee.salary_basis}: 
+                  <span className="font-semibold">{selectedEmployee.name}</span>'s standard {selectedEmployee.salary_basis}:
                   <span className="ml-1 font-bold">
                     {selectedEmployee.salary_basis === 'salary' ? `Rs. ${selectedEmployee.salary_amount}` : `${selectedEmployee.percentage}%`}
                   </span>
@@ -207,38 +210,49 @@ export function SalaryForm({
 
           <div>
             <FieldLabel label="Payment Date" required />
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-              <Input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="pl-10 h-11"
-              />
-            </div>
+            <NepaliDateInput
+              value={paymentDate}
+              onChange={(val) => setPaymentDate(val)}
+              placeholder="Select payment date"
+            />
+            {paymentDate && (
+              <p className="text-xs text-gray-500 mt-1.5 px-1">
+                Selected: <span className="font-medium text-gray-700">{formatDate(paymentDate)}</span>
+              </p>
+            )}
             <ErrorMessage message={errors.payment_date?.[0]} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <FieldLabel label="Month" required />
+              <FieldLabel label="Month (Nepali)" required />
               <CustomSelect
-                value={month}
-                onChange={(val) => setMonth(val)}
-                options={Array.from({ length: 12 }, (_, i) => ({
-                  value: (i + 1).toString(),
-                  label: new Date(0, i).toLocaleString('default', { month: 'long' })
-                }))}
+                value={month.toString()}
+                onChange={(val) => setMonth(Number(val))}
+                options={[
+                  { value: "1", label: "बैशाख" },
+                  { value: "2", label: "जेठ" },
+                  { value: "3", label: "आषाढ" },
+                  { value: "4", label: "श्रावण" },
+                  { value: "5", label: "भाद्र" },
+                  { value: "6", label: "आश्विन" },
+                  { value: "7", label: "कार्तिक" },
+                  { value: "8", label: "मार्गशीर्ष" },
+                  { value: "9", label: "पौष" },
+                  { value: "10", label: "माघ" },
+                  { value: "11", label: "फाल्गुण" },
+                  { value: "12", label: "चैत्र" }
+                ]}
               />
             </div>
             <div>
               <FieldLabel label="Year" required />
               <CustomSelect
-                value={year}
-                onChange={(val) => setYear(val)}
+                value={year.toString()}
+                onChange={(val) => setYear(Number(val))}
                 options={Array.from({ length: 5 }, (_, i) => {
-                  const y = (new Date().getFullYear() - 2 + i).toString();
-                  return { value: y, label: y };
+                  const y = currentBs.year - 2 + i;
+                  return { value: y.toString(), label: toNepaliDigits(y) };
                 })}
               />
             </div>
@@ -259,8 +273,8 @@ export function SalaryForm({
       {/* Footer */}
       <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
         {isViewMode ? (
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             onClick={onCancel}
             className="bg-gray-800 text-white px-8 h-11 text-base font-medium"
           >
@@ -268,17 +282,17 @@ export function SalaryForm({
           </Button>
         ) : (
           <>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={onCancel}
               className="px-6 h-11 text-black bg-white border border-gray-300 hover:bg-gray-100"
             >
               Cancel
             </Button>
-            <Button 
-              type="button" 
-              onClick={handleSave} 
+            <Button
+              type="button"
+              onClick={handleSave}
               disabled={isLoading || fetchingEmployees}
               className="bg-primary hover:bg-primary/90 text-white px-8 h-11 text-base font-medium shadow-sm"
             >

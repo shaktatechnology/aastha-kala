@@ -5,6 +5,8 @@ import InputField from "@/components/layout/InputField";
 import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, Search, ArrowRight, AlertCircle, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import { to12h } from "@/lib/timeFormat";
+import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
+import { formatDate } from "@/lib/utils";
 
 interface StudentData {
   id?: number;
@@ -60,7 +62,7 @@ const StudentAddEditModal: React.FC<Props> = ({
   });
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{[key: string]: string[]}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
   const [loading, setLoading] = useState(false);
 
   // Booking Import State
@@ -73,7 +75,7 @@ const StudentAddEditModal: React.FC<Props> = ({
   const [programs, setPrograms] = useState<any[]>([]);
 
   // Instructor Availabilities map (instructor_id -> { free_segments, booked_segments })
-  const [instructorAvailabilities, setInstructorAvailabilities] = useState<{[key: number]: any}>({});
+  const [instructorAvailabilities, setInstructorAvailabilities] = useState<{ [key: number]: any }>({});
   const [loadingAvail, setLoadingAvail] = useState<number | null>(null);
 
   const fetchBookings = async () => {
@@ -121,8 +123,8 @@ const StudentAddEditModal: React.FC<Props> = ({
     toast.success(`Imported data for ${b.name}`);
   };
 
-  const filteredBookings = bookings.filter(b => 
-    b.name.toLowerCase().includes(bookingSearch.toLowerCase()) || 
+  const filteredBookings = bookings.filter(b =>
+    b.name.toLowerCase().includes(bookingSearch.toLowerCase()) ||
     b.phone.includes(bookingSearch)
   );
   const fetchPrograms = async () => {
@@ -157,30 +159,30 @@ const StudentAddEditModal: React.FC<Props> = ({
   const fetchInstructorAvailability = async (instructorId: number) => {
     if (instructorAvailabilities[instructorId]) return;
     try {
-        setLoadingAvail(instructorId);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${BASE_URL}/admin/instructor-availabilities/instructor/${instructorId}/free-slots`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-            setInstructorAvailabilities(prev => ({
-                ...prev,
-                [instructorId]: {
-                    free: data.free_segments || [],
-                    booked: data.booked_segments || []
-                }
-            }));
-            
-            // Re-fetch to get booked segments specifically if available, 
-            // but the current API already blocks busy time from free_segments.
-            // Let's refine the API response in our head or just show 'Busy' windows.
-            // Actually, I'll update the logic below to handle what's available.
-        }
+      setLoadingAvail(instructorId);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/admin/instructor-availabilities/instructor/${instructorId}/free-slots`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInstructorAvailabilities(prev => ({
+          ...prev,
+          [instructorId]: {
+            free: data.free_segments || [],
+            booked: data.booked_segments || []
+          }
+        }));
+
+        // Re-fetch to get booked segments specifically if available, 
+        // but the current API already blocks busy time from free_segments.
+        // Let's refine the API response in our head or just show 'Busy' windows.
+        // Actually, I'll update the logic below to handle what's available.
+      }
     } catch (e) {
-        console.error("Failed to fetch availability", e);
+      console.error("Failed to fetch availability", e);
     } finally {
-        setLoadingAvail(null);
+      setLoadingAvail(null);
     }
   };
 
@@ -219,9 +221,9 @@ const StudentAddEditModal: React.FC<Props> = ({
 
       // Fetch availability for all enrolled instructors to ensure conflict checking works on load
       student.enrollments?.forEach((e: any) => {
-          if (e.booking?.instructor_id) {
-              fetchInstructorAvailability(e.booking.instructor_id);
-          }
+        if (e.booking?.instructor_id) {
+          fetchInstructorAvailability(e.booking.instructor_id);
+        }
       });
     } else {
       setForm({
@@ -249,7 +251,7 @@ const StudentAddEditModal: React.FC<Props> = ({
 
   const handleChange = (key: string, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-    
+
     // Clear error for this field
     if (errors[key]) {
       setErrors((prev) => {
@@ -265,28 +267,28 @@ const StudentAddEditModal: React.FC<Props> = ({
     const exists = currentEnrollments.some((e: any) => e.program_id === program.id);
 
     if (exists) {
-        setForm(prev => ({ 
-            ...prev, 
-            enrollments: currentEnrollments.filter((e: any) => e.program_id !== program.id) 
-        }));
+      setForm(prev => ({
+        ...prev,
+        enrollments: currentEnrollments.filter((e: any) => e.program_id !== program.id)
+      }));
     } else {
-        setForm(prev => ({ 
-            ...prev, 
-            enrollments: [
-                ...currentEnrollments, 
-                { 
-                    program_id: program.id, 
-                    program_title: program.title, 
-                    type: "regular",
-                    instructor_id: null,
-                    status: "active",
-                    schedule_id: null,
-                    schedule_ids: [],
-                    custom_start_time: null,
-                    custom_end_time: null,
-                }
-            ] 
-        }));
+      setForm(prev => ({
+        ...prev,
+        enrollments: [
+          ...currentEnrollments,
+          {
+            program_id: program.id,
+            program_title: program.title,
+            type: "regular",
+            instructor_id: null,
+            status: "active",
+            schedule_id: null,
+            schedule_ids: [],
+            custom_start_time: null,
+            custom_end_time: null,
+          }
+        ]
+      }));
     }
   };
 
@@ -296,10 +298,10 @@ const StudentAddEditModal: React.FC<Props> = ({
 
   const updateEnrollment = (programId: number, data: any) => {
     setForm(prev => ({
-        ...prev,
-        enrollments: prev.enrollments?.map((e: any) => 
-            e.program_id === programId ? { ...e, ...data } : e
-        )
+      ...prev,
+      enrollments: prev.enrollments?.map((e: any) =>
+        e.program_id === programId ? { ...e, ...data } : e
+      )
     }));
   };
 
@@ -319,33 +321,33 @@ const StudentAddEditModal: React.FC<Props> = ({
       const formData = new FormData();
       console.log("Submitting form:", form);
       Object.keys(form).forEach(key => {
-          if (key === 'image') {
-              if (form.image instanceof File) {
-                  formData.append("image", form.image);
-              }
-          } else if (key === 'enrollments') {
-              form.enrollments?.forEach((e, index) => {
-                  formData.append(`enrollments[${index}][program_id]`, String(e.program_id));
-                  formData.append(`enrollments[${index}][type]`, e.type);
-                  formData.append(`enrollments[${index}][status]`, e.status || "active");
-                  if (e.booking_id) formData.append(`enrollments[${index}][booking_id]`, String(e.booking_id));
-                  if (e.instructor_id) formData.append(`enrollments[${index}][instructor_id]`, String(e.instructor_id));
-                  if (e.schedule_id) formData.append(`enrollments[${index}][schedule_id]`, String(e.schedule_id));
-                  if (e.schedule_ids?.length > 0) {
-                      e.schedule_ids.forEach((sid: any, sIdx: number) => {
-                          formData.append(`enrollments[${index}][schedule_ids][${sIdx}]`, String(sid));
-                      });
-                  }
-                  if (e.custom_start_time) {
-                      formData.append(`enrollments[${index}][custom_start_time]`, e.custom_start_time.substring(0, 5));
-                  }
-                  if (e.custom_end_time) {
-                      formData.append(`enrollments[${index}][custom_end_time]`, e.custom_end_time.substring(0, 5));
-                  }
-              });
-          } else {
-              formData.append(key, (form as any)[key] || "");
+        if (key === 'image') {
+          if (form.image instanceof File) {
+            formData.append("image", form.image);
           }
+        } else if (key === 'enrollments') {
+          form.enrollments?.forEach((e, index) => {
+            formData.append(`enrollments[${index}][program_id]`, String(e.program_id));
+            formData.append(`enrollments[${index}][type]`, e.type);
+            formData.append(`enrollments[${index}][status]`, e.status || "active");
+            if (e.booking_id) formData.append(`enrollments[${index}][booking_id]`, String(e.booking_id));
+            if (e.instructor_id) formData.append(`enrollments[${index}][instructor_id]`, String(e.instructor_id));
+            if (e.schedule_id) formData.append(`enrollments[${index}][schedule_id]`, String(e.schedule_id));
+            if (e.schedule_ids?.length > 0) {
+              e.schedule_ids.forEach((sid: any, sIdx: number) => {
+                formData.append(`enrollments[${index}][schedule_ids][${sIdx}]`, String(sid));
+              });
+            }
+            if (e.custom_start_time) {
+              formData.append(`enrollments[${index}][custom_start_time]`, e.custom_start_time.substring(0, 5));
+            }
+            if (e.custom_end_time) {
+              formData.append(`enrollments[${index}][custom_end_time]`, e.custom_end_time.substring(0, 5));
+            }
+          });
+        } else {
+          formData.append(key, (form as any)[key] || "");
+        }
       });
 
       if (student) {
@@ -370,11 +372,11 @@ const StudentAddEditModal: React.FC<Props> = ({
       if (!res.ok) {
         if (result.errors) {
           setErrors(result.errors);
-          
+
           // Scroll to the first error field
           const firstErrorKey = Object.keys(result.errors)[0];
           const elementId = firstErrorKey.replace(/\./g, "_");
-          
+
           setTimeout(() => {
             const element = document.getElementById(elementId);
             if (element) {
@@ -399,459 +401,456 @@ const StudentAddEditModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4 cursor-pointer">
-      <div className="bg-white w-full max-w-3xl rounded-[2rem] px-6 py-14 lg:p-8  relative overflow-y-auto max-h-[90vh] cursor-default shadow-2xl transition-all" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 lg:right-6 md:top-5 top-14 lg:top-6 text-gray-400 hover:text-black transition-colors p-2 bg-gray-50 rounded-full">
-          <X className="w-5 h-5" />
-        </button>
+      <div className="bg-white w-full max-w-3xl rounded-[2rem] relative overflow-visible max-h-[90vh] flex flex-col cursor-default shadow-2xl transition-all" onClick={(e) => e.stopPropagation()}>
+        <div className="flex-1 overflow-y-auto custom-scrollbar rounded-[2rem] p-8 lg:p-10" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onClose} className="absolute right-4 lg:right-6 md:top-5 top-14 lg:top-6 text-gray-400 hover:text-black transition-colors p-2 bg-gray-50 rounded-full">
+            <X className="w-5 h-5" />
+          </button>
 
-        <div className="mb-8">
+          <div className="mb-8">
             <h2 className="text-3xl font-black text-gray-900 leading-tight">
-                {student ? "Update Student" : "New Enrollment"}
+              {student ? "Update Student" : "New Enrollment"}
             </h2>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
-                <p className="text-gray-500 font-medium">Please fill in the student details below.</p>
-                {!student && (
-                    <button 
-                        onClick={fetchBookings}
-                        disabled={fetchingBookings}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
-                    >
-                        {fetchingBookings ? "Searching..." : (
-                            <>
-                                <Search className="w-3.5 h-3.5" />
-                                Pull from Booking
-                            </>
-                        )}
-                    </button>
-                )}
+              <p className="text-gray-500 font-medium">Please fill in the student details below.</p>
+              {!student && (
+                <button
+                  onClick={fetchBookings}
+                  disabled={fetchingBookings}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
+                >
+                  {fetchingBookings ? "Searching..." : (
+                    <>
+                      <Search className="w-3.5 h-3.5" />
+                      Pull from Booking
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-        </div>
+          </div>
 
-        {/* Booking Selection Overlay */}
-        {showBookingList && (
+          {/* Booking Selection Overlay */}
+          {showBookingList && (
             <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm p-8 flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 className="text-xl font-black text-gray-900">Select a Booking</h3>
-                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Import data quickly</p>
-                    </div>
-                    <button onClick={() => setShowBookingList(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <X className="w-5 h-5" />
-                    </button>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-black text-gray-900">Select a Booking</h3>
+                  <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Import data quickly</p>
                 </div>
+                <button onClick={() => setShowBookingList(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                <div className="relative mb-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input 
-                        type="text"
-                        placeholder="Search by name or phone..."
-                        value={bookingSearch}
-                        onChange={(e) => setBookingSearch(e.target.value)}
-                        className="w-full bg-gray-50 border-none rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 shadow-inner"
-                    />
-                </div>
-
-                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                    {filteredBookings.length > 0 ? filteredBookings.map((b: any) => (
-                        <button 
-                            key={b.id}
-                            onClick={() => selectBooking(b)}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-500 hover:shadow-md transition-all group text-left"
-                        >
-                            <div className="flex items-center">
-                                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mr-4 group-hover:bg-blue-600 transition-colors">
-                                    <User className="w-5 h-5 text-blue-600 group-hover:text-white" />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-gray-900">{b.name}</p>
-                                    <div className="flex items-center gap-3 mt-0.5">
-                                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                            <Phone className="w-2.5 h-2.5" /> {b.phone}
-                                        </span>
-                                        <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">
-                                            {b.program?.title}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                        </button>
-                    )) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                            <BookOpen className="w-10 h-10 mb-2 opacity-20" />
-                            <p className="text-sm font-medium">No bookings found</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Photo Section */}
-          <div id="image" className="flex flex-col items-center sm:flex-row gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-            <div className="relative group">
-                <div className={`w-24 h-24 rounded-2xl bg-white shadow-inner flex items-center justify-center overflow-hidden border-2 border-dashed ${errors.image ? 'border-red-500' : 'border-slate-200'} group-hover:border-blue-500 transition-colors`}>
-                    {previewImage ? (
-                        <img src={previewImage} className="w-full h-full object-cover" />
-                    ) : (
-                        <User className="w-10 h-10 text-slate-300" />
-                    )}
-                </div>
-                <input 
-                    type="file" 
-                    className="absolute inset-0 opacity-0 cursor-pointer" 
-                    onChange={(e) => handleImageChange(e.target.files?.[0] || null)}
-                    accept="image/*"
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or phone..."
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                  className="w-full bg-gray-50 border-none rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 shadow-inner"
                 />
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                {filteredBookings.length > 0 ? filteredBookings.map((b: any) => (
+                  <button
+                    key={b.id}
+                    onClick={() => selectBooking(b)}
+                    className="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-500 hover:shadow-md transition-all group text-left"
+                  >
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mr-4 group-hover:bg-blue-600 transition-colors">
+                        <User className="w-5 h-5 text-blue-600 group-hover:text-white" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{b.name}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5" /> {b.phone}
+                          </span>
+                          <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">
+                            {b.program?.title}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                  </button>
+                )) : (
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                    <BookOpen className="w-10 h-10 mb-2 opacity-20" />
+                    <p className="text-sm font-medium">No bookings found</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="text-center sm:text-left">
+          )}
+
+          <div className="space-y-6">
+            {/* Photo Section */}
+            <div id="image" className="flex flex-col items-center sm:flex-row gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+              <div className="relative group">
+                <div className={`w-24 h-24 rounded-2xl bg-white shadow-inner flex items-center justify-center overflow-hidden border-2 border-dashed ${errors.image ? 'border-red-500' : 'border-slate-200'} group-hover:border-blue-500 transition-colors`}>
+                  {previewImage ? (
+                    <img src={previewImage} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-10 h-10 text-slate-300" />
+                  )}
+                </div>
+                <input
+                  type="file"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  onChange={(e) => handleImageChange(e.target.files?.[0] || null)}
+                  accept="image/*"
+                />
+              </div>
+              <div className="text-center sm:text-left">
                 <p className={`font-bold ${errors.image ? 'text-red-500' : 'text-gray-900'}`}>Student Photo</p>
                 <p className="text-xs text-gray-500 max-w-[200px]">Upload a clear photo. Recommended size: 500x500px.</p>
                 {errors.image && <p className="text-red-500 text-[10px] font-bold mt-1">{errors.image[0]}</p>}
                 {previewImage && (
-                    <button onClick={() => { setPreviewImage(null); setForm({...form, image: null}); }} className="mt-2 text-[10px] font-bold text-red-500 uppercase tracking-tighter hover:underline">Remove Photo</button>
+                  <button onClick={() => { setPreviewImage(null); setForm({ ...form, image: null }); }} className="mt-2 text-[10px] font-bold text-red-500 uppercase tracking-tighter hover:underline">Remove Photo</button>
                 )}
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Full Name"
-              id="name"
-              required
-              icon={User}
-              value={form.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              disabled={loading}
-              error={errors.name}
-            />
-            <InputField
-              label="Phone Number"
-              id="phone"
-              required
-              icon={Phone}
-              value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
-              disabled={loading}
-              error={errors.phone}
-            />
-            <InputField
-              label="Email Address"
-              id="email"
-              icon={Mail}
-              value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              disabled={loading}
-              error={errors.email}
-            />
-            <InputField
-              label="Address"
-              icon={MapPin}
-              value={form.address}
-              onChange={(e) => handleChange("address", e.target.value)}
-              disabled={loading}
-              error={errors.address}
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InputField
+                label="Full Name"
+                id="name"
+                required
+                icon={User}
+                value={form.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                disabled={loading}
+                error={errors.name}
+              />
+              <InputField
+                label="Phone Number"
+                id="phone"
+                required
+                icon={Phone}
+                value={form.phone}
+                onChange={(e) => handleChange("phone", e.target.value)}
+                disabled={loading}
+                error={errors.phone}
+              />
+              <InputField
+                label="Email Address"
+                id="email"
+                icon={Mail}
+                value={form.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                disabled={loading}
+                error={errors.email}
+              />
+              <InputField
+                label="Address"
+                icon={MapPin}
+                value={form.address}
+                onChange={(e) => handleChange("address", e.target.value)}
+                disabled={loading}
+                error={errors.address}
+              />
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <InputField
-              label="Date of Birth"
-              id="dob"
-              type="date"
-              icon={Calendar}
-              value={form.dob}
-              onChange={(e) => handleChange("dob", e.target.value)}
-              disabled={loading}
-              error={errors.dob}
-            />
-            <InputField
-              label="Gender"
-              type="select"
-              icon={User}
-              value={form.gender}
-              onChange={(e) => handleChange("gender", e.target.value)}
-              options={[
-                { label: "Male", value: "male" },
-                { label: "Female", value: "female" },
-                { label: "Other", value: "other" },
-              ]}
-              disabled={loading}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div id="dob" className="w-full flex flex-col gap-1.5 animate-fade-in relative z-[45]">
+                <label className="flex items-center text-[11px] font-black uppercase tracking-[0.15em] text-text-muted gap-2 ml-1">
+                  Date of Birth
+                </label>
+                <NepaliDateInput
+                  value={form.dob || ""}
+                  onChange={(val) => handleChange("dob", val)}
+                />
+                {errors.dob && <p className="text-red-500 text-[10px] font-bold mt-1">{errors.dob[0]}</p>}
+              </div>
 
-          </div>
+              <InputField
+                label="Gender"
+                type="select"
+                icon={User}
+                value={form.gender}
+                onChange={(e) => handleChange("gender", e.target.value)}
+                options={[
+                  { label: "Male", value: "male" },
+                  { label: "Female", value: "female" },
+                  { label: "Other", value: "other" },
+                ]}
+                disabled={loading}
+              />
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Enrollment Date"
-              type="date"
-              icon={Calendar}
-              value={form.enrollment_date}
-              onChange={(e) => handleChange("enrollment_date", e.target.value)}
-              disabled={loading}
-              error={errors.enrollment_date}
-            />
-            <InputField
-              label="Reference/Notes"
-              id="offer_enroll_reference"
-              icon={Star}
-              placeholder="How did they find us?"
-              value={form.offer_enroll_reference}
-              onChange={(e) => handleChange("offer_enroll_reference", e.target.value)}
-              disabled={loading}
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div id="enrollment_date" className="w-full flex flex-col gap-1.5 animate-fade-in relative z-[40]">
+                <label className="flex items-center text-[11px] font-black uppercase tracking-[0.15em] text-text-muted gap-2 ml-1">
+                  Enrollment Date
+                </label>
+                <NepaliDateInput
+                  value={form.enrollment_date || ""}
+                  onChange={(val) => handleChange("enrollment_date", val)}
+                />
+                {errors.enrollment_date && <p className="text-red-500 text-[10px] font-bold mt-1">{errors.enrollment_date[0]}</p>}
+              </div>
 
-          <div className="space-y-4 p-6 bg-slate-50/50 rounded-3xl border border-slate-100">
-            <div className="flex items-center justify-between mb-2">
+              <InputField
+                label="Reference/Notes"
+                id="offer_enroll_reference"
+                icon={Star}
+                placeholder="How did they find us?"
+                value={form.offer_enroll_reference}
+                onChange={(e) => handleChange("offer_enroll_reference", e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-4 p-6 bg-slate-50/50 rounded-3xl border border-slate-100">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-blue-600" />
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Classes/Courses</p>
+                  <BookOpen className="w-4 h-4 text-blue-600" />
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Classes/Courses</p>
                 </div>
                 <p className="text-[10px] font-medium text-gray-400 italic">Select one or more</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {programs.map(p => (
                   <React.Fragment key={p.id}>
-                    <label 
-                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer bg-white ${
-                            isClassSelected(p.id) 
-                            ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm' 
-                            : 'border-slate-200 hover:border-blue-200'
+                    <label
+                      className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(p.id)
+                        ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
+                        : 'border-slate-200 hover:border-blue-200'
                         }`}
                     >
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                            isClassSelected(p.id) 
-                            ? 'bg-blue-600 border-blue-600' 
-                            : 'bg-slate-50 border-slate-200'
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isClassSelected(p.id)
+                        ? 'bg-blue-600 border-blue-600'
+                        : 'bg-slate-50 border-slate-200'
                         }`}>
-                            <input 
-                                type="checkbox"
-                                className="hidden"
-                                checked={isClassSelected(p.id)}
-                                onChange={() => toggleClass(p)}
-                            />
-                            {isClassSelected(p.id) && (
-                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                            )}
-                        </div>
-                        <span className="text-xs font-black text-gray-900">
-                            {p.title}
-                        </span>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={isClassSelected(p.id)}
+                          onChange={() => toggleClass(p)}
+                        />
+                        {isClassSelected(p.id) && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-xs font-black text-gray-900">
+                        {p.title}
+                      </span>
                     </label>
 
                     {p.sub_programs?.map((sp: any) => (
-                      <label 
-                          key={sp.id}
-                          className={`flex items-center gap-3 p-3 ml-4 rounded-2xl border transition-all cursor-pointer bg-white ${
-                              isClassSelected(sp.id) 
-                              ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm' 
-                              : 'border-slate-200 hover:border-blue-200 opacity-80'
+                      <label
+                        key={sp.id}
+                        className={`flex items-center gap-3 p-3 ml-4 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(sp.id)
+                          ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
+                          : 'border-slate-200 hover:border-blue-200 opacity-80'
                           }`}
                       >
-                          <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-colors ${
-                              isClassSelected(sp.id) 
-                              ? 'bg-blue-600 border-blue-600' 
-                              : 'bg-slate-50 border-slate-200'
+                        <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-colors ${isClassSelected(sp.id)
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-slate-50 border-slate-200'
                           }`}>
-                              <input 
-                                  type="checkbox"
-                                  className="hidden"
-                                  checked={isClassSelected(sp.id)}
-                                  onChange={() => toggleClass(sp)}
-                              />
-                              {isClassSelected(sp.id) && (
-                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                              )}
-                          </div>
-                          <span className="text-[11px] font-bold text-gray-700">
-                              <span className="text-gray-300 mr-1">—</span> {sp.title}
-                          </span>
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={isClassSelected(sp.id)}
+                            onChange={() => toggleClass(sp)}
+                          />
+                          {isClassSelected(sp.id) && (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-bold text-gray-700">
+                          <span className="text-gray-300 mr-1">—</span> {sp.title}
+                        </span>
                       </label>
                     ))}
                   </React.Fragment>
                 ))}
-            </div>
+              </div>
 
-            {/* Config for selected programs */}
-            <div className="space-y-4 mt-6">
+              {/* Config for selected programs */}
+              <div className="space-y-4 mt-6">
                 {form.enrollments?.map((e: any) => {
-                    const allProgramsFlat = programs.reduce((acc: any[], p) => {
-                        acc.push(p);
-                        if (p.sub_programs) acc.push(...p.sub_programs);
-                        return acc;
-                    }, []);
-                    
-                    const prog = allProgramsFlat.find(p => p.id === e.program_id);
-                    if (!prog) return null;
-                    return (
-                        <div key={e.program_id} className="p-4 bg-white rounded-2xl border border-blue-100 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-black text-gray-900">{prog.title}</span>
-                                <div className="flex items-center gap-3">
-                                    <select 
-                                        value={e.status || "active"}
-                                        onChange={(ev) => updateEnrollment(e.program_id, { status: ev.target.value })}
-                                        className={`text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded-lg border-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
-                                            e.status === 'graduated' ? 'bg-green-100 text-green-700' : 
-                                            e.status === 'inactive' ? 'bg-gray-100 text-gray-500' : 
-                                            'bg-blue-50 text-blue-600'
-                                        }`}
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                        <option value="graduated">Graduate</option>
-                                    </select>
+                  const allProgramsFlat = programs.reduce((acc: any[], p) => {
+                    acc.push(p);
+                    if (p.sub_programs) acc.push(...p.sub_programs);
+                    return acc;
+                  }, []);
 
-                                    <div className="flex bg-gray-100 p-1 rounded-xl">
-                                        <button 
-                                            onClick={() => updateEnrollment(e.program_id, { type: 'regular' })}
-                                            className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${e.type === 'regular' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >REGULAR</button>
-                                        <button 
-                                            onClick={() => updateEnrollment(e.program_id, { type: 'customization' })}
-                                            className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${e.type === 'customization' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >CUSTOM</button>
-                                    </div>
-                                </div>
-                            </div>
+                  const prog = allProgramsFlat.find(p => p.id === e.program_id);
+                  if (!prog) return null;
+                  return (
+                    <div key={e.program_id} className="p-4 bg-white rounded-2xl border border-blue-100 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black text-gray-900">{prog.title}</span>
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={e.status || "active"}
+                            onChange={(ev) => updateEnrollment(e.program_id, { status: ev.target.value })}
+                            className={`text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded-lg border-none focus:ring-2 focus:ring-blue-500/20 transition-all ${e.status === 'graduated' ? 'bg-green-100 text-green-700' :
+                              e.status === 'inactive' ? 'bg-gray-100 text-gray-500' :
+                                'bg-blue-50 text-blue-600'
+                              }`}
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="graduated">Graduate</option>
+                          </select>
 
-                            {e.type === 'regular' ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                    <div className="space-y-1 col-span-2">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Available Slots</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {prog.schedules?.map((s: any) => (
-                                                <button 
-                                                    key={s.id}
-                                                    onClick={() => {
-                                                        const current = e.schedule_ids || [];
-                                                        const next = current.includes(s.id) ? current.filter((id: any) => id !== s.id) : [...current, s.id];
-                                                        updateEnrollment(e.program_id, { schedule_ids: next, schedule_id: next[0] || null });
-                                                    }}
-                                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                                                        e.schedule_ids?.includes(s.id) 
-                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
-                                                        : 'bg-white border-gray-100 text-gray-500 hover:border-blue-200'
-                                                    }`}
-                                                >
-                                                    {s.day} {to12h(s.start_time)} - {to12h(s.end_time)}
-                                                    {s.instructor && (
-                                                        <span className="ml-1 text-[8px] opacity-70">({s.instructor.name})</span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Instructor</p>
-                                            <select 
-                                                value={e.instructor_id || ""}
-                                                onChange={(ev) => {
-                                                    const instId = Number(ev.target.value);
-                                                    updateEnrollment(e.program_id, { instructor_id: instId });
-                                                    if (instId) fetchInstructorAvailability(instId);
-                                                }}
-                                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
-                                            >
-                                                <option value="">Select Instructor</option>
-                                                {prog.instructors?.map((inst: any) => (
-                                                    <option key={inst.id} value={inst.id}>{inst.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Start Time</p>
-                                            <input 
-                                                type="time"
-                                                value={e.custom_start_time || ""}
-                                                onChange={(ev) => updateEnrollment(e.program_id, { custom_start_time: ev.target.value })}
-                                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">End Time</p>
-                                            <input 
-                                                type="time"
-                                                value={e.custom_end_time || ""}
-                                                onChange={(ev) => updateEnrollment(e.program_id, { custom_end_time: ev.target.value })}
-                                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Availability Grid for Custom Mode */}
-                                    {e.instructor_id && (
-                                        <div className="pt-2 space-y-3">
-                                            {loadingAvail === Number(e.instructor_id) ? (
-                                                <p className="text-[10px] text-gray-400 animate-pulse font-bold italic">Checking instructor's busy schedule...</p>
-                                            ) : instructorAvailabilities[Number(e.instructor_id)] ? (
-                                                <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Free Intervals</p>
-                                                        {checkConflict(e) && (
-                                                            <div className="flex items-center gap-1 text-[9px] text-orange-500 font-bold animate-bounce">
-                                                                <AlertTriangle className="w-3 h-3" /> Time Conflict!
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {instructorAvailabilities[Number(e.instructor_id)].free?.map((seg: any, i: number) => (
-                                                            <span key={i} className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-black border border-green-200">
-                                                                {to12h(seg.start)} - {to12h(seg.end)}
-                                                            </span>
-                                                        ))}
-                                                        {instructorAvailabilities[Number(e.instructor_id)].free?.length === 0 && (
-                                                            <p className="text-[9px] text-red-500 font-bold italic">No free slots found for this instructor.</p>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center justify-between pt-2">
-                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Occupied Intervals</p>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {instructorAvailabilities[Number(e.instructor_id)].booked?.map((seg: any, i: number) => (
-                                                            <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black border border-slate-200">
-                                                                {to12h(seg.start)} - {to12h(seg.end)}
-                                                            </span>
-                                                        ))}
-                                                        {instructorAvailabilities[Number(e.instructor_id)].booked?.length === 0 && (
-                                                            <p className="text-[9px] text-gray-400 font-bold italic">No occupied slots found.</p>
-                                                        )}
-                                                    </div>
-                                                    {checkConflict(e) && (
-                                                        <div className="mt-2 p-3 bg-red-500/10 border-2 border-red-500/20 rounded-xl flex items-start gap-3 animate-pulse">
-                                                            <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
-                                                            <div className="space-y-1">
-                                                                <strong className="text-[10px] font-black uppercase tracking-tighter text-red-700 block">⚠️ Scheduling Conflict</strong>
-                                                                <p className="text-[10px] text-red-700 font-medium leading-tight">
-                                                                    The selected time <strong>({to12h(e.custom_start_time)} - {to12h(e.custom_end_time)})</strong> overlaps with another booking. 
-                                                                </p>
-                                                                <span className="text-[8px] font-black uppercase tracking-widest bg-red-500 text-white px-1.5 py-0.5 rounded italic">Override Active: You can still save.</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : null}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                          <div className="flex bg-gray-100 p-1 rounded-xl">
+                            <button
+                              onClick={() => updateEnrollment(e.program_id, { type: 'regular' })}
+                              className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${e.type === 'regular' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >REGULAR</button>
+                            <button
+                              onClick={() => updateEnrollment(e.program_id, { type: 'customization' })}
+                              className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${e.type === 'customization' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >CUSTOM</button>
+                          </div>
                         </div>
-                    );
-                })}
-            </div>
-          </div>
+                      </div>
 
-          <div className="grid grid-cols-2 gap-4">
+                      {e.type === 'regular' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                          <div className="space-y-1 col-span-2">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Available Slots</p>
+                            <div className="flex flex-wrap gap-2">
+                              {prog.schedules?.map((s: any) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => {
+                                    const current = e.schedule_ids || [];
+                                    const next = current.includes(s.id) ? current.filter((id: any) => id !== s.id) : [...current, s.id];
+                                    updateEnrollment(e.program_id, { schedule_ids: next, schedule_id: next[0] || null });
+                                  }}
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${e.schedule_ids?.includes(s.id)
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                    : 'bg-white border-gray-100 text-gray-500 hover:border-blue-200'
+                                    }`}
+                                >
+                                  {s.day} {to12h(s.start_time)} - {to12h(s.end_time)}
+                                  {s.instructor && (
+                                    <span className="ml-1 text-[8px] opacity-70">({s.instructor.name})</span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Instructor</p>
+                              <select
+                                value={e.instructor_id || ""}
+                                onChange={(ev) => {
+                                  const instId = Number(ev.target.value);
+                                  updateEnrollment(e.program_id, { instructor_id: instId });
+                                  if (instId) fetchInstructorAvailability(instId);
+                                }}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              >
+                                <option value="">Select Instructor</option>
+                                {prog.instructors?.map((inst: any) => (
+                                  <option key={inst.id} value={inst.id}>{inst.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Start Time</p>
+                              <input
+                                type="time"
+                                value={e.custom_start_time || ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { custom_start_time: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">End Time</p>
+                              <input
+                                type="time"
+                                value={e.custom_end_time || ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { custom_end_time: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Availability Grid for Custom Mode */}
+                          {e.instructor_id && (
+                            <div className="pt-2 space-y-3">
+                              {loadingAvail === Number(e.instructor_id) ? (
+                                <p className="text-[10px] text-gray-400 animate-pulse font-bold italic">Checking instructor's busy schedule...</p>
+                              ) : instructorAvailabilities[Number(e.instructor_id)] ? (
+                                <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Free Intervals</p>
+                                    {checkConflict(e) && (
+                                      <div className="flex items-center gap-1 text-[9px] text-orange-500 font-bold animate-bounce">
+                                        <AlertTriangle className="w-3 h-3" /> Time Conflict!
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {instructorAvailabilities[Number(e.instructor_id)].free?.map((seg: any, i: number) => (
+                                      <span key={i} className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-black border border-green-200">
+                                        {to12h(seg.start)} - {to12h(seg.end)}
+                                      </span>
+                                    ))}
+                                    {instructorAvailabilities[Number(e.instructor_id)].free?.length === 0 && (
+                                      <p className="text-[9px] text-red-500 font-bold italic">No free slots found for this instructor.</p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center justify-between pt-2">
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Occupied Intervals</p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {instructorAvailabilities[Number(e.instructor_id)].booked?.map((seg: any, i: number) => (
+                                      <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black border border-slate-200">
+                                        {to12h(seg.start)} - {to12h(seg.end)}
+                                      </span>
+                                    ))}
+                                    {instructorAvailabilities[Number(e.instructor_id)].booked?.length === 0 && (
+                                      <p className="text-[9px] text-gray-400 font-bold italic">No occupied slots found.</p>
+                                    )}
+                                  </div>
+                                  {checkConflict(e) && (
+                                    <div className="mt-2 p-3 bg-red-500/10 border-2 border-red-500/20 rounded-xl flex items-start gap-3 animate-pulse">
+                                      <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
+                                      <div className="space-y-1">
+                                        <strong className="text-[10px] font-black uppercase tracking-tighter text-red-700 block">⚠️ Scheduling Conflict</strong>
+                                        <p className="text-[10px] text-red-700 font-medium leading-tight">
+                                          The selected time <strong>({to12h(e.custom_start_time)} - {to12h(e.custom_end_time)})</strong> overlaps with another booking.
+                                        </p>
+                                        <span className="text-[8px] font-black uppercase tracking-widest bg-red-500 text-white px-1.5 py-0.5 rounded italic">Override Active: You can still save.</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <InputField
                 label="Duration Value"
                 type="number"
@@ -869,35 +868,36 @@ const StudentAddEditModal: React.FC<Props> = ({
                 value={form.duration_unit}
                 onChange={(e) => handleChange("duration_unit", e.target.value)}
                 options={[
-                    { label: "Months", value: "months" },
-                    { label: "Years", value: "years" },
+                  { label: "Months", value: "months" },
+                  { label: "Years", value: "years" },
                 ]}
                 disabled={loading}
               />
-          </div>
+            </div>
 
-          <InputField
-            label="Enrollment Status"
-            id="status"
-            type="select"
-            value={form.status}
-            onChange={(e) => handleChange("status", e.target.value)}
-            options={[
+            <InputField
+              label="Enrollment Status"
+              id="status"
+              type="select"
+              value={form.status}
+              onChange={(e) => handleChange("status", e.target.value)}
+              options={[
                 { label: "Active", value: "active" },
                 { label: "Inactive", value: "inactive" },
                 { label: "Graduated", value: "graduated" },
-            ]}
-            disabled={loading}
-            error={errors.status}
-          />
+              ]}
+              disabled={loading}
+              error={errors.status}
+            />
 
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full py-4 bg-blue-600 hover:bg-black text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
-          >
-            {loading ? "Processing..." : student ? "Update Records" : "Confirm Enrollment"}
-          </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full py-4 bg-blue-600 hover:bg-black text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {loading ? "Processing..." : student ? "Update Records" : "Confirm Enrollment"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

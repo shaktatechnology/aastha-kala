@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\StudentEnrollmentController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\SalaryPaymentController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\CompanyIncomeController;
+use App\Http\Controllers\Api\IncomeCategoryController;
 // Public Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -105,6 +107,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     Route::apiResource('employees', EmployeeController::class);
     Route::get('/all-employees', [EmployeeController::class, 'all']);
+    Route::get('/salary-payments/years', [SalaryPaymentController::class, 'getStoredYears']);
     Route::apiResource('salary-payments', SalaryPaymentController::class);
 
     // Shifts & Attendance
@@ -116,6 +119,11 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('/attendance/fetch-logs', [\App\Http\Controllers\Api\AttendanceController::class, 'fetchFromDevice']);
     Route::get('/attendance/summary', [\App\Http\Controllers\Api\AttendanceController::class, 'getSummary']);
     Route::apiResource('expenses', ExpenseController::class);
+
+    // Company Income
+    Route::get('/company-incomes/years', [CompanyIncomeController::class, 'getStoredYears']);
+    Route::apiResource('company-incomes', CompanyIncomeController::class);
+    Route::apiResource('income-categories', IncomeCategoryController::class);
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

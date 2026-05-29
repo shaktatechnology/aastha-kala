@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import Table from "@/components/layout/Table";
+import { formatDate } from "@/lib/utils";
 import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
 import MessageViewModal from "@/components/admin/MessageViewModal";
 import toast from "react-hot-toast";
@@ -112,7 +113,7 @@ const [messages, setMessages] = useState<Message[]>([]);
         {msg.message}
       </div>
     ),
-    date: new Date(msg.created_at).toLocaleDateString(),
+    date: formatDate(msg.created_at),
   }));
 
   const handleViewClick = (row: any) => {

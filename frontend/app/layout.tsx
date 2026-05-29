@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import ToastProvider from "@/components/layout/ToastProvider";
 import { createTheme, MantineProvider } from "@mantine/core";
@@ -11,6 +11,12 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-poppins",
+});
+
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-devanagari",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const theme = createTheme({
-  fontFamily: "var(--font-poppins), sans-serif",
+  fontFamily: "var(--font-poppins), var(--font-devanagari), sans-serif",
 });
 
 export default function RootLayout({
@@ -54,7 +60,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} ${poppins.className} antialiased`}>
+      <body className={`${poppins.variable} ${notoDevanagari.variable} ${poppins.className} antialiased`}>
         <MantineProvider theme={theme}>
           {children}
           <ToastProvider />

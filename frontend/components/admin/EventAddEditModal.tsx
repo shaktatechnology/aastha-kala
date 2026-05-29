@@ -6,6 +6,8 @@ import EditorComponent from "@/components/layout/EditorComponent";
 import { X, AlignLeft, Captions, MapPin, Calendar, User, Phone, CheckCircle, Info, Image as ImageIcon, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { Portal } from "../global/Portal";
+import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
+import { formatDate } from "@/lib/utils";
 
 interface EventData {
   id?: number;
@@ -61,14 +63,14 @@ const EventAddEditModal: React.FC<Props> = ({
         description: event.description || "",
         event_date: event.event_date
           ? (() => {
-              const d = new Date(event.event_date);
-              const year = d.getFullYear();
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
-              const hours = String(d.getHours()).padStart(2, '0');
-              const minutes = String(d.getMinutes()).padStart(2, '0');
-              return `${year}-${month}-${day}T${hours}:${minutes}`;
-            })()
+            const d = new Date(event.event_date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+          })()
           : "",
         location: event.location || "",
         status: event.status || "draft",
@@ -216,7 +218,7 @@ const EventAddEditModal: React.FC<Props> = ({
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl max-h-[96vh] flex flex-col animate-scale-in cursor-default"
+          className="bg-white rounded-2xl shadow-2xl overflow-visible w-full max-w-4xl max-h-[96vh] flex flex-col animate-scale-in cursor-default"
         >
           {/* Header */}
           <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center sticky top-0 z-20">
@@ -228,8 +230,8 @@ const EventAddEditModal: React.FC<Props> = ({
                 Fill in the details below to {event ? 'update' : 'add'} an event
               </p>
             </div>
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="p-2 rounded-full hover:bg-black/5 transition-colors group"
             >
               <X className="size-5 text-gray-400 group-hover:text-gray-900" />
@@ -262,16 +264,46 @@ const EventAddEditModal: React.FC<Props> = ({
                   placeholder="e.g. Studio Hall A"
                 />
 
-                <InputField
-                  label="Event Date"
-                  icon={Calendar}
-                  type="datetime-local"
-                  required
-                  value={form.event_date}
-                  onChange={(e) => handleChange("event_date", e.target.value)}
-                  disabled={loading}
-                  error={errors.event_date}
-                />
+                <div id="event_date" className="w-full flex flex-col gap-1.5 animate-fade-in relative z-[45]">
+                  <label className="flex items-center text-[11px] font-black uppercase tracking-[0.15em] text-text-muted gap-2 ml-1">
+                    Event Date & Time
+                    <span className="text-error font-black">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <NepaliDateInput
+                        value={form.event_date?.split('T')[0] || ""}
+                        onChange={(val) => {
+                          const time = form.event_date?.split('T')[1] || "00:00";
+                          handleChange("event_date", `${val}T${time}`);
+                        }}
+                      />
+                    </div>
+                    <div className="w-32">
+                      <div className="relative flex items-center rounded-lg border border-border bg-background hover:border-primary/50 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 shadow-sm px-3 h-11">
+                        <input
+                          type="time"
+                          value={form.event_date?.split('T')[1]?.substring(0, 5) || "00:00"}
+                          onChange={(e) => {
+                            const date = form.event_date?.split('T')[0] || new Date().toISOString().split('T')[0];
+                            handleChange("event_date", `${date}T${e.target.value}`);
+                          }}
+                          className="w-full bg-transparent outline-none text-sm text-text-primary font-medium"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {form.event_date && (
+                    <p className="text-[10px] text-gray-500 mt-1 px-1">
+                      Selected: <span className="font-semibold text-gray-700">{formatDate(form.event_date.split('T')[0])} at {form.event_date.split('T')[1]?.substring(0, 5)}</span>
+                    </p>
+                  )}
+                  {errors.event_date && (
+                    <p className="text-error text-[10px] font-black uppercase tracking-widest leading-none mt-1">
+                      {errors.event_date[0]}
+                    </p>
+                  )}
+                </div>
 
                 <InputField
                   label="Status"

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import { formatDate, formatMonthYear } from "@/lib/utils";
 import {
   X,
   User,
@@ -447,7 +448,7 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                     </span>
                     <span className="w-1 h-1 rounded-full bg-gray-300" />
                     <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-                      {activeFee.month_year}
+                      {activeFee.month_year ? formatMonthYear(activeFee.month_year) : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -477,7 +478,7 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                     <Calendar className="w-3 h-3" /> Date
                   </p>
                   <p className="text-xs font-black text-gray-900 uppercase">
-                    {new Date(activeFee.payment_date).toLocaleDateString()}
+                    {formatDate(activeFee.payment_date)}
                   </p>
                 </div>
                 <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">

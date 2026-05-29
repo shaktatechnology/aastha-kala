@@ -7,12 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import { 
-  Plus, Trash2, Upload, X, User, Wallet, 
+import {
+  Plus, Trash2, Upload, X, User, Wallet,
   AlertCircle, Layout, ImageIcon, Save, Calendar, Phone, Mail, MapPin, Facebook, Instagram
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { NepaliDateInput } from '@/components/ui/NepaliDateInput';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL;
@@ -36,12 +37,12 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
   );
 }
 
-export function EmployeeForm({ 
-  initialData, 
+export function EmployeeForm({
+  initialData,
   onSuccess,
   onCancel,
   isViewMode = false
-}: { 
+}: {
   initialData?: any,
   onSuccess: () => void,
   onCancel: () => void,
@@ -49,7 +50,7 @@ export function EmployeeForm({
 }) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string[]>>({});
-  
+
   // Form state
   const [name, setName] = React.useState(initialData?.name || "");
   const [email, setEmail] = React.useState(initialData?.email || "");
@@ -74,14 +75,14 @@ export function EmployeeForm({
   const handleSave = async () => {
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       if (salaryBasis === 'salary' && Number(salaryAmount) < 0) {
         setErrors({ salary_amount: ["Salary amount cannot be negative"] });
         setIsLoading(false);
         return;
       }
-      
+
       if (salaryBasis === 'percentage' && (Number(percentage) < 0 || Number(percentage) > 100)) {
         setErrors({ percentage: ["Percentage must be between 0 and 100"] });
         setIsLoading(false);
@@ -90,7 +91,7 @@ export function EmployeeForm({
 
       const formData = new FormData();
       if (initialData) formData.append('_method', 'PUT');
-      
+
       formData.append('name', name);
       if (email) formData.append('email', email);
       if (deviceUserId) formData.append('device_user_id', deviceUserId);
@@ -117,9 +118,9 @@ export function EmployeeForm({
 
       const response = await fetch(`${API_URL}/admin/employees${initialData ? `/${initialData.id}` : ''}`, {
         method: 'POST',
-        headers: { 
-          'Accept': 'application/json', 
-          'Authorization': `Bearer ${localStorage.getItem("token")}` 
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem("token")}`
         },
         body: formData
       });
@@ -155,9 +156,9 @@ export function EmployeeForm({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-5xl mx-auto">
+    <div className="bg-white rounded-2xl shadow-xl overflow-visible w-full max-w-5xl mx-auto">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+      <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white rounded-t-2xl">
         <h2 className="text-2xl font-bold text-gray-900">
           {isViewMode ? 'View Employee' : initialData ? 'Edit Employee' : 'Add New Employee'}
         </h2>
@@ -174,7 +175,7 @@ export function EmployeeForm({
             <Layout className="size-5 text-blue-600" />
             Personal Information
           </h3>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -190,7 +191,7 @@ export function EmployeeForm({
                 </div>
                 <ErrorMessage message={errors.name?.[0]} />
               </div>
-              
+
               <div>
                 <FieldLabel label="Email Address" />
                 <div className="relative">
@@ -297,7 +298,7 @@ export function EmployeeForm({
             <Wallet className="size-5 text-blue-600" />
             Employment & Salary Details
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
               <FieldLabel label="Employee Type" required />
@@ -330,15 +331,16 @@ export function EmployeeForm({
 
             <div>
               <FieldLabel label="Joining Date" />
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-                <Input
-                  type="date"
-                  value={joiningDate}
-                  onChange={(e) => setJoiningDate(e.target.value)}
-                  className="pl-10 h-11"
-                />
-              </div>
+              <NepaliDateInput
+                value={joiningDate}
+                onChange={(val) => setJoiningDate(val)}
+                placeholder="Select joining date"
+              />
+              {joiningDate && (
+                <p className="text-xs text-gray-500 mt-1.5 px-1">
+                  Selected: <span className="font-medium text-gray-700">{formatDate(joiningDate)}</span>
+                </p>
+              )}
             </div>
 
             {salaryBasis === 'salary' && (
@@ -389,8 +391,8 @@ export function EmployeeForm({
                 onClick={() => setStatus(!status)}
                 className={cn(
                   "w-full px-4 py-2 text-left rounded-lg border transition-all h-11",
-                  status 
-                    ? "bg-green-50 border-green-300 text-green-700 hover:bg-green-100" 
+                  status
+                    ? "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
                     : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100"
                 )}
               >
@@ -418,7 +420,7 @@ export function EmployeeForm({
               <User className="size-5 text-blue-600" />
               Instructor Details
             </h3>
-            
+
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <FieldLabel label="Professional Title" required />
@@ -448,10 +450,10 @@ export function EmployeeForm({
       </div>
 
       {/* Footer */}
-      <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+      <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
         {isViewMode ? (
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             onClick={onCancel}
             className="bg-gray-800 text-white px-8 h-11 text-base font-medium"
           >
@@ -459,17 +461,17 @@ export function EmployeeForm({
           </Button>
         ) : (
           <>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={onCancel}
               className="px-6 h-11 text-black bg-white border border-gray-300 hover:bg-gray-100"
             >
               Cancel
             </Button>
-            <Button 
-              type="button" 
-              onClick={handleSave} 
+            <Button
+              type="button"
+              onClick={handleSave}
               disabled={isLoading}
               className="bg-primary hover:bg-primary/90 text-white px-8 h-11 text-base font-medium shadow-sm"
             >

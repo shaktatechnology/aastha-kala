@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatDateShort } from "@/lib/utils";
 
 const IMAGE_URL = process.env.NEXT_PUBLIC_IMAGE_URL?.replace(/\/$/, "");
 
@@ -49,7 +50,7 @@ const EventCard = ({ event }: { event: EventItem }) => {
         {/* Date Overlay (Optional but looks premium) */}
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow-sm">
            <p className="text-secondary text-xs font-bold uppercase tracking-wider">
-             {new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+             {formatDateShort(event.event_date)}
            </p>
         </div>
       </div>

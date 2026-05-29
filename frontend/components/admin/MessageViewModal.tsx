@@ -2,6 +2,7 @@
 
 import React from "react";
 import { X, User, Mail, Phone, Calendar } from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
 
 interface Message {
   id: number;
@@ -62,7 +63,7 @@ const MessageViewModal: React.FC<Props> = ({ isOpen, onClose, message }) => {
               </label>
               <div className="flex items-center gap-2 text-primary">
                 <Calendar className="w-4 h-4 text-primary" />
-                {new Date(message.created_at).toLocaleString()}
+                {formatDateTime(message.created_at)}
               </div>
             </div>
             <div className="space-y-1">
