@@ -77,7 +77,7 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
 
   const handleMonthChange = (offset: number) => {
     let nextYear = visibleMonth.year;
-    let nextMonth = visibleMonth.month + offset;cd
+    let nextMonth = visibleMonth.month + offset;
     if (nextMonth < 1) {
       nextYear -= 1;
       nextMonth = 12;
