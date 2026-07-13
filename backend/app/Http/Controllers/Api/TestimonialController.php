@@ -48,7 +48,7 @@ class TestimonialController extends Controller
             'description' => 'required|string',
             'rating' => 'required|integer|min:1|max:5',
             'order' => 'required|integer',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
         ], [
             'name.required' => 'Name is required.',
             'description.required' => 'Description is required.',
@@ -111,7 +111,7 @@ class TestimonialController extends Controller
         'description' => 'required|string',
         'rating' => 'required|integer|min:1|max:5',
         'order' => 'required|integer',
-        'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
     ]);
 
     if ($validator->fails()) {

@@ -53,7 +53,7 @@ class ProgramController extends Controller
         $validator = Validator::make($request->all(), [
             'title'                     => 'required|string|max:255',
             'description'               => 'nullable|string',
-            'image'                     => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image'                     => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             'speciality'                => 'nullable|array',
             'speciality.*'              => 'string|max:255',
             'is_active'                 => 'nullable|boolean',
@@ -68,7 +68,7 @@ class ProgramController extends Controller
             'sub_programs.*.title'       => 'required_with:sub_programs|string|max:255',
             'sub_programs.*.description' => 'nullable|string',
             'sub_programs.*.program_fee' => 'nullable|numeric|min:0',
-            'sub_programs.*.image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'sub_programs.*.image'       => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             'sub_programs.*.schedules'   => 'nullable|array',
         ]);
 
@@ -209,7 +209,7 @@ class ProgramController extends Controller
         $validator = Validator::make($request->all(), [
             'title'                     => 'required|string|max:255',
             'description'               => 'nullable|string',
-            'image'                     => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image'                     => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             'remove_image'              => 'nullable|in:1',
             'speciality'                => 'nullable|array',
             'speciality.*'              => 'string|max:255',
@@ -225,7 +225,7 @@ class ProgramController extends Controller
             'sub_programs.*.title'       => 'required_with:sub_programs|string|max:255',
             'sub_programs.*.description' => 'nullable|string',
             'sub_programs.*.program_fee' => 'nullable|numeric|min:0',
-            'sub_programs.*.image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'sub_programs.*.image'       => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             'sub_programs.*.remove_image'=> 'nullable|in:1',
             'sub_programs.*.schedules'   => 'nullable|array',
         ]);

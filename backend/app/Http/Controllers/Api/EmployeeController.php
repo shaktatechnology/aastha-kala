@@ -57,7 +57,7 @@ class EmployeeController extends Controller
             'percentage' => 'nullable|numeric|min:0|max:100',
             'joining_date' => 'nullable|date',
             'status' => 'nullable|boolean',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             // Instructor specific fields
             'title' => 'required_if:type,instructor|string|max:255',
             'about' => 'nullable|string',
@@ -172,7 +172,7 @@ class EmployeeController extends Controller
             'percentage' => 'nullable|numeric|min:0|max:100',
             'joining_date' => 'nullable|date',
             'status' => 'nullable|boolean',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             // Instructor specific fields
             'title' => 'required_if:type,instructor|string|max:255',
             'about' => 'nullable|string',

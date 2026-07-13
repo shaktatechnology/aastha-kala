@@ -47,7 +47,7 @@ class StudentController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'dob' => 'nullable|date',
             'address' => 'nullable|string',
             'email' => 'nullable|email|max:255',
@@ -134,7 +134,7 @@ class StudentController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'phone' => 'sometimes|required|string|max:20',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'dob' => 'nullable|date',
             'address' => 'nullable|string',
             'email' => 'nullable|email|max:255',
