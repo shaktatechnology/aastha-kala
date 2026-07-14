@@ -2,7 +2,17 @@
 
 import * as React from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { bsToAd, cn, formatBsMonthYear, formatDate, getBsDateParts, getBsMonthDays, getBsMonthStartWeekday, toNepaliDigits } from "@/lib/utils";
+import {
+  bsToAd,
+  cn,
+  formatBsMonthYear,
+  formatDate,
+  getBsDateParts,
+  getBsMonthDays,
+  getBsMonthStartWeekday,
+  toNepaliDigits,
+  nepaliMonthNames,
+} from "@/lib/utils";
 
 interface NepaliDateInputProps {
   value?: string;
@@ -13,12 +23,19 @@ interface NepaliDateInputProps {
 }
 
 const weekLabels = ["आइत", "सोम", "मङ्गल", "बुध", "बिही", "शुक्र", "शनि"];
+const yearsRange = Array.from({ length: 121 }, (_, i) => 1980 + i); // 1980 to 2100 BS
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
-export function NepaliDateInput({ value, onChange, min, placeholder = "Select date", className }: NepaliDateInputProps) {
+export function NepaliDateInput({
+  value,
+  onChange,
+  min,
+  placeholder = "Select date",
+  className,
+}: NepaliDateInputProps) {
   const [open, setOpen] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
@@ -28,17 +45,26 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
   }, [value]);
 
   const todayBs = React.useMemo(() => getBsDateParts(new Date()), []);
-  const [visibleMonth, setVisibleMonth] = React.useState(() => selectedBs || todayBs || { year: 2083, month: 1, day: 1 });
+  const [visibleMonth, setVisibleMonth] = React.useState(
+    () => selectedBs || todayBs || { year: 2083, month: 1, day: 1 },
+  );
 
   React.useEffect(() => {
     if (selectedBs) {
-      setVisibleMonth({ year: selectedBs.year, month: selectedBs.month, day: selectedBs.day });
+      setVisibleMonth({
+        year: selectedBs.year,
+        month: selectedBs.month,
+        day: selectedBs.day,
+      });
     }
   }, [selectedBs]);
 
   React.useEffect(() => {
     function handleClick(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -53,18 +79,17 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
         return parsed;
       }
     }
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return null;
   }, [min]);
 
   const daysInMonth = React.useMemo(
     () => getBsMonthDays(visibleMonth.year, visibleMonth.month),
-    [visibleMonth.year, visibleMonth.month]
+    [visibleMonth.year, visibleMonth.month],
   );
 
   const monthStartWeekday = React.useMemo(
     () => getBsMonthStartWeekday(visibleMonth.year, visibleMonth.month),
-    [visibleMonth.year, visibleMonth.month]
+    [visibleMonth.year, visibleMonth.month],
   );
 
   const monthDays = React.useMemo(() => {
@@ -90,35 +115,55 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
 
   const isDayDisabled = (day: number) => {
     try {
-      const ad = bsToAd(`${visibleMonth.year}-${pad(visibleMonth.month)}-${pad(day)}`);
+      const ad = bsToAd(
+        `${visibleMonth.year}-${pad(visibleMonth.month)}-${pad(day)}`,
+      );
       if (!ad) return true;
-      return new Date(ad) < minDate;
+      if (minDate && new Date(ad) < minDate) {
+        return true;
+      }
+
+      return false;
     } catch {
       return true;
     }
   };
 
   const isPrevMonthDisabled = React.useMemo(() => {
-    const prevYear = visibleMonth.month === 1 ? visibleMonth.year - 1 : visibleMonth.year;
+    const prevYear =
+      visibleMonth.month === 1 ? visibleMonth.year - 1 : visibleMonth.year;
+    if (prevYear < 1980) return true;
     const prevMonth = visibleMonth.month === 1 ? 12 : visibleMonth.month - 1;
     const days = getBsMonthDays(prevYear, prevMonth);
     try {
-      const lastAd = bsToAd(`${prevYear}-${pad(prevMonth)}-${pad(days)}`);
-      return new Date(lastAd) < minDate;
+      const ad = bsToAd(
+        `${prevYear}-${pad(prevMonth)}-${pad(days)}`,
+      );
+      if (!ad) return true;
+      if (minDate && new Date(ad) < minDate) {
+        return true;
+      }
+
+      return false;
     } catch {
       return true;
     }
   }, [visibleMonth, minDate]);
 
   const setSelectedDate = (day: number) => {
-    const ad = bsToAd(`${visibleMonth.year}-${pad(visibleMonth.month)}-${pad(day)}`);
+    const ad = bsToAd(
+      `${visibleMonth.year}-${pad(visibleMonth.month)}-${pad(day)}`,
+    );
     if (!ad) return;
     onChange(ad);
     setOpen(false);
   };
 
   return (
-    <div ref={wrapperRef} className={cn(className || "relative w-full", open && "z-50")}>
+    <div
+      ref={wrapperRef}
+      className={cn(className || "relative w-full", open && "z-50")}
+    >
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -133,7 +178,10 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
       {open && (
         <div
           className="absolute z-[100] mt-2 w-[320px] rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-          style={{ fontFamily: "var(--font-devanagari), 'Noto Sans Devanagari', 'Mangal', sans-serif" }}
+          style={{
+            fontFamily:
+              "var(--font-devanagari), 'Noto Sans Devanagari', 'Mangal', sans-serif",
+          }}
         >
           <div className="flex items-center justify-between gap-2 mb-4">
             <button
@@ -144,13 +192,40 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className="text-base font-bold text-gray-900 tracking-tight">
-              {formatBsMonthYear(visibleMonth.year, visibleMonth.month)}
+            
+            <div className="flex items-center gap-1">
+              {/* Month Select */}
+              <select
+                value={visibleMonth.month}
+                onChange={(e) => setVisibleMonth(prev => ({ ...prev, month: Number(e.target.value) }))}
+                className="text-xs font-bold text-gray-900 border border-gray-200 rounded-lg p-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                {nepaliMonthNames.map((monthName, idx) => (
+                  <option key={idx} value={idx + 1}>
+                    {monthName}
+                  </option>
+                ))}
+              </select>
+
+              {/* Year Select */}
+              <select
+                value={visibleMonth.year}
+                onChange={(e) => setVisibleMonth(prev => ({ ...prev, year: Number(e.target.value) }))}
+                className="text-xs font-bold text-gray-900 border border-gray-200 rounded-lg p-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                {yearsRange.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {toNepaliDigits(yr)}
+                  </option>
+                ))}
+              </select>
             </div>
+
             <button
               type="button"
+              disabled={visibleMonth.year >= 2100 && visibleMonth.month === 12}
               onClick={() => handleMonthChange(1)}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-colors border border-transparent hover:border-gray-100"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-colors border border-transparent hover:border-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -158,7 +233,10 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
 
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekLabels.map((label) => (
-              <span key={label} className="text-[10px] text-gray-400 text-center font-bold uppercase tracking-wider py-1">
+              <span
+                key={label}
+                className="text-[10px] text-gray-400 text-center font-bold uppercase tracking-wider py-1"
+              >
                 {label}
               </span>
             ))}
@@ -166,10 +244,18 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
 
           <div className="grid grid-cols-7 gap-1">
             {monthDays.map((day, index) => {
-              if (day === null) return <span key={`blank-${index}`} className="h-10" />;
+              if (day === null)
+                return <span key={`blank-${index}`} className="h-10" />;
 
-              const isSelected = selectedDay === day && selectedBs?.year === visibleMonth.year && selectedBs?.month === visibleMonth.month;
-              const isToday = todayBs && todayBs.day === day && todayBs.year === visibleMonth.year && todayBs.month === visibleMonth.month;
+              const isSelected =
+                selectedDay === day &&
+                selectedBs?.year === visibleMonth.year &&
+                selectedBs?.month === visibleMonth.month;
+              const isToday =
+                todayBs &&
+                todayBs.day === day &&
+                todayBs.year === visibleMonth.year &&
+                todayBs.month === visibleMonth.month;
               const disabled = isDayDisabled(day);
 
               return (
@@ -178,14 +264,18 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
                   key={`day-${visibleMonth.year}-${visibleMonth.month}-${day}`}
                   disabled={disabled}
                   onClick={() => setSelectedDate(day)}
-                  style={{ fontFamily: "var(--font-devanagari), 'Noto Sans Devanagari', 'Mangal', sans-serif" }}
+                  style={{
+                    fontFamily:
+                      "var(--font-devanagari), 'Noto Sans Devanagari', 'Mangal', sans-serif",
+                  }}
                   className={`
                     h-10 rounded-xl text-sm font-medium transition-all relative group
-                    ${isSelected
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-200 z-10 scale-105"
-                      : isToday
-                        ? "text-blue-600 bg-blue-50 font-bold"
-                        : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                    ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-200 z-10 scale-105"
+                        : isToday
+                          ? "text-blue-600 bg-blue-50 font-bold"
+                          : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
                     }
                     ${disabled ? "cursor-not-allowed text-gray-200 hover:bg-transparent hover:text-gray-200" : ""}
                   `}
@@ -204,7 +294,9 @@ export function NepaliDateInput({ value, onChange, min, placeholder = "Select da
               type="button"
               onClick={() => {
                 if (todayBs) {
-                  const ad = bsToAd(`${todayBs.year}-${pad(todayBs.month)}-${pad(todayBs.day)}`);
+                  const ad = bsToAd(
+                    `${todayBs.year}-${pad(todayBs.month)}-${pad(todayBs.day)}`,
+                  );
                   if (ad) onChange(ad);
                 }
                 setOpen(false);
