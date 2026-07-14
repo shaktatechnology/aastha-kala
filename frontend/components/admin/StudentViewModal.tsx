@@ -70,6 +70,18 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
 
                         <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-white rounded-lg border border-slate-200">
+                                <CreditCard className="w-3 h-3 text-secondary" />
+                            </div>
+                            <div>
+                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter leading-none">Monthly Fee</p>
+                                <p className="text-[11px] font-bold text-gray-700">
+                                    Rs. {en.custom_fee !== null && en.custom_fee !== undefined ? `${Number(en.custom_fee).toLocaleString()} (Custom)` : `${Number(en.program?.program_fee || 0).toLocaleString()} (Default)`}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-white rounded-lg border border-slate-200">
                                 <Clock className="w-3 h-3 text-secondary" />
                             </div>
                             <div className="flex-1">

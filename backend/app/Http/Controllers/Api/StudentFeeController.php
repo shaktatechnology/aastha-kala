@@ -301,8 +301,18 @@ class StudentFeeController extends Controller
             $totalAdm = 0;
             $matchedTitles = [];
 
-            foreach ($matchingPrograms as $p) {
-                $baseFee = (float) ($p->program_fee ?? 0);
+            foreach ($enrollments->isNotEmpty() ? $enrollments : $matchingPrograms as $item) {
+                if ($item instanceof \App\Models\StudentProgram) {
+                    $p = $item->program;
+                    $customFee = $item->custom_fee;
+                } else {
+                    $p = $item;
+                    $customFee = null;
+                }
+
+                if (!$p) continue;
+
+                $baseFee = $customFee !== null ? (float) $customFee : (float) ($p->program_fee ?? 0);
                 $adm = (float) ($p->admission_fee ?? 0);
 
                 // Calculate duration multiplier based on student's enrollment duration
@@ -499,7 +509,14 @@ class StudentFeeController extends Controller
                 if (isset($request->program_fees[$progId])) {
                     $progBase = (float)$request->program_fees[$progId];
                 } else {
-                    $baseFee = (float) $prog->program_fee;
+                    // Try to get custom_fee from the student's program enrollment
+                    $studentProgram = \App\Models\StudentProgram::where('student_id', $studentId)
+                        ->where('program_id', $progId)
+                        ->first();
+                    $baseFee = ($studentProgram && $studentProgram->custom_fee !== null)
+                        ? (float) $studentProgram->custom_fee
+                        : (float) $prog->program_fee;
+
                     $multiplier = 1;
                     $student = \App\Models\Student::find($studentId);
                     if ($student && $student->duration_value && $student->duration_unit) {

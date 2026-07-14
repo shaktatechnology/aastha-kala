@@ -15,6 +15,7 @@ class StudentProgram extends Model
         'enrolled_at',
         'status',
         'booking_id',
+        'custom_fee',
     ];
 
     protected $casts = [

@@ -116,6 +116,7 @@ const StudentAddEditModal: React.FC<Props> = ({
           schedule_ids: b.schedules?.map((s: any) => s.id) || (b.schedule_id ? [b.schedule_id] : []),
           custom_start_time: b.custom_start_time,
           custom_end_time: b.custom_end_time,
+          custom_fee: "",
         }
       ]
     });
@@ -214,6 +215,7 @@ const StudentAddEditModal: React.FC<Props> = ({
           schedule_ids: e.booking?.schedules?.map((s: any) => s.id) || (e.booking?.schedule_id ? [e.booking?.schedule_id] : []),
           custom_start_time: e.booking?.custom_start_time,
           custom_end_time: e.booking?.custom_end_time,
+          custom_fee: e.custom_fee !== null && e.custom_fee !== undefined ? String(e.custom_fee) : "",
         })) || [],
       });
 
@@ -278,14 +280,15 @@ const StudentAddEditModal: React.FC<Props> = ({
           ...currentEnrollments,
           {
             program_id: program.id,
-            program_title: program.title,
-            type: "regular",
+            type: 'regular',
+            status: 'active',
+            booking_id: null,
             instructor_id: null,
-            status: "active",
             schedule_id: null,
             schedule_ids: [],
             custom_start_time: null,
             custom_end_time: null,
+            custom_fee: "",
           }
         ]
       }));
@@ -343,6 +346,9 @@ const StudentAddEditModal: React.FC<Props> = ({
             }
             if (e.custom_end_time) {
               formData.append(`enrollments[${index}][custom_end_time]`, e.custom_end_time.substring(0, 5));
+            }
+            if (e.custom_fee !== undefined && e.custom_fee !== null && e.custom_fee !== "") {
+              formData.append(`enrollments[${index}][custom_fee]`, String(e.custom_fee));
             }
           });
         } else {
@@ -844,6 +850,26 @@ const StudentAddEditModal: React.FC<Props> = ({
                           )}
                         </div>
                       )}
+
+                      {/* Custom Fee Input */}
+                      <div className="pt-2 border-t border-slate-100 grid grid-cols-1 gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Custom Monthly Fee (Override)</p>
+                            <span className="text-[9px] text-gray-400 font-medium">Default: Rs. {Number(prog.program_fee || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
+                            <input
+                              type="number"
+                              placeholder={`Default: ${prog.program_fee}`}
+                              value={e.custom_fee || ""}
+                              onChange={(ev) => updateEnrollment(e.program_id, { custom_fee: ev.target.value })}
+                              className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

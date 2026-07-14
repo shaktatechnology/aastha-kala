@@ -69,6 +69,7 @@ class StudentController extends Controller
             'enrollments.*.status' => 'nullable|in:active,inactive,graduated',
             'enrollments.*.custom_start_time' => 'nullable|date_format:H:i',
             'enrollments.*.custom_end_time' => 'nullable|date_format:H:i',
+            'enrollments.*.custom_fee' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -156,6 +157,7 @@ class StudentController extends Controller
             'enrollments.*.status' => 'nullable|in:active,inactive,graduated',
             'enrollments.*.custom_start_time' => 'nullable|date_format:H:i',
             'enrollments.*.custom_end_time' => 'nullable|date_format:H:i',
+            'enrollments.*.custom_fee' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -235,9 +237,14 @@ class StudentController extends Controller
                 ($studentStatus === 'graduated' ? 'graduated' :
                     ($studentStatus === 'inactive' ? 'inactive' : 'active'));
 
+            $customFee = (isset($enrollInfo['custom_fee']) && $enrollInfo['custom_fee'] !== '') ? (float)$enrollInfo['custom_fee'] : null;
+
             $sp = \App\Models\StudentProgram::updateOrCreate(
                 ['student_id' => $student->id, 'program_id' => $pId],
-                ['status' => $spStatus]
+                [
+                    'status' => $spStatus,
+                    'custom_fee' => $customFee
+                ]
             );
 
             // Handle Shadow Booking to block instructor's time
@@ -289,7 +296,7 @@ class StudentController extends Controller
             }
 
             // 4. Handle Fees
-            $baseFee = (float) ($prog->program_fee ?? 0);
+            $baseFee = $sp->custom_fee !== null ? (float) $sp->custom_fee : (float) ($prog->program_fee ?? 0);
             
             // Calculate duration multiplier based on student's enrollment duration
             $multiplier = 1;
