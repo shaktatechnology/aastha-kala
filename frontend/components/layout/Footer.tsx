@@ -153,21 +153,9 @@ const Footer = async () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 xl:gap-12">
           {/* Logo & Description */}
           <div className="sm:col-span-2 lg:col-span-3 flex flex-col items-center sm:items-start text-center sm:text-left">
-            <Link
-              href="/"
-              className="flex items-center space-x-2 justify-center sm:justify-start mb-4"
-            >
-              {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt={setting?.company_name || "Aastha Kala Kendra"}
-                  className="h-14 w-auto object-contain"
-                />
-              )}
               <h2 className="text-xl font-semibold text-primary">
                 {setting?.company_name || "Aastha Kala Kendra"}
               </h2>
-            </Link>
 
             <p className="text-gray-600 text-sm max-w-sm mx-auto sm:mx-0">
               {setting?.about_short ||

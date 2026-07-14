@@ -6,7 +6,6 @@ import {
   Book,
   Mail,
   Calendar,
-  User,
   Flag,
   Image,
   LogOut,
@@ -29,27 +28,37 @@ interface SidebarProps {
 }
 
 const menuItems = [
+  // Dashboard
   { name: "Dashboard", icon: Home, href: "/admin" },
-  { name: "Employees", icon: Users, href: "/admin/employees" },
-  { name: "Salary Management", icon: CreditCard, href: "/admin/salary" },
-  { name: "Inhouse Expenses", icon: Banknote, href: "/admin/expenses" },
-  { name: "Company Income", icon: TrendingUp, href: "/admin/company-income" },
 
-  {
-    name: "Instructor Schedule",
-    icon: Calendar,
-    href: "/admin/instructor/schedule",
-  },
-  { name: "Programs", icon: Book, href: "/admin/programs" },
+  // Daily Operations
   { name: "Booking", icon: Calendar, href: "/admin/booking" },
-  { name: "Event", icon: Flag, href: "/admin/event" },
+  { name: "Attendance", icon: Calendar, href: "/admin/attendance" },
+  { name: "Instructor Schedule", icon: Calendar, href: "/admin/instructor/schedule" },
+
+  // People Management
+  { name: "Students", icon: Users, href: "/admin/students" },
+  { name: "Employees", icon: Users, href: "/admin/employees" },
+
+  // Academic
+  { name: "Programs", icon: Book, href: "/admin/programs" },
+
+  // Finance
+  { name: "Fees & Billing", icon: CreditCard, href: "/admin/fees" },
+  { name: "Salary Management", icon: CreditCard, href: "/admin/salary" },
+  { name: "Company Income", icon: TrendingUp, href: "/admin/company-income" },
+  { name: "Inhouse Expenses", icon: Banknote, href: "/admin/expenses" },
+
+  // Inventory
   { name: "Dress Hire", icon: Shirt, href: "/admin/dress-hire" },
+
+  // Website Content
   { name: "Gallery", icon: Image, href: "/admin/gallery" },
+  { name: "Event", icon: Flag, href: "/admin/event" },
   { name: "Testimonials", icon: Mic, href: "/admin/testimonials" },
   { name: "Contact Us", icon: Mail, href: "/admin/contact" },
-  { name: "Students", icon: Users, href: "/admin/students" },
-  { name: "Fees & Billing", icon: CreditCard, href: "/admin/fees" },
-  { name: "Attendance", icon: Calendar, href: "/admin/attendance" },
+
+  // System
   { name: "Settings", icon: Settings, href: "/admin/settings" },
 ];
 

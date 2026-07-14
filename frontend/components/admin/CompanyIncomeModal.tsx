@@ -252,7 +252,14 @@ const CompanyIncomeModal: React.FC<Props> = ({
                 setNewCategoryName("");
                 setIsAddingCategory(false);
             } else {
-                toast.error(data.message || "Failed to add category");
+                let errorMessage = "Failed to add category";
+                if (data.errors) {
+                    const firstError = Object.values(data.errors).flat()[0] as string;
+                    errorMessage = firstError || data.message || errorMessage;
+                } else {
+                    errorMessage = data.message || errorMessage;
+                }
+                toast.error(errorMessage);
             }
         } catch {
             toast.error("Error adding category");

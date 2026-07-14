@@ -158,7 +158,16 @@ const BookingModal: React.FC<BookingModalProps> = ({ program, onClose }) => {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Booking failed");
+      if (!res.ok) {
+        let errorMessage = "Booking failed";
+        if (data.errors) {
+          const firstError = Object.values(data.errors).flat()[0] as string;
+          errorMessage = firstError || data.message || errorMessage;
+        } else {
+          errorMessage = data.message || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
       setSuccess(true);
     } catch (err: any) {
       toast.error(err.message || "Something went wrong.");

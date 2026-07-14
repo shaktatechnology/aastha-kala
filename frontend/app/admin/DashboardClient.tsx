@@ -293,7 +293,7 @@ const Dashboard = () => {
       </div>
 
       {/* ──── REVENUE GAUGE ──── */}
-      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
+      {/* <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-[var(--shadow)] hover:border-l-4 hover:border-l-[var(--primary)] transition-all duration-200">
         <h2 className="text-sm font-bold uppercase tracking-[0.05em] text-[var(--text-main)] mb-3">Revenue Collection Gauge</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {revenueGauges.length > 0 ? (
@@ -312,7 +312,7 @@ const Dashboard = () => {
             <div className="text-sm text-[var(--text-main)] opacity-50 font-medium col-span-full">No revenue data available</div>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* ──── LOWER SECTION: OPERATIONAL GRID ──── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

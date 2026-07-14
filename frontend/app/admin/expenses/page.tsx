@@ -39,7 +39,7 @@ const CATEGORY_MAP: Record<string, string> = {
   'equipment': 'Props & Equipment',
   'marketing': 'Marketing & Ads',
   'events': 'Events & Workshops',
-  'other': 'Miscellaneous'
+  'other': 'Other'
 };
 
 const CATEGORY_OPTIONS = [

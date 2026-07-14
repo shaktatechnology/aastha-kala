@@ -96,7 +96,14 @@ const IncomeCategoryManagementModal: React.FC<Props> = ({ isOpen, onClose }) => 
                 fetchCategories();
                 handleCancel();
             } else {
-                toast.error(data.message || "Failed to save category");
+                let errorMessage = "Failed to save category";
+                if (data.errors) {
+                    const firstError = Object.values(data.errors).flat()[0] as string;
+                    errorMessage = firstError || data.message || errorMessage;
+                } else {
+                    errorMessage = data.message || errorMessage;
+                }
+                toast.error(errorMessage);
             }
         } catch {
             toast.error("Error saving category");

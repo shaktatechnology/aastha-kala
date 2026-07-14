@@ -191,6 +191,8 @@ class BookingController extends Controller
             'custom_end_time'  => 'nullable|date_format:H:i|after:custom_start_time',
             'duration_value'   => 'nullable|integer|min:1',
             'duration_unit'    => 'nullable|in:days,months,years',
+        ], [
+            'booking_date.required' => 'Preferred Start Date is required',
         ]);
 
         if ($validator->fails()) {

@@ -56,7 +56,14 @@ const ShiftFormModal = ({ isOpen, onClose, onSuccess, initialData }: ShiftFormMo
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to save shift");
+        let errorMessage = "Failed to save shift";
+        if (errorData.errors) {
+          const firstError = Object.values(errorData.errors).flat()[0] as string;
+          errorMessage = firstError || errorData.message || errorMessage;
+        } else {
+          errorMessage = errorData.message || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success(`Shift ${initialData ? "updated" : "created"} successfully`);
