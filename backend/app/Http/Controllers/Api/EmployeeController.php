@@ -114,6 +114,15 @@ class EmployeeController extends Controller
                 \App\Models\DeviceCommand::create([
                     'command' => "DATA USER PIN={$employee->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
                 ]);
+
+                if (env('ZKT_DEVICE_IP')) {
+                    try {
+                        $zktService = app(\App\Services\ZktDeviceService::class);
+                        $zktService->setUserInDevice($employee->id, $employee->device_user_id, $employee->name);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("ZKT SDK direct connection failed during store: " . $e->getMessage());
+                    }
+                }
             }
 
             return response()->json([
@@ -238,13 +247,22 @@ class EmployeeController extends Controller
 
             DB::commit();
 
-            // Update to ZKT device
-            /* 
+            // Register/Update to ZKT device
             if (!empty($employee->device_user_id)) {
-                $zktService = app(\App\Services\ZktDeviceService::class);
-                $zktService->setUserInDevice($employee->id, $employee->device_user_id, $employee->name);
+                $deviceName = str_replace(' ', '_', $employee->name); 
+                \App\Models\DeviceCommand::create([
+                    'command' => "DATA USER PIN={$employee->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
+                ]);
+
+                if (env('ZKT_DEVICE_IP')) {
+                    try {
+                        $zktService = app(\App\Services\ZktDeviceService::class);
+                        $zktService->setUserInDevice($employee->id, $employee->device_user_id, $employee->name);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("ZKT SDK direct connection failed during update: " . $e->getMessage());
+                    }
+                }
             }
-            */
 
             return response()->json([
                 'success' => true,

@@ -97,6 +97,15 @@ class InstructorController extends Controller
             \App\Models\DeviceCommand::create([
                 'command' => "DATA USER PIN={$employee->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
             ]);
+
+            if (env('ZKT_DEVICE_IP')) {
+                try {
+                    $zktService = app(\App\Services\ZktDeviceService::class);
+                    $zktService->setUserInDevice($employee->id, $employee->device_user_id, $employee->name);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("ZKT SDK direct connection failed during instructor store: " . $e->getMessage());
+                }
+            }
         }
 
         if ($request->has('availabilities')) {
@@ -234,6 +243,15 @@ public function update(Request $request, $id)
                 \App\Models\DeviceCommand::create([
                     'command' => "DATA USER PIN={$request->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
                 ]);
+
+                if (env('ZKT_DEVICE_IP')) {
+                    try {
+                        $zktService = app(\App\Services\ZktDeviceService::class);
+                        $zktService->setUserInDevice($employee->id, $request->device_user_id, $employee->name);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("ZKT SDK direct connection failed during instructor update: " . $e->getMessage());
+                    }
+                }
             }
         }
     } else {
@@ -254,6 +272,15 @@ public function update(Request $request, $id)
             \App\Models\DeviceCommand::create([
                 'command' => "DATA USER PIN={$request->device_user_id}\tName={$deviceName}\tPri=0\tPassword=\tGroup=1\tCard=0"
             ]);
+
+            if (env('ZKT_DEVICE_IP')) {
+                try {
+                    $zktService = app(\App\Services\ZktDeviceService::class);
+                    $zktService->setUserInDevice($employee->id, $request->device_user_id, $employee->name);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("ZKT SDK direct connection failed during instructor update (new employee): " . $e->getMessage());
+                }
+            }
         }
     }
 
