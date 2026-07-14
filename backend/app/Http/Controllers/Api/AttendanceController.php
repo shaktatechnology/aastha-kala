@@ -12,11 +12,105 @@ class AttendanceController extends Controller
      */
     public function fetchFromDevice()
     {
-        // In Cloud (ADMS) mode, the device pushes logs automatically.
-        // We no longer need to connect to it directly via sockets.
-        return response()->json([
-            'message' => "System is in Cloud Mode. Logs are received automatically from the device. There is no need to fetch manually."
-        ]);
+        $zkIp = env('ZKT_DEVICE_IP');
+        if (!$zkIp) {
+            return response()->json([
+                'message' => "System is in Cloud (ADMS) Mode. Logs are received automatically from the device. There is no need to fetch manually."
+            ]);
+        }
+
+        // Increase execution time limit to handle large log volumes
+        set_time_limit(180);
+
+        try {
+            $zktService = new \App\Services\ZktDeviceService();
+            $logs = $zktService->getAttendanceLogs();
+
+            if (empty($logs)) {
+                return response()->json([
+                    'message' => "No logs retrieved from device. Please ensure the device is powered on, connected to the same network, and configured at IP: " . $zkIp
+                ], 400);
+            }
+
+            // 1. Pre-fetch employee mapping to avoid querying inside the loop (4400+ queries saved!)
+            $employeesMap = \App\Models\Employee::whereNotNull('device_user_id')
+                ->where('device_user_id', '!=', '')
+                ->pluck('id', 'device_user_id')
+                ->toArray();
+
+            // 2. Fetch the latest timestamp in our DB to filter out old, already-imported logs
+            $latestTimestampStr = \App\Models\AttendanceLog::max('timestamp');
+            $cutoffTime = $latestTimestampStr ? \Carbon\Carbon::parse($latestTimestampStr)->subDays(2) : null;
+
+            // 3. Pre-fetch recently imported logs within the 2-day cutoff window to prevent duplicates
+            $existingLogs = [];
+            if ($cutoffTime) {
+                $existingLogs = \App\Models\AttendanceLog::where('timestamp', '>=', $cutoffTime)
+                    ->get()
+                    ->mapWithKeys(function($log) {
+                        $tsStr = $log->timestamp instanceof \Carbon\Carbon 
+                            ? $log->timestamp->format('Y-m-d H:i:s') 
+                            : \Carbon\Carbon::parse($log->timestamp)->format('Y-m-d H:i:s');
+                        return [$log->device_user_id . '_' . $tsStr => true];
+                    })
+                    ->toArray();
+            }
+
+            $processedCount = 0;
+            $newLogsToInsert = [];
+
+            foreach ($logs as $log) {
+                $deviceUserId = $log['id'] ?? null;
+                $timestamp = $log['timestamp'] ?? null;
+                $status = $log['state'] ?? '0';
+
+                if (empty($deviceUserId) || empty($timestamp)) {
+                    continue;
+                }
+
+                $logTime = \Carbon\Carbon::parse($timestamp);
+                
+                // If it is older than 2 days before the latest timestamp in our DB, we've already imported it.
+                if ($cutoffTime && $logTime->lt($cutoffTime)) {
+                    continue;
+                }
+
+                $logKey = $deviceUserId . '_' . $logTime->format('Y-m-d H:i:s');
+                if (isset($existingLogs[$logKey])) {
+                    continue; // Already exists in our DB
+                }
+
+                $employeeId = $employeesMap[$deviceUserId] ?? null;
+
+                $newLogsToInsert[] = [
+                    'device_user_id' => $deviceUserId,
+                    'employee_id' => $employeeId,
+                    'timestamp' => $logTime->format('Y-m-d H:i:s'),
+                    'status' => $status,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                $processedCount++;
+            }
+
+            // 4. Bulk insert new logs in chunks of 500
+            if (!empty($newLogsToInsert)) {
+                foreach (array_chunk($newLogsToInsert, 500) as $chunk) {
+                    \App\Models\AttendanceLog::insert($chunk);
+                }
+            }
+
+            return response()->json([
+                'message' => "Successfully fetched and processed " . count($logs) . " logs from the device. Imported $processedCount new records. Click 'Process Logs' to calculate attendance."
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("ZKT SDK fetch failed: " . $e->getMessage());
+            return response()->json([
+                'message' => "Error fetching from device: " . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
