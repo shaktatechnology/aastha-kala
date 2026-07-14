@@ -44,9 +44,15 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
               padding: 4mm !important; background: white !important;
               color: black !important;
               page-break-inside: avoid !important;
+              page-break-after: always !important;
+              break-after: page !important;
               font-family: Arial, Helvetica, sans-serif !important;
               -webkit-font-smoothing: antialiased !important;
               text-rendering: optimizeLegibility !important;
+            }
+            .income-thermal-container:last-child {
+              page-break-after: avoid !important;
+              break-after: avoid !important;
             }
           }
         `}} />
