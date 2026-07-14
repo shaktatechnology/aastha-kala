@@ -97,7 +97,7 @@ class StudentController extends Controller
                 'pending_amount' => $admissionFee,
                 'status' => 'pending',
                 'admission_fee' => $admissionFee,
-                'month_year' => date('j F Y'),
+                'month_year' => date('Y-m'),
                 'payment_method' => 'Cash',
                 'remarks' => 'Auto-generated admission fee on enrollment',
             ]);
@@ -191,7 +191,7 @@ class StudentController extends Controller
      */
     private function syncProgramsAndFees($student, array $enrollmentData = [])
     {
-        $currentMonth = date('j F Y');
+        $currentMonth = date('Y-m');
         $studentStatus = $student->status;
 
         // 1. Determine which programs we are dealing with

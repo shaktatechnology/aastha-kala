@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Table from "@/components/layout/Table";
-import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
 import toast from "react-hot-toast";
 import { Pagination } from "@/components/global/Pagination";
 import FeeAddModal from "@/components/admin/FeeAddModal";
@@ -22,8 +21,7 @@ import FeeViewModal from "@/components/admin/FeeViewModal";
 import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "@/components/admin/ThermalBill";
-import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
-import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits, formatMonthYear, bsMonthYearToAdMonthYear } from "@/lib/utils";
+import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits, formatMonthYear, bsMonthYearToAdMonthYear, bsToAd } from "@/lib/utils";
 
 interface Student {
   id: number;
@@ -61,6 +59,7 @@ const FeesPage = () => {
   const [typeFilter, setTypeFilter] = useState<"all" | "admission" | "program">("all");
   const [programFilter, setProgramFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
+  const [instructorFilter, setInstructorFilter] = useState("all");
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
@@ -68,6 +67,7 @@ const FeesPage = () => {
   const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">("all");
   const [shiftInput, setShiftInput] = useState("all");
   const [programInput, setProgramInput] = useState("all");
+  const [instructorInput, setInstructorInput] = useState("all");
   const [nepaliYearInput, setNepaliYearInput] = useState("");
   const [nepaliMonthInput, setNepaliMonthInput] = useState("");
   const [nepaliYearFilter, setNepaliYearFilter] = useState("");
@@ -79,6 +79,7 @@ const FeesPage = () => {
     setTypeFilter(typeInput);
     setShiftFilter(shiftInput);
     setProgramFilter(programInput);
+    setInstructorFilter(instructorInput);
     setNepaliYearFilter(nepaliYearInput);
     setNepaliMonthFilter(nepaliMonthInput);
   };
@@ -89,6 +90,7 @@ const FeesPage = () => {
     setTypeInput("all");
     setShiftInput("all");
     setProgramInput("all");
+    setInstructorInput("all");
     setNepaliYearInput("");
     setNepaliMonthInput("");
     setSearchTerm("");
@@ -96,6 +98,7 @@ const FeesPage = () => {
     setTypeFilter("all");
     setShiftFilter("all");
     setProgramFilter("all");
+    setInstructorFilter("all");
     setNepaliYearFilter("");
     setNepaliMonthFilter("");
   };
@@ -107,6 +110,7 @@ const FeesPage = () => {
 
   const [programs, setPrograms] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [instructors, setInstructors] = useState<any[]>([]);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -193,10 +197,22 @@ const FeesPage = () => {
     } catch (e) { console.error(e); }
   };
 
+  const fetchInstructors = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      const result = await res.json();
+      const list = result.data?.data || result.data || [];
+      setInstructors(Array.isArray(list) ? list : []);
+    } catch (e) { console.error(e); }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchPrograms();
     fetchSchedules();
+    fetchInstructors();
   }, []);
 
   const columns = [
@@ -219,23 +235,32 @@ const FeesPage = () => {
       if (typeFilter !== "all") url += `&fee_type=${typeFilter}`;
       if (shiftFilter !== "all") url += `&shift=${shiftFilter}`;
       if (programFilter !== "all") url += `&program_id=${programFilter}`;
-      if (nepaliYearFilter && nepaliMonthFilter) {
-        const formatted = bsMonthYearToAdMonthYear(parseInt(nepaliYearFilter), parseInt(nepaliMonthFilter));
-        if (formatted) {
-          url += `&month_year=${encodeURIComponent(formatted)}`;
+      if (instructorFilter !== "all") url += `&instructor_id=${instructorFilter}`;
+      let yearForConversion = nepaliYearFilter;
+      if (!yearForConversion && nepaliMonthFilter) {
+        yearForConversion = (getBsDateParts(new Date())?.year || 2083).toString();
+      }
+
+      if (yearForConversion && nepaliMonthFilter) {
+        const by = parseInt(yearForConversion);
+        const bm = parseInt(nepaliMonthFilter);
+        let adY: number;
+        let adM: number;
+        if (bm >= 1 && bm <= 8) {
+          adM = bm + 4;
+          adY = by - 57;
+        } else {
+          adM = bm - 8;
+          adY = by - 56;
         }
+        const formatted = `${adY}-${String(adM).padStart(2, "0")}`;
+        url += `&month_year=${encodeURIComponent(formatted)}`;
       } else if (nepaliYearFilter) {
-        // If only year is selected, we can't easily map to a single AD month-year string,
-        // but we can try to send the year. However, BS year spans two AD years.
-        // For now, let's keep it simple or just not filter if not both are present
-        // or send the BS year if the backend supports it (it likely won't if data is in AD).
-        // Let's try to find the year part of the AD equivalent.
-        const midYearAD = bsMonthYearToAdMonthYear(parseInt(nepaliYearFilter), 6); // Mid year (Ashwinish)
-        const adYear = midYearAD.split(" ")[1];
-        url += `&month_year=${encodeURIComponent(adYear)}`;
-      } else if (nepaliMonthFilter) {
-        // This is even harder as a Nepali month maps to two AD months.
-        // We'll skip filtering if only month is selected for now to avoid incorrect results.
+        const midAd = bsToAd(`${nepaliYearFilter}-06-15`);
+        if (midAd) {
+          const adYear = midAd.split("-")[0];
+          url += `&month_year=${encodeURIComponent(adYear)}`;
+        }
       }
       if (studentIdParam) url += `&student_id=${studentIdParam}`;
       if (searchTerm) url += `&search=${searchTerm}`;
@@ -271,7 +296,7 @@ const FeesPage = () => {
   useEffect(() => {
     setLoading(true);
     fetchFees();
-  }, [statusFilter, typeFilter, shiftFilter, programFilter, nepaliYearFilter, nepaliMonthFilter, studentIdParam, searchTerm]);
+  }, [statusFilter, typeFilter, shiftFilter, programFilter, instructorFilter, nepaliYearFilter, nepaliMonthFilter, studentIdParam, searchTerm]);
 
   const handleDelete = async () => {
     if (!selectedFee) return;
@@ -332,10 +357,11 @@ const FeesPage = () => {
         month_year: (
           <span className="text-xs text-gray-600 font-medium">
             {fee.month_year ? (
-              // Check if fee.month_year looks like a date or just month-year
-              fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year) ?
-                (/\d{1,2}\s/.test(fee.month_year) ? formatDate(fee.month_year) : formatMonthYear(fee.month_year))
-                : fee.month_year
+              fee.month_year.includes("-") ? formatMonthYear(fee.month_year) : (
+                fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year) ?
+                  (/\d{1,2}\s/.test(fee.month_year) ? formatDate(fee.month_year) : formatMonthYear(fee.month_year))
+                  : fee.month_year
+              )
             ) : "—"}
           </span>
         ),
@@ -457,6 +483,20 @@ const FeesPage = () => {
               </select>
             </div>
 
+            {/* Teacher Filter */}
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                value={instructorInput}
+                onChange={e => setInstructorInput(e.target.value)}
+                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
+              >
+                <option value="all">All Teachers</option>
+                {instructors.map(inst => (
+                  <option key={inst.id} value={inst.id}>{inst.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Nepali Month/Year Filter */}
             <div className="flex gap-2 w-full sm:w-auto">
               {/* Year Select */}
@@ -500,7 +540,7 @@ const FeesPage = () => {
                 Apply
               </button>
 
-              {(shiftInput !== 'all' || programInput !== 'all' || nepaliYearInput !== '' || nepaliMonthInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || nepaliYearFilter !== '' || nepaliMonthFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
+              {(shiftInput !== 'all' || programInput !== 'all' || instructorInput !== 'all' || nepaliYearInput !== '' || nepaliMonthInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || instructorFilter !== 'all' || nepaliYearFilter !== '' || nepaliMonthFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
                 <button
                   type="button"
                   onClick={handleClearFilters}

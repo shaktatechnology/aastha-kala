@@ -73,18 +73,11 @@ class StudentFeeController extends Controller
 
         if ($request->filled('instructor_id')) {
             $instructorId = $request->instructor_id;
-            $query->where(function($q) use ($instructorId) {
-                // Check if the specific program for this fee record has the instructor
-                $q->whereHas('program.instructors', function($sq) use ($instructorId) {
-                    $sq->where('instructors.id', $instructorId);
-                })
-                // OR if it's a student-level fee (like admission) check if any of their programs has the instructor
-                ->orWhere(function($sq) use ($instructorId) {
-                    $sq->whereNull('program_id')
-                       ->whereHas('student.programs.instructors', function($ssq) use ($instructorId) {
-                           $ssq->where('instructors.id', $instructorId);
-                       });
-                });
+            $query->whereHas('student.enrollments.booking', function ($q) use ($instructorId) {
+                $q->where('instructor_id', $instructorId)
+                  ->orWhereHas('schedules', function($sq) use ($instructorId) {
+                      $sq->where('program_schedules.instructor_id', $instructorId);
+                  });
             });
         }
 
@@ -132,16 +125,11 @@ class StudentFeeController extends Controller
 
         if ($request->filled('instructor_id')) {
             $instructorId = $request->instructor_id;
-            $baseStatsQuery->where(function($q) use ($instructorId) {
-                $q->whereHas('program.instructors', function($sq) use ($instructorId) {
-                    $sq->where('instructors.id', $instructorId);
-                })
-                ->orWhere(function($sq) use ($instructorId) {
-                    $sq->whereNull('program_id')
-                       ->whereHas('student.programs.instructors', function($ssq) use ($instructorId) {
-                           $ssq->where('instructors.id', $instructorId);
-                       });
-                });
+            $baseStatsQuery->whereHas('student.enrollments.booking', function ($q) use ($instructorId) {
+                $q->where('instructor_id', $instructorId)
+                  ->orWhereHas('schedules', function($sq) use ($instructorId) {
+                      $sq->where('program_schedules.instructor_id', $instructorId);
+                  });
             });
         }
 
