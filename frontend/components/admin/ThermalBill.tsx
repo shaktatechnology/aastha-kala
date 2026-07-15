@@ -51,11 +51,6 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       visibility: visible !important;
     }
 
-    @page {
-      size: 80mm auto;
-      margin: 0;
-    }
-
     html, body {
       margin: 0 !important;
       padding: 0 !important;

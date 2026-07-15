@@ -319,6 +319,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Thermal_Bill_New`,
+    pageStyle: "@page { size: 80mm auto; margin: 0; }",
   });
 
   useEffect(() => {

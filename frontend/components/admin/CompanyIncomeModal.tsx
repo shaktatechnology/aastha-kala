@@ -271,11 +271,13 @@ const CompanyIncomeModal: React.FC<Props> = ({
     const handleA4Print = useReactToPrint({
         contentRef: printRefA4,
         documentTitle: `Income_A4_${income?.id ?? "new"}`,
+        pageStyle: "@page { size: auto; margin: 0; }",
     });
 
     const handleThermalPrint = useReactToPrint({
         contentRef: printRefThermal,
         documentTitle: `Income_Thermal_${income?.id ?? "new"}`,
+        pageStyle: "@page { size: 80mm auto; margin: 0; }",
     });
 
     if (!isOpen) return null;

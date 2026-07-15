@@ -36,7 +36,6 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
           @media print {
             body * { visibility: hidden !important; }
             .income-thermal-wrapper, .income-thermal-wrapper * { visibility: visible !important; }
-            @page { size: 80mm auto; margin: 0; }
             body { margin: 0; padding: 0; }
             html, body {
               margin: 0 !important;

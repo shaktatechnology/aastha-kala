@@ -67,10 +67,6 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
             background: white !important;
             box-shadow: none !important;
           }
-          @page {
-            size: auto;
-            margin: 0;
-          }
           .no-print { display: none !important; }
         }
 

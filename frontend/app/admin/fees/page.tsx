@@ -141,6 +141,7 @@ const FeesPage = () => {
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: "Bill_" + (printingFee?.student?.name || "Customer"),
+    pageStyle: "@page { size: 80mm auto; margin: 0; }",
   });
 
   const triggerPrint = (row: any) => {

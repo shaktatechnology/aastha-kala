@@ -44,7 +44,6 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
               padding: 15mm !important; display: block !important;
               background: white !important; box-shadow: none !important;
             }
-            @page { size: auto; margin: 0; }
             .no-print { display: none !important; }
           }
           .bg-beige { background-color: #F5F1EE; }

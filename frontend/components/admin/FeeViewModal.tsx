@@ -364,11 +364,13 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
   const handleThermalPrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Thermal_Bill_${fee?.id}`,
+    pageStyle: "@page { size: 80mm auto; margin: 0; }",
   });
 
   const handleA4Print = useReactToPrint({
     contentRef: printRefA4,
     documentTitle: `A4_Bill_${fee?.id}`,
+    pageStyle: "@page { size: auto; margin: 0; }",
   });
 
   const thermalFee = activeFee
