@@ -38,6 +38,12 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
             .income-thermal-wrapper, .income-thermal-wrapper * { visibility: visible !important; }
             @page { size: 80mm auto; margin: 0; }
             body { margin: 0; padding: 0; }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: 0 !important;
+            }
             .income-thermal-wrapper { display: block; width: 80mm; box-sizing: border-box; padding: 0; }
             .income-thermal-container {
               width: 72mm !important; margin: 0 auto !important;
@@ -61,7 +67,7 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
                     style={{ width: "72mm", padding: "4mm", fontSize: "11px", lineHeight: "1.4" }}
                 >
                     {/* Company Header */}
-                    <div style={{ textAlign: "center", marginBottom: "8px" }}>
+                    <div style={{ textAlign: "center", marginBottom: "4px" }}>
                         <h1 style={{ fontSize: "14px", fontWeight: 800, margin: "0 0 2px 0", letterSpacing: "0.5px" }}>
                             {companyName}
                         </h1>
@@ -78,8 +84,8 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
 
                     {/* Logo + Bill Details */}
                     <div style={{
-                        display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "8px",
-                        borderTop: "1px solid #ddd", borderBottom: "1px solid #ddd", padding: "6px 0"
+                        display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "4px",
+                        borderTop: "1px solid #ddd", borderBottom: "1px solid #ddd", padding: "2px 0"
                     }}>
                         <div style={{ width: "50px", flexShrink: 0 }}>
                             <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "auto" }} />
@@ -141,8 +147,8 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
 
                     {/* Footer */}
                     <div style={{ textAlign: "center", marginTop: "12px", borderTop: "1px dashed #999", paddingTop: "8px" }}>
-                        <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "6px" }}>Thank You!</p>
-                        <p style={{ fontSize: "8px", fontWeight: 600, color: "#666" }}>{companyName}</p>
+                        <p style={{ fontSize: "14px", fontWeight: 500, margin: "0 0 6px 0" }}>Thank You!</p>
+                        <p style={{ fontSize: "8px", fontWeight: 600, color: "#666", margin: "0" }}>{companyName}</p>
                     </div>
                 </div>
             </>

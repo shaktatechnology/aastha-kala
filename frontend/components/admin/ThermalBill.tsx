@@ -56,9 +56,11 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       margin: 0;
     }
 
-    body {
-      margin: 0;
-      padding: 0;
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
 
     .print-wrapper {
@@ -107,7 +109,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
           }}
         >
           {/* ─── Header: Company Info ─── */}
-          <div style={{ textAlign: "center", marginBottom: "8px" }}>
+          <div style={{ textAlign: "center", marginBottom: "4px" }}>
             <h1
               style={{
                 fontSize: "18px",
@@ -142,10 +144,10 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               display: "flex",
               alignItems: "flex-start",
               gap: "6px",
-              marginBottom: "8px",
+              marginBottom: "4px",
               borderTop: "1px solid #000",
               borderBottom: "1px solid #000",
-              padding: "6px 0",
+              padding: "2px 0",
             }}
           >
             {/* Logo */}
@@ -410,11 +412,11 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             }}
           >
             <p
-              style={{ fontSize: "18px", fontWeight: 500, marginBottom: "6px", color: "#000" }}
+              style={{ fontSize: "18px", fontWeight: 500, margin: "0 0 6px 0", color: "#000" }}
             >
               Thank You!
             </p>
-            <p style={{ fontSize: "11px", fontWeight: 600, color: "#000" }}>
+            <p style={{ fontSize: "11px", fontWeight: 600, color: "#000", margin: "0" }}>
               {settings?.company_name}
             </p>
           </div>

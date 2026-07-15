@@ -134,22 +134,9 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
                     )}
 
                     {/* Footer */}
-                    <div className="mt-24 text-center">
+                    <div className="mt-6 text-center">
                         <p className="text-2xl font-medium mb-4">Thank You!</p>
-                        <div className="flex justify-center opacity-40 mb-8">
-                            <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M60 55C60 55 50 40 40 40C30 40 25 45 25 50" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-                                <path d="M60 55C60 55 70 40 80 40C90 40 95 45 95 50" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-                                <path d="M60 55V30" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-                                <circle cx="60" cy="25" r="5" stroke="currentColor" strokeWidth="1" />
-                            </svg>
-                        </div>
-                        <div className="flex justify-center items-center gap-2 pt-6 border-t border-gray-100">
-                            <div className="w-5 h-5 bg-gray-900 flex items-center justify-center p-1">
-                                <img src={logoUrl} alt="" className="w-full h-full invert brightness-0" />
-                            </div>
-                            <p className="text-sm font-semibold tracking-tight">{companyName}</p>
-                        </div>
+                        
                     </div>
                 </div>
             </>
