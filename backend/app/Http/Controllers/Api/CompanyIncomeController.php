@@ -39,15 +39,10 @@ class CompanyIncomeController extends Controller
             $query->where('year', $request->year);
         }
 
-        $incomes = $query->latest('income_date')->paginate(10);
+        // Calculate total matching the current filters (or overall if unfiltered)
+        $monthlyTotal = (clone $query)->sum('amount');
 
-        // Total income for the current month/year filter
-        $monthlyTotal = null;
-        if ($request->filled('month') && $request->filled('year')) {
-            $monthlyTotal = CompanyIncome::where('month', $request->month)
-                ->where('year', $request->year)
-                ->sum('amount');
-        }
+        $incomes = $query->latest('income_date')->paginate(10);
 
         return response()->json([
             'success'       => true,
