@@ -41,6 +41,12 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
         <style
           dangerouslySetInnerHTML={{
             __html: `
+  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
+
+  .thermal-bill-text {
+    font-family: 'Roboto Mono', monospace;
+  }
+
   @media print {
     body * {
       visibility: hidden !important;
@@ -82,10 +88,6 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
     .thermal-print-container:last-child {
       page-break-after: avoid !important;
       break-after: avoid !important;
-    }
-
-    .thermal-bill-text {
-      font-family: "Courier New", "DejaVu Sans Mono", monospace;
     }
   }
 `,

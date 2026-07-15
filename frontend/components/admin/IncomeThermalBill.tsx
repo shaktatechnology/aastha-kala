@@ -33,6 +33,12 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
             <>
                 <style dangerouslySetInnerHTML={{
                     __html: `
+          @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
+
+          .income-thermal-container {
+            font-family: 'Roboto Mono', monospace !important;
+          }
+
           @media print {
             body * { visibility: hidden !important; }
             .income-thermal-wrapper, .income-thermal-wrapper * { visibility: visible !important; }
@@ -51,7 +57,6 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
               page-break-inside: avoid !important;
               page-break-after: always !important;
               break-after: page !important;
-              font-family: Arial, Helvetica, sans-serif !important;
               -webkit-font-smoothing: antialiased !important;
               text-rendering: optimizeLegibility !important;
             }

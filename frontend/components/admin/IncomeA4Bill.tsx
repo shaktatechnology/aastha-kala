@@ -34,7 +34,15 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
             <>
                 <style dangerouslySetInnerHTML={{
                     __html: `
-          .income-a4-bill { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+          .income-a4-bill {
+            font-family: 'Inter', sans-serif;
+            color: #1a1a1a;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
           @media print {
             body * { visibility: hidden !important; }
             .income-a4-container, .income-a4-container * { visibility: visible !important; }
