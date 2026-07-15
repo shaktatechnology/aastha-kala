@@ -16,6 +16,7 @@ class StudentProgram extends Model
         'status',
         'booking_id',
         'custom_fee',
+        'commission_percentage',
     ];
 
     protected $casts = [

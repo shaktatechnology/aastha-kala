@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, CreditCard } from "lucide-react";
+import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, CreditCard, Percent } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
@@ -79,6 +79,20 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
                                 </p>
                             </div>
                         </div>
+
+                        {en.commission_percentage !== null && en.commission_percentage !== undefined && (
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-white rounded-lg border border-slate-200">
+                                    <Percent className="w-3 h-3 text-secondary" />
+                                </div>
+                                <div>
+                                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter leading-none">Commission Override</p>
+                                    <p className="text-[11px] font-bold text-gray-700">
+                                        {en.commission_percentage}% (Custom)
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-white rounded-lg border border-slate-200">

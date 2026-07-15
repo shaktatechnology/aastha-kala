@@ -117,6 +117,7 @@ const StudentAddEditModal: React.FC<Props> = ({
           custom_start_time: b.custom_start_time,
           custom_end_time: b.custom_end_time,
           custom_fee: "",
+          commission_percentage: "",
         }
       ]
     });
@@ -216,6 +217,7 @@ const StudentAddEditModal: React.FC<Props> = ({
           custom_start_time: e.booking?.custom_start_time,
           custom_end_time: e.booking?.custom_end_time,
           custom_fee: e.custom_fee !== null && e.custom_fee !== undefined ? String(e.custom_fee) : "",
+          commission_percentage: e.commission_percentage !== null && e.commission_percentage !== undefined ? String(e.commission_percentage) : "",
         })) || [],
       });
 
@@ -289,6 +291,7 @@ const StudentAddEditModal: React.FC<Props> = ({
             custom_start_time: null,
             custom_end_time: null,
             custom_fee: "",
+            commission_percentage: "",
           }
         ]
       }));
@@ -349,6 +352,9 @@ const StudentAddEditModal: React.FC<Props> = ({
             }
             if (e.custom_fee !== undefined && e.custom_fee !== null && e.custom_fee !== "") {
               formData.append(`enrollments[${index}][custom_fee]`, String(e.custom_fee));
+            }
+            if (e.commission_percentage !== undefined && e.commission_percentage !== null && e.commission_percentage !== "") {
+              formData.append(`enrollments[${index}][commission_percentage]`, String(e.commission_percentage));
             }
           });
         } else {
@@ -851,8 +857,8 @@ const StudentAddEditModal: React.FC<Props> = ({
                         </div>
                       )}
 
-                      {/* Custom Fee Input */}
-                      <div className="pt-2 border-t border-slate-100 grid grid-cols-1 gap-4">
+                      {/* Custom Fee & Commission Input */}
+                      <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Custom Monthly Fee (Override)</p>
@@ -867,6 +873,24 @@ const StudentAddEditModal: React.FC<Props> = ({
                               onChange={(ev) => updateEnrollment(e.program_id, { custom_fee: ev.target.value })}
                               className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
                             />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Teacher Commission % (Override)</p>
+                            <span className="text-[9px] text-gray-400 font-medium">Default: Global rate</span>
+                          </div>
+                          <div className="relative flex items-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="e.g. 100, 0, or 50"
+                              value={e.commission_percentage || ""}
+                              onChange={(ev) => updateEnrollment(e.program_id, { commission_percentage: ev.target.value })}
+                              className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-blue-500/20"
+                            />
+                            <span className="absolute right-3 text-xs font-bold text-gray-400">%</span>
                           </div>
                         </div>
                       </div>

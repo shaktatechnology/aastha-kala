@@ -30,7 +30,8 @@ class Setting extends Model
         'closing_hour',
         'admission_fee',
         'youtube',
-        'whatsapp_number'
+        'whatsapp_number',
+        'vat_percentage'
     ];
 
     protected $casts = [

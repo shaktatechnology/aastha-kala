@@ -238,12 +238,14 @@ class StudentController extends Controller
                     ($studentStatus === 'inactive' ? 'inactive' : 'active'));
 
             $customFee = (isset($enrollInfo['custom_fee']) && $enrollInfo['custom_fee'] !== '') ? (float)$enrollInfo['custom_fee'] : null;
+            $commPct = (isset($enrollInfo['commission_percentage']) && $enrollInfo['commission_percentage'] !== '') ? (float)$enrollInfo['commission_percentage'] : null;
 
             $sp = \App\Models\StudentProgram::updateOrCreate(
                 ['student_id' => $student->id, 'program_id' => $pId],
                 [
                     'status' => $spStatus,
-                    'custom_fee' => $customFee
+                    'custom_fee' => $customFee,
+                    'commission_percentage' => $commPct,
                 ]
             );
 

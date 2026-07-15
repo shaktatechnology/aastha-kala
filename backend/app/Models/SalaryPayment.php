@@ -17,6 +17,12 @@ class SalaryPayment extends Model
         'year',
         'payment_type',
         'remarks',
+        'commission_gross',
+        'commission_vat',
+        'commission_percentage',
+        'commission_collected_amount',
+        'commission_method',
+        'commission_basis',
     ];
 
     public function employee()

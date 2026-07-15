@@ -108,6 +108,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::apiResource('employees', EmployeeController::class);
     Route::get('/all-employees', [EmployeeController::class, 'all']);
     Route::get('/salary-payments/years', [SalaryPaymentController::class, 'getStoredYears']);
+    Route::get('/salary-payments/calculate-commission', [SalaryPaymentController::class, 'calculateCommission']);
     Route::apiResource('salary-payments', SalaryPaymentController::class);
 
     // Shifts & Attendance
