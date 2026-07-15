@@ -33,7 +33,7 @@ class ZktAdmsController extends Controller
                "TransTimes=00:00;14:00\r\n" .
                "TransInterval=1\r\n" .
                "TransFlag=1111111111\r\n" .
-               "TimeZone=5.75\r\n" .
+               "TimeZone=345\r\n" .
                "Realtime=1\r\n" .
                "Encrypt=0";
     }
