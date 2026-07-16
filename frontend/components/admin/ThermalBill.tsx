@@ -241,7 +241,14 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               {fee.programs_breakdown && fee.programs_breakdown.length > 0 ? (
                 fee.programs_breakdown.map((pb: any, idx: number) => (
                   <tr key={idx} style={{ borderBottom: "1px solid #000" }}>
-                    <td style={{ padding: "4px 6px", color: "#000", fontWeight: 600 }}>{pb.title}</td>
+                    <td style={{ padding: "4px 6px", color: "#000", fontWeight: 600 }}>
+                      {pb.title}
+                      {pb.due_month && (
+                        <span style={{ fontSize: "10px", fontWeight: "bold", marginLeft: "6px", textTransform: "uppercase" }}>
+                          (Due: {formatMonthYear(pb.due_month)})
+                        </span>
+                      )}
+                    </td>
                     <td style={{ padding: "4px 6px", textAlign: "right", color: "#000", fontWeight: 600 }}>
                       {fmt(pb.program_fee)}
                     </td>

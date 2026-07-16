@@ -133,7 +133,14 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
             {fee.programs_breakdown && fee.programs_breakdown.length > 0 ? (
               fee.programs_breakdown.map((pb: any, idx: number) => (
                 <tr key={idx} className="border-b border-gray-100 last:border-0">
-                  <td className="px-5 py-4 text-sm border-r border-gray-100">{pb.title}</td>
+                  <td className="px-5 py-4 text-sm border-r border-gray-100">
+                    {pb.title}
+                    {pb.due_month && (
+                      <span className="text-xs text-gray-500 font-bold ml-1.5 uppercase tracking-wide">
+                        (Due: {formatMonthYear(pb.due_month)})
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-4 text-right text-sm">{fmt(pb.program_fee)}</td>
                 </tr>
               ))

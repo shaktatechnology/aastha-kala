@@ -1289,7 +1289,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                                       {p.dueMonth ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
                                           DUE:{" "}
-                                          {formatPeriodToReadable(p.dueMonth)}
+                                          {formatMonthYear(p.dueMonth)}
                                         </span>
                                       ) : p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">
@@ -1317,7 +1317,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id
+                                            o.id === p.id && o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   base:
@@ -1343,7 +1343,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id
+                                            o.id === p.id && o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   discount: Math.max(
@@ -1369,7 +1369,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                                       onChange={(v) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id
+                                            o.id === p.id && o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   discountType: v as
@@ -1407,7 +1407,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id
+                                            o.id === p.id && o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   payingNow: clamp(
