@@ -176,7 +176,7 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
             
             <div className="flex justify-between py-2 px-5 border-t border-gray-200 mt-2">
               <span className="font-bold text-sm">Total Amount (Gross):</span>
-              <span className="text-sm">{fmt(netBill)}</span>
+              <span className="text-sm">{fmt(totalGross)}</span>
             </div>
             
             <div className="flex justify-between py-3 px-5 bg-beige mt-2">
@@ -196,10 +196,12 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
               </div>
             )}
             
-            <div className="flex justify-between py-4 px-5 bg-beige">
-              <span className="font-black text-lg uppercase tracking-tight">BALANCE DUE:</span>
-              <span className="font-black text-lg">{fmt(balanceDue)}</span>
-            </div>
+            {balanceDue > 0.01 && (
+              <div className="flex justify-between py-4 px-5 bg-beige">
+                <span className="font-black text-lg uppercase tracking-tight">BALANCE DUE:</span>
+                <span className="font-black text-lg">{fmt(balanceDue)}</span>
+              </div>
+            )}
           </div>
         </div>
 
