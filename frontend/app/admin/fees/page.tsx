@@ -21,7 +21,15 @@ import FeeViewModal from "@/components/admin/FeeViewModal";
 import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "@/components/admin/ThermalBill";
-import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits, formatMonthYear, bsMonthYearToAdMonthYear, bsToAd } from "@/lib/utils";
+import {
+  formatDate,
+  getBsDateParts,
+  nepaliMonthNames,
+  toNepaliDigits,
+  formatMonthYear,
+  bsMonthYearToAdMonthYear,
+  bsToAd,
+} from "@/lib/utils";
 
 interface Student {
   id: number;
@@ -61,16 +69,24 @@ const FeesPage = () => {
 
   const [fees, setFees] = useState<StudentFee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "admission" | "program">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">(
+    "all",
+  );
+  const [typeFilter, setTypeFilter] = useState<"all" | "admission" | "program">(
+    "all",
+  );
   const [programFilter, setProgramFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [instructorFilter, setInstructorFilter] = useState("all");
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
-  const [statusInput, setStatusInput] = useState<"all" | "paid" | "pending">("all");
-  const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">("all");
+  const [statusInput, setStatusInput] = useState<"all" | "paid" | "pending">(
+    "all",
+  );
+  const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">(
+    "all",
+  );
   const [shiftInput, setShiftInput] = useState("all");
   const [programInput, setProgramInput] = useState("all");
   const [instructorInput, setInstructorInput] = useState("all");
@@ -216,34 +232,49 @@ const FeesPage = () => {
 
   const fetchPrograms = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/programs`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/programs`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
       const result = await res.json();
       const list = result.data?.data || result.data || [];
       setPrograms(Array.isArray(list) ? list : []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const fetchSchedules = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/student-fees/schedules`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/student-fees/schedules`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
       const result = await res.json();
       setSchedules(result.data || []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const fetchInstructors = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
       const result = await res.json();
       const list = result.data?.data || result.data || [];
       setInstructors(Array.isArray(list) ? list : []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
@@ -273,10 +304,13 @@ const FeesPage = () => {
       if (typeFilter !== "all") url += `&fee_type=${typeFilter}`;
       if (shiftFilter !== "all") url += `&shift=${shiftFilter}`;
       if (programFilter !== "all") url += `&program_id=${programFilter}`;
-      if (instructorFilter !== "all") url += `&instructor_id=${instructorFilter}`;
+      if (instructorFilter !== "all")
+        url += `&instructor_id=${instructorFilter}`;
       let yearForConversion = nepaliYearFilter;
       if (!yearForConversion && nepaliMonthFilter) {
-        yearForConversion = (getBsDateParts(new Date())?.year || 2083).toString();
+        yearForConversion = (
+          getBsDateParts(new Date())?.year || 2083
+        ).toString();
       }
 
       if (yearForConversion && nepaliMonthFilter) {
@@ -334,7 +368,17 @@ const FeesPage = () => {
   useEffect(() => {
     setLoading(true);
     fetchFees();
-  }, [statusFilter, typeFilter, shiftFilter, programFilter, instructorFilter, nepaliYearFilter, nepaliMonthFilter, studentIdParam, searchTerm]);
+  }, [
+    statusFilter,
+    typeFilter,
+    shiftFilter,
+    programFilter,
+    instructorFilter,
+    nepaliYearFilter,
+    nepaliMonthFilter,
+    studentIdParam,
+    searchTerm,
+  ]);
 
   const handleDelete = async () => {
     if (!selectedFee) return;
@@ -380,10 +424,11 @@ const FeesPage = () => {
         ),
         fee_type: (
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fee.fee_type === "admission"
-              ? "bg-secondary/10 text-secondary"
-              : "bg-info/10 text-info"
-              }`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+              fee.fee_type === "admission"
+                ? "bg-secondary/10 text-secondary"
+                : "bg-info/10 text-info"
+            }`}
           >
             {fee.fee_type === "admission"
               ? "Admission"
@@ -394,13 +439,15 @@ const FeesPage = () => {
         ),
         month_year: (
           <span className="text-xs text-gray-600 font-medium">
-            {fee.month_year ? (
-              fee.month_year.includes("-") ? formatMonthYear(fee.month_year) : (
-                fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year) ?
-                  (/\d{1,2}\s/.test(fee.month_year) ? formatDate(fee.month_year) : formatMonthYear(fee.month_year))
+            {fee.month_year
+              ? fee.month_year.includes("-")
+                ? formatMonthYear(fee.month_year)
+                : fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year)
+                  ? /\d{1,2}\s/.test(fee.month_year)
+                    ? formatDate(fee.month_year)
+                    : formatMonthYear(fee.month_year)
                   : fee.month_year
-              )
-            ) : "—"}
+              : "—"}
           </span>
         ),
         total_amount: (
@@ -433,10 +480,11 @@ const FeesPage = () => {
         ),
         status: (
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fee.status === "paid"
-              ? "bg-success/10 text-success"
-              : "bg-warning/10 text-warning"
-              }`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+              fee.status === "paid"
+                ? "bg-success/10 text-success"
+                : "bg-warning/10 text-warning"
+            }`}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${fee.status === "paid" ? "bg-success" : "bg-warning"}`}
@@ -462,7 +510,10 @@ const FeesPage = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 w-full">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-wrap items-center gap-3 w-full"
+          >
             {/* Search */}
             <div className="relative w-full sm:w-64 group">
               <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
@@ -479,7 +530,7 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={statusInput}
-                onChange={e => setStatusInput(e.target.value as any)}
+                onChange={(e) => setStatusInput(e.target.value as any)}
                 className="w-full px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-bold appearance-none min-w-[120px]"
               >
                 <option value="all">All Status</option>
@@ -492,12 +543,14 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={shiftInput}
-                onChange={e => setShiftInput(e.target.value)}
+                onChange={(e) => setShiftInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Schedules</option>
-                {schedules.map(s => (
-                  <option key={s.id} value={s.id}>{s.title}</option>
+                {schedules.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
                 ))}
               </select>
             </div>
@@ -506,15 +559,19 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={programInput}
-                onChange={e => setProgramInput(e.target.value)}
+                onChange={(e) => setProgramInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Programs</option>
-                {programs.map(p => (
+                {programs.map((p) => (
                   <React.Fragment key={p.id}>
-                    <option value={p.id} className="font-bold">{p.title}</option>
+                    <option value={p.id} className="font-bold">
+                      {p.title}
+                    </option>
                     {p.sub_programs?.map((sp: any) => (
-                      <option key={sp.id} value={sp.id}>&nbsp;&nbsp;— {sp.title}</option>
+                      <option key={sp.id} value={sp.id}>
+                        &nbsp;&nbsp;— {sp.title}
+                      </option>
                     ))}
                   </React.Fragment>
                 ))}
@@ -525,12 +582,14 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={instructorInput}
-                onChange={e => setInstructorInput(e.target.value)}
+                onChange={(e) => setInstructorInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Teachers</option>
-                {instructors.map(inst => (
-                  <option key={inst.id} value={inst.id}>{inst.name}</option>
+                {instructors.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -545,11 +604,13 @@ const FeesPage = () => {
                   className="w-full sm:w-28 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
                 >
                   <option value="">Year</option>
-                  {Array.from({ length: 11 }, (_, i) => 2080 + i).map((year) => (
-                    <option key={year} value={year}>
-                      {toNepaliDigits(year)}
-                    </option>
-                  ))}
+                  {Array.from({ length: 11 }, (_, i) => 2080 + i).map(
+                    (year) => (
+                      <option key={year} value={year}>
+                        {toNepaliDigits(year)}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
 
@@ -578,7 +639,20 @@ const FeesPage = () => {
                 Apply
               </button>
 
-              {(shiftInput !== 'all' || programInput !== 'all' || instructorInput !== 'all' || nepaliYearInput !== '' || nepaliMonthInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || instructorFilter !== 'all' || nepaliYearFilter !== '' || nepaliMonthFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
+              {(shiftInput !== "all" ||
+                programInput !== "all" ||
+                instructorInput !== "all" ||
+                nepaliYearInput !== "" ||
+                nepaliMonthInput !== "" ||
+                statusInput !== "all" ||
+                searchInput !== "" ||
+                shiftFilter !== "all" ||
+                programFilter !== "all" ||
+                instructorFilter !== "all" ||
+                nepaliYearFilter !== "" ||
+                nepaliMonthFilter !== "" ||
+                statusFilter !== "all" ||
+                searchTerm !== "") && (
                 <button
                   type="button"
                   onClick={handleClearFilters}

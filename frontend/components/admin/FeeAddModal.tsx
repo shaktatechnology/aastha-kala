@@ -1264,7 +1264,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
 
                             {calculations.progData.map((p) => (
                               <tr
-                                key={p.id}
+                                key={p.dueMonth ? `${p.id}-${p.dueMonth}` : `${p.id}-current`}
                                 className="group hover:bg-gray-50/50 transition-colors"
                               >
                                 <td className="px-3 py-3">

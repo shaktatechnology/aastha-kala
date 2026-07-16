@@ -120,17 +120,38 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               {settings?.company_name}
             </h1>
             {settings?.address && (
-              <p style={{ fontSize: "12px", margin: "1px 0", color: "#000", fontWeight: 600 }}>
+              <p
+                style={{
+                  fontSize: "12px",
+                  margin: "1px 0",
+                  color: "#000",
+                  fontWeight: 600,
+                }}
+              >
                 {settings.address}
               </p>
             )}
             {settings?.phone && (
-              <p style={{ fontSize: "12px", margin: "1px 0", color: "#000", fontWeight: 600 }}>
+              <p
+                style={{
+                  fontSize: "12px",
+                  margin: "1px 0",
+                  color: "#000",
+                  fontWeight: 600,
+                }}
+              >
                 Phone: {settings.phone}
               </p>
             )}
             {settings?.email && (
-              <p style={{ fontSize: "12px", margin: "1px 0", color: "#000", fontWeight: 600 }}>
+              <p
+                style={{
+                  fontSize: "12px",
+                  margin: "1px 0",
+                  color: "#000",
+                  fontWeight: 600,
+                }}
+              >
                 Email: {settings.email}
               </p>
             )}
@@ -157,7 +178,14 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               />
             </div>
             {/* Bill Details */}
-            <div style={{ flex: 1, textAlign: "right", fontSize: "13px", color: "#000" }}>
+            <div
+              style={{
+                flex: 1,
+                textAlign: "right",
+                fontSize: "13px",
+                color: "#000",
+              }}
+            >
               <p
                 style={{
                   fontSize: "20px",
@@ -182,7 +210,8 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 </p>
               )}
               <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                <strong>Period:</strong> {fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
+                <strong>Period:</strong>{" "}
+                {fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
               </p>
               {fee.shift && (
                 <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
@@ -230,8 +259,23 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               {/* Admission Fee */}
               {Number(fee.admission_fee) > 0 && (
                 <tr>
-                  <td style={{ padding: "4px 6px", color: "#000", fontWeight: 600 }}>Admission Fee</td>
-                  <td style={{ padding: "4px 6px", textAlign: "right", color: "#000", fontWeight: 600 }}>
+                  <td
+                    style={{
+                      padding: "4px 6px",
+                      color: "#000",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Admission Fee
+                  </td>
+                  <td
+                    style={{
+                      padding: "4px 6px",
+                      textAlign: "right",
+                      color: "#000",
+                      fontWeight: 600,
+                    }}
+                  >
                     {fmt(fee.admission_fee)}
                   </td>
                 </tr>
@@ -241,15 +285,52 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               {fee.programs_breakdown && fee.programs_breakdown.length > 0 ? (
                 fee.programs_breakdown.map((pb: any, idx: number) => (
                   <tr key={idx} style={{ borderBottom: "1px solid #000" }}>
-                    <td style={{ padding: "4px 6px", color: "#000", fontWeight: 600 }}>
+                    <td
+                      style={{
+                        padding: "4px 6px",
+                        color: "#000",
+                        fontWeight: 600,
+                      }}
+                    >
                       {pb.title}
-                      {pb.due_month && (
-                        <span style={{ fontSize: "10px", fontWeight: "bold", marginLeft: "6px", textTransform: "uppercase" }}>
+                      {pb.due_month ? (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: "bold",
+                            marginLeft: "6px",
+                            textTransform: "uppercase",
+                            color: "#d97706",
+                          }}
+                        >
                           (Due: {formatMonthYear(pb.due_month)})
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: "bold",
+                            marginLeft: "6px",
+                            textTransform: "uppercase",
+                            color: "#2563eb",
+                          }}
+                        >
+                          (Current:{" "}
+                          {fee.month_year
+                            ? formatMonthYear(fee.month_year)
+                            : "N/A"}
+                          )
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: "4px 6px", textAlign: "right", color: "#000", fontWeight: 600 }}>
+                    <td
+                      style={{
+                        padding: "4px 6px",
+                        textAlign: "right",
+                        color: "#000",
+                        fontWeight: 600,
+                      }}
+                    >
                       {fmt(pb.program_fee)}
                     </td>
                   </tr>
@@ -257,13 +338,25 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               ) : (
                 <tr style={{ borderBottom: "1px solid #000" }}>
                   <td
-                    style={{ padding: "4px 6px", textTransform: "capitalize", color: "#000", fontWeight: 600 }}
+                    style={{
+                      padding: "4px 6px",
+                      textTransform: "capitalize",
+                      color: "#000",
+                      fontWeight: 600,
+                    }}
                   >
                     {fee.fee_type === "billing"
                       ? "Tuition Fees"
                       : fee.fee_type || "Fee"}
                   </td>
-                  <td style={{ padding: "4px 6px", textAlign: "right", color: "#000", fontWeight: 600 }}>
+                  <td
+                    style={{
+                      padding: "4px 6px",
+                      textAlign: "right",
+                      color: "#000",
+                      fontWeight: 600,
+                    }}
+                  >
                     {fmt(totalGross)}
                   </td>
                 </tr>
@@ -271,11 +364,8 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             </tbody>
           </table>
 
-
-
           {/* ─── Totals ─── */}
           <div style={{ fontSize: "13px", color: "#000", marginTop: "4px" }}>
-            
             {/* Gross Total */}
             <div
               style={{
@@ -286,8 +376,12 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 fontWeight: 600,
               }}
             >
-              <span style={{ color: "#000", fontWeight: 600 }}>Gross Total:</span>
-              <span style={{ color: "#000", fontWeight: 600 }}>{fmt(totalGross)}</span>
+              <span style={{ color: "#000", fontWeight: 600 }}>
+                Gross Total:
+              </span>
+              <span style={{ color: "#000", fontWeight: 600 }}>
+                {fmt(totalGross)}
+              </span>
             </div>
 
             {totalDiscount > 0 && (
@@ -301,8 +395,12 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   fontWeight: 600,
                 }}
               >
-                <span style={{ color: "#000", fontWeight: 600 }}>Discount:</span>
-                <span style={{ color: "#000", fontWeight: 600 }}>({fmt(totalDiscount)})</span>
+                <span style={{ color: "#000", fontWeight: 600 }}>
+                  Discount:
+                </span>
+                <span style={{ color: "#000", fontWeight: 600 }}>
+                  ({fmt(totalDiscount)})
+                </span>
               </div>
             )}
 
@@ -315,7 +413,9 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 marginTop: "2px",
               }}
             >
-              <span style={{ fontWeight: 700, color: "#000" }}>Amount Paid:</span>
+              <span style={{ fontWeight: 700, color: "#000" }}>
+                Amount Paid:
+              </span>
               <span
                 style={{
                   fontWeight: 700,
@@ -336,7 +436,9 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   borderTop: "1px dashed #000",
                 }}
               >
-                <span style={{ fontWeight: 700, color: "#000" }}>Returned:</span>
+                <span style={{ fontWeight: 700, color: "#000" }}>
+                  Returned:
+                </span>
                 <span style={{ fontWeight: 700, color: "#000" }}>
                   {fmt(Number(fee.return_amount))}
                 </span>
@@ -372,7 +474,15 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   color: "#000",
                 }}
               >
-                <p style={{ fontWeight: 700, marginBottom: "2px", color: "#000" }}>Remarks:</p>
+                <p
+                  style={{
+                    fontWeight: 700,
+                    marginBottom: "2px",
+                    color: "#000",
+                  }}
+                >
+                  Remarks:
+                </p>
                 <p style={{ fontWeight: 600, color: "#000" }}>{fee.remarks}</p>
               </div>
             )}
@@ -381,7 +491,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
           {/* ─── Payment History ─── */}
           {fee.payments &&
             fee.payments.filter((p: any) => Number(p.paid_amount) > 0).length >
-            0 && (
+              0 && (
               <div
                 style={{
                   marginTop: "8px",
@@ -416,8 +526,12 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                         fontWeight: 600,
                       }}
                     >
-                      <span style={{ color: "#000", fontWeight: 600 }}>{formatDate(p.created_at)}</span>
-                      <span style={{ color: "#000", fontWeight: 600 }}>{p.payment_method || "Cash"}</span>
+                      <span style={{ color: "#000", fontWeight: 600 }}>
+                        {formatDate(p.created_at)}
+                      </span>
+                      <span style={{ color: "#000", fontWeight: 600 }}>
+                        {p.payment_method || "Cash"}
+                      </span>
                       <span style={{ fontWeight: 700, color: "#000" }}>
                         {fmt(p.paid_amount)}
                       </span>
@@ -436,7 +550,12 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             }}
           >
             <p
-              style={{ fontSize: "18px", fontWeight: 500, marginBottom: "6px", color: "#000" }}
+              style={{
+                fontSize: "18px",
+                fontWeight: 500,
+                marginBottom: "6px",
+                color: "#000",
+              }}
             >
               Thank You!
             </p>
