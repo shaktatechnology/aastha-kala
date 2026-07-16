@@ -167,6 +167,7 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
             paid_amount: fee.paid_amount,
             pending_amount: fee.pending_amount,
             payments: data.payments || [],
+            shift: data.student?.shift || fee.shift,
           });
         }
       } catch (error) {
@@ -487,14 +488,25 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                   </p>
                   <StatusBadge remaining={footerDue} net={footerBill} />
                 </div>
-                <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
-                    <FileText className="w-3 h-3" /> Receipt
-                  </p>
-                  <p className="text-xs font-black text-gray-900 uppercase">
-                    #{activeFee.id}
-                  </p>
-                </div>
+                {activeFee.shift ? (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                    <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                      <BookOpen className="w-3 h-3" /> Shift
+                    </p>
+                    <p className="text-xs font-black text-gray-900 uppercase">
+                      {activeFee.shift}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                    <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                      <FileText className="w-3 h-3" /> Receipt
+                    </p>
+                    <p className="text-xs font-black text-gray-900 uppercase">
+                      #{activeFee.id}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Breakdown Table */}
@@ -563,6 +575,15 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Collected</span>
                 <span className="text-lg font-black text-emerald-600 tracking-tight">{fmt(footerCollected)}</span>
               </div>
+              {Number(activeFee.return_amount) > 0 && (
+                <>
+                  <div className="w-px h-8 bg-gray-200" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1">Returned</span>
+                    <span className="text-lg font-black text-amber-700 tracking-tight">{fmt(Number(activeFee.return_amount))}</span>
+                  </div>
+                </>
+              )}
               {footerDue > 0 && (
                 <>
                   <div className="w-px h-8 bg-gray-200" />
@@ -574,12 +595,12 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <button
+              {/* <button
                 onClick={() => handleA4Print()}
                 className="px-6 py-3 border border-border bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 A4 Receipt
-              </button>
+              </button> */}
               <button
                 onClick={() => handleThermalPrint()}
                 className="px-6 py-3 bg-primary text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 cursor-pointer flex items-center gap-2"

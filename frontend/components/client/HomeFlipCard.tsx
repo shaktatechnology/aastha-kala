@@ -109,39 +109,46 @@ const HomeFlipCard: React.FC<HomeFlipCardProps> = ({ program, onBook }) => {
                 {program?.description || "Experience top-tier training with our specialized curriculum designed for all skill levels."}
               </p>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Included Programs</span>
-                  {hasSubPrograms && program.sub_programs!.length > 3 && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowAllTracks(!showAllTracks);
-                      }}
-                      className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-primary transition-colors flex items-center gap-1"
-                    >
-                      {showAllTracks ? "Less" : "More"}
-                      {showAllTracks ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
-                    </button>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 gap-2">
-                  {(program?.sub_programs?.length || 0) > 0 ? (
-                    (showAllTracks ? program.sub_programs! : program.sub_programs!.slice(0, 3)).map((sub, i) => (
+              {hasSubPrograms ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Included Programs</span>
+                    {program.sub_programs!.length > 3 && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowAllTracks(!showAllTracks);
+                        }}
+                        className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-primary transition-colors flex items-center gap-1"
+                      >
+                        {showAllTracks ? "Less" : "More"}
+                        {showAllTracks ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-2">
+                    {(showAllTracks ? program.sub_programs! : program.sub_programs!.slice(0, 3)).map((sub, i) => (
                       <div key={i} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-lg border border-gray-100 group/item hover:bg-blue-50 hover:border-blue-100 transition-colors">
                         <span className="text-[10px] font-bold text-[#001f54] uppercase tracking-wider">{sub.title}</span>
                         <ChevronRight className="w-3 h-3 text-blue-300 group-hover/item:translate-x-0.5 transition-transform" />
                       </div>
-                    ))
-                  ) : (
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Features</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="flex items-center gap-2.5 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                       <Sparkles className="w-3.5 h-3.5 text-primary" />
                       <span className="text-[10px] font-bold text-[#001f54] uppercase tracking-wider">Expert Guidance</span>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-center">

@@ -246,21 +246,15 @@ const InstructorModal: React.FC<Props> = ({
 
   return (
     <div
-      // onClick={loading ? undefined : onClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-lg ${loading ? "cursor-wait" : "cursor-pointer"}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/30 backdrop-blur-md p-4 ${loading ? "cursor-wait" : "cursor-pointer"}`}
+      onClick={loading ? undefined : onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-2xl p-8 bg-white/50 cursor-default"
-        style={{
-          // background:
-          //   "linear-linear(135deg, rgba(255,255,255,0.05), rgba(0,0,0,0.2))",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.1)",
-        }}
+        className="bg-surface border border-border shadow-2xl w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-xl p-8 cursor-default flex flex-col"
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 pb-4 border-b border-primary/50">
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-border">
           <div className="flex items-center gap-2 font-semibold text-xl text-primary">
             {isEdit ? <Pencil /> : <UserPlus />}
             {isEdit ? "Edit Instructor" : "Add Instructor"}

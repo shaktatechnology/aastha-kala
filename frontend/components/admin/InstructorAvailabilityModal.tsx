@@ -177,33 +177,30 @@ const InstructorAvailabilityModal: React.FC<InstructorAvailabilityModalProps> = 
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-lg cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/30 backdrop-blur-md p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-2xl p-8 bg-white/50 relative cursor-default"
-        style={{
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.1)",
-        }}
+        className="bg-surface border border-border shadow-2xl w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-xl p-8 relative cursor-default flex flex-col"
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-10 border-b border-primary/20 pb-6">
+        <div className="flex justify-between items-center mb-10 border-b border-border pb-6">
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-primary flex items-center gap-3 italic">
+            <h2 className="text-lg font-black text-text-primary flex items-center gap-3">
               <Calendar className="w-5 h-5 text-primary" /> {instructor.name}'s Availability Ranges
             </h2>
-            <p className="text-[10px] text-primary/60 uppercase tracking-widest font-bold italic">
+            <p className="text-[10px] text-text-muted uppercase tracking-widest font-black">
               Define continuous time blocks — students can book any interval within these
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-full text-primary/60 hover:text-primary transition group"
+            className="p-2 hover:bg-error/10 rounded-full text-text-muted hover:text-error transition group"
           >
             <X className="w-5 h-5 group-hover:rotate-90 transition duration-300" />
           </button>
         </div>
+
 
         <div className="space-y-6">
           {/* ── Defined Ranges ─────────────────────────────────────────── */}
@@ -227,37 +224,38 @@ const InstructorAvailabilityModal: React.FC<InstructorAvailabilityModalProps> = 
               return (
                 <div
                   key={index}
-                  className="bg-white/40 p-5 rounded-2xl border border-primary/20 shadow-sm group hover:border-primary/40 transition"
+                  className="bg-slate-50 p-5 rounded-xl border border-border shadow-sm group hover:border-primary/40 transition"
                 >
                   {/* Time range inputs */}
                   <div className="flex flex-row items-start gap-4">
                     <div className="flex-1 space-y-3">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <span className="text-[9px] text-primary/60 font-black uppercase ml-1 italic tracking-wider">
+                          <span className="text-[10px] text-text-muted font-black uppercase ml-1 tracking-wider">
                             Available From
                           </span>
                           <input
                             type="time"
                             value={s.start_time?.substring(0, 5)}
                             onChange={(e) => updateSlot(s.id, "start_time", e.target.value)}
-                            className="w-full bg-white/60 border border-primary/20 rounded-xl px-4 py-3 text-sm text-primary font-bold focus:outline-none focus:border-primary transition"
+                            className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary font-bold focus:outline-none focus:border-primary transition shadow-inner"
                           />
-                          <p className="text-[9px] text-primary/40 font-medium italic ml-1">
+                          <p className="text-[10px] text-text-muted font-bold ml-1">
                             {to12h(s.start_time)}
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[9px] text-primary/60 font-black uppercase ml-1 italic tracking-wider">
+
+                          <span className="text-[10px] text-text-muted font-black uppercase ml-1 tracking-wider">
                             Available Until
                           </span>
                           <input
                             type="time"
                             value={s.end_time?.substring(0, 5)}
                             onChange={(e) => updateSlot(s.id, "end_time", e.target.value)}
-                            className="w-full bg-white/60 border border-primary/20 rounded-xl px-4 py-3 text-sm text-primary font-bold focus:outline-none focus:border-primary transition"
+                            className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary font-bold focus:outline-none focus:border-primary transition shadow-inner"
                           />
-                          <p className="text-[9px] text-primary/40 font-medium italic ml-1">
+                          <p className="text-[10px] text-text-muted font-bold ml-1">
                             {to12h(s.end_time)}
                           </p>
                         </div>
@@ -322,7 +320,7 @@ const InstructorAvailabilityModal: React.FC<InstructorAvailabilityModalProps> = 
 
                     <button
                       onClick={() => deleteSlot(s.id)}
-                      className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition shadow-lg group-hover:scale-110 mt-1"
+                      className="p-3 text-red-500 hover:bg-error/10 rounded-xl transition shadow-lg mt-1"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -332,14 +330,14 @@ const InstructorAvailabilityModal: React.FC<InstructorAvailabilityModalProps> = 
             })}
 
             {!availabilities.length && !loading && (
-              <div className="text-center py-10 border-2 border-dashed border-primary/20 rounded-3xl bg-white/20">
-                <p className="text-sm text-primary/40 font-bold italic uppercase tracking-widest px-6">
+              <div className="text-center py-10 border-2 border-dashed border-border rounded-xl bg-slate-50">
+                <p className="text-xs text-text-muted font-black uppercase tracking-widest px-6">
                   No availability ranges defined yet. Add a time range to allow bookings.
                 </p>
               </div>
             )}
             {loading && (
-              <div className="text-center py-10 animate-pulse text-xs text-primary/40 uppercase font-black tracking-widest italic">
+              <div className="text-center py-10 animate-pulse text-xs text-text-muted uppercase font-black tracking-widest">
                 Syncing with server...
               </div>
             )}
@@ -350,7 +348,7 @@ const InstructorAvailabilityModal: React.FC<InstructorAvailabilityModalProps> = 
             type="button"
             disabled={loading}
             onClick={addSlot}
-            className="w-full py-4 bg-linear-to-r from-primary to-secondary text-white rounded-2xl hover:opacity-90 hover:scale-[1.01] transition-all flex items-center justify-center gap-3 text-sm font-bold uppercase tracking-widest shadow-2xl active:scale-95 disabled:opacity-50"
+            className="w-full py-4 bg-primary text-white rounded-2xl hover:bg-primary-hover transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest active:scale-95 disabled:opacity-50"
           >
             <Plus className="w-5 h-5" /> Add Availability Range
           </button>
@@ -367,10 +365,10 @@ const InstructorAvailabilityModal: React.FC<InstructorAvailabilityModalProps> = 
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-8 mt-10 border-t border-primary/20">
+        <div className="flex justify-end pt-8 mt-10 border-t border-border">
           <button
             onClick={onClose}
-            className="px-10 py-3 bg-white/60 text-primary/60 rounded-xl hover:bg-white/80 hover:text-primary border border-primary/10 transition duration-300 font-bold uppercase tracking-widest text-[10px] italic"
+            className="px-10 py-3 bg-slate-100 text-text-secondary rounded-xl hover:bg-slate-200 transition duration-300 font-bold uppercase tracking-widest text-xs"
           >
             Close
           </button>

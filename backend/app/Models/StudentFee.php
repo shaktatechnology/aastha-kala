@@ -17,6 +17,7 @@ class StudentFee extends Model
         'total_amount',
         'paid_amount',
         'pending_amount',
+        'return_amount',
         'status',
         'payment_method',
         'remarks',

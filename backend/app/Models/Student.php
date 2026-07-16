@@ -11,6 +11,7 @@ class Student extends Model
 
     protected $fillable = [
         'name',
+        'roll_no',
         'image',
         'dob',
         'address',
@@ -31,7 +32,48 @@ class Student extends Model
         'enrollment_date' => 'date',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'shift'];
+
+    public function getShiftAttribute()
+    {
+        $shifts = [];
+        if ($this->relationLoaded('enrollments')) {
+            foreach ($this->enrollments as $enrollment) {
+                if ($enrollment->status !== 'active') {
+                    continue;
+                }
+                $booking = $enrollment->booking;
+                if ($booking) {
+                    if ($booking->type === 'customization') {
+                        if ($booking->custom_start_time && $booking->custom_end_time) {
+                            $startTime = substr($booking->custom_start_time, 0, 5);
+                            $endTime = substr($booking->custom_end_time, 0, 5);
+                            $shifts[] = "{$startTime} - {$endTime}";
+                        }
+                    } else {
+                        if ($booking->relationLoaded('schedules') && $booking->schedules) {
+                            foreach ($booking->schedules as $s) {
+                                if ($s->start_time && $s->end_time) {
+                                    $startTime = substr($s->start_time, 0, 5);
+                                    $endTime = substr($s->end_time, 0, 5);
+                                    $shifts[] = "{$startTime} - {$endTime}";
+                                }
+                            }
+                        }
+                        if ($booking->relationLoaded('schedule') && $booking->schedule) {
+                            $s = $booking->schedule;
+                            if ($s->start_time && $s->end_time) {
+                                    $startTime = substr($s->start_time, 0, 5);
+                                    $endTime = substr($s->end_time, 0, 5);
+                                    $shifts[] = "{$startTime} - {$endTime}";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return !empty($shifts) ? implode(', ', array_unique($shifts)) : null;
+    }
 
     public function getImageUrlAttribute()
     {

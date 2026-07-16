@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
-import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, CreditCard, Percent } from "lucide-react";
+import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, CreditCard, Percent, Hash } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+
+import Link from "next/link";
 
 interface Props {
   isOpen: boolean;
@@ -133,6 +135,7 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
             </div>
             <div className="space-y-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Other Info</p>
+                <DetailItem icon={Hash} label="Roll Number" value={student.roll_no || "N/A"} />
                 <DetailItem icon={Clock} label="Duration" value={student.duration_value ? `${student.duration_value} ${student.duration_unit}` : "N/A"} />
                 <DetailItem icon={Star} label="Reference" value={student.offer_enroll_reference || "N/A"} />
                 <DetailItem icon={User} label="Gender" value={student.gender || "N/A"} />
@@ -141,8 +144,17 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
 
         {student.fees && student.fees.length > 0 && (
             <div className="mt-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Payment History</p>
+                <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Payment History</p>
+                    <Link 
+                        href={`/admin/fees?student_id=${student.id}`}
+                        className="text-[9px] font-black uppercase tracking-widest text-primary hover:underline"
+                    >
+                        View Full Invoice Ledger &rarr;
+                    </Link>
+                </div>
                 <div className="space-y-2">
+
                     {student.fees.map((fee: any) => (
                         <div key={fee.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                             <div className="flex items-center">

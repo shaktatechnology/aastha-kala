@@ -105,7 +105,9 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
               <p><span className="font-bold">Bill No.:</span> {billNo}</p>
               <p><span className="font-bold">Date:</span> {billDate}</p>
               <p><span className="font-bold">Student:</span> {studentName}</p>
+              {fee.student?.roll_no && <p><span className="font-bold">Roll No:</span> {fee.student.roll_no}</p>}
               <p><span className="font-bold">Period:</span> {period}</p>
+              {fee.shift && <p><span className="font-bold">Shift:</span> {fee.shift}</p>}
             </div>
           </div>
         </div>
@@ -187,12 +189,27 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(({ fee, settings }
               <span className={`font-bold text-sm ${paidAmount === 0 ? "text-red-600" : ""}`}>{fmt(paidAmount)}</span>
             </div>
             
+            {Number(fee.return_amount) > 0 && (
+              <div className="flex justify-between py-3 px-5 border-t border-gray-100">
+                <span className="font-bold text-sm text-amber-700">Return Amount:</span>
+                <span className="font-bold text-sm text-amber-700">{fmt(Number(fee.return_amount))}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between py-4 px-5 bg-beige">
               <span className="font-black text-lg uppercase tracking-tight">BALANCE DUE:</span>
               <span className="font-black text-lg">{fmt(balanceDue)}</span>
             </div>
           </div>
         </div>
+
+        {/* Remarks Section */}
+        {fee.remarks && (
+          <div className="mt-8 px-5 py-4 bg-beige rounded-lg">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-beige-dark mb-1">Remarks</p>
+            <p className="text-sm font-medium text-gray-700 italic">{fee.remarks}</p>
+          </div>
+        )}
 
         {/* Footer Text */}
         <div className="mt-24 text-center">

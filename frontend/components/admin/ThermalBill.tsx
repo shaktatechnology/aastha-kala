@@ -176,9 +176,19 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
                 <strong>Student:</strong> {fee.student?.name || "N/A"}
               </p>
+              {fee.student?.roll_no && (
+                <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
+                  <strong>Roll No:</strong> {fee.student.roll_no}
+                </p>
+              )}
               <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
                 <strong>Period:</strong> {fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
               </p>
+              {fee.shift && (
+                <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
+                  <strong>Shift:</strong> {fee.shift}
+                </p>
+              )}
             </div>
           </div>
 
@@ -219,7 +229,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             <tbody>
               {/* Admission Fee */}
               {Number(fee.admission_fee) > 0 && (
-                <tr style={{ borderBottom: "1px solid #000" }}>
+                <tr>
                   <td style={{ padding: "4px 6px", color: "#000", fontWeight: 600 }}>Admission Fee</td>
                   <td style={{ padding: "4px 6px", textAlign: "right", color: "#000", fontWeight: 600 }}>
                     {fmt(fee.admission_fee)}
@@ -254,17 +264,28 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             </tbody>
           </table>
 
+
+
           {/* ─── Totals ─── */}
-          <div style={{ fontSize: "13px", color: "#000" }}>
+          <div style={{ fontSize: "13px", color: "#000", marginTop: "4px" }}>
+            
+            {/* Net Bill - highlighted with border instead of tint */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                padding: "2px 6px",
+                padding: "5px 6px",
+                backgroundColor: "#fff",
+                // border: "1px solid #000",
+                // marginTop: "4px",
+                fontWeight: 900,
+                borderBottom: "1px solid #000",
+                fontSize: "15px",
+                color: "#000",
               }}
             >
-              <span style={{ fontWeight: 700, color: "#000" }}>Subtotal:</span>
-              <span style={{ color: "#000", fontWeight: 600 }}>{fmt(totalGross)}</span>
+              <span style={{ color: "#000" }}>Net Bill:</span>
+              <span style={{ color: "#000" }}>{fmt(netBill)}</span>
             </div>
 
             {totalDiscount > 0 && (
@@ -282,37 +303,6 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 <span style={{ color: "#000", fontWeight: 600 }}>({fmt(totalDiscount)})</span>
               </div>
             )}
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "2px 6px",
-                borderTop: "1px solid #000",
-                marginTop: "2px",
-              }}
-            >
-              <span style={{ fontWeight: 700, color: "#000" }}>Total Amount (Gross):</span>
-              <span style={{ color: "#000", fontWeight: 600 }}>{fmt(netBill)}</span>
-            </div>
-
-            {/* Net Bill - highlighted with border instead of tint */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "5px 6px",
-                backgroundColor: "#fff",
-                border: "1px solid #000",
-                marginTop: "4px",
-                fontWeight: 900,
-                fontSize: "15px",
-                color: "#000",
-              }}
-            >
-              <span style={{ color: "#000" }}>Net Bill:</span>
-              <span style={{ color: "#000" }}>{fmt(netBill)}</span>
-            </div>
 
             {/* Amount Paid */}
             <div
@@ -334,6 +324,23 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               </span>
             </div>
 
+            {Number(fee.return_amount) > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "3px 6px",
+                  marginTop: "2px",
+                  borderTop: "1px dashed #000",
+                }}
+              >
+                <span style={{ fontWeight: 700, color: "#000" }}>Returned:</span>
+                <span style={{ fontWeight: 700, color: "#000" }}>
+                  {fmt(Number(fee.return_amount))}
+                </span>
+              </div>
+            )}
+
             {/* Balance Due - highlighted with border instead of tint */}
             <div
               style={{
@@ -350,12 +357,27 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               <span style={{ color: "#000" }}>BALANCE DUE:</span>
               <span style={{ color: "#000" }}>{fmt(balanceDue)}</span>
             </div>
+            {/* ─── Remarks ─── */}
+            {fee.remarks && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  borderTop: "1px dashed #000",
+                  paddingTop: "4px",
+                  fontSize: "12px",
+                  color: "#000",
+                }}
+              >
+                <p style={{ fontWeight: 700, marginBottom: "2px", color: "#000" }}>Remarks:</p>
+                <p style={{ fontWeight: 600, color: "#000" }}>{fee.remarks}</p>
+              </div>
+            )}
           </div>
 
           {/* ─── Payment History ─── */}
           {fee.payments &&
             fee.payments.filter((p: any) => Number(p.paid_amount) > 0).length >
-              0 && (
+            0 && (
               <div
                 style={{
                   marginTop: "8px",

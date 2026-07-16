@@ -55,35 +55,34 @@ const InstructorViewModal: React.FC<Props> = ({
     label: string;
     children: React.ReactNode;
   }) => (
-    <div className="p-px rounded-xl bg-linear-to-r from-primary/20 to-secondary/20">
-      <div className="rounded-xl px-4 py-3 bg-primary/10 backdrop-blur-md border border-primary/10 shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
-        <p className="text-sm text-primary font-semibold mb-1">{label}</p>
-        <div className="text-black/90 font-medium">{children}</div>
-      </div>
+    <div className="rounded-xl px-4 py-3 bg-background border border-border shadow-inner">
+      <p className="text-[10px] text-text-muted font-black uppercase tracking-wider mb-1">{label}</p>
+      <div className="text-text-primary text-sm font-semibold">{children}</div>
     </div>
   );
 
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 bg-white/5 backdrop-blur-lg flex items-center justify-center z-50 hide-scrollbar cursor-pointer"
+      className="fixed inset-0 bg-brand-deep/30 backdrop-blur-md flex items-center justify-center z-50 p-4 hide-scrollbar cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className=" border border-primary/20 backdrop-blur-md w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-xl md:p-6 px:6 py-20 relative space-y-4 bg-white/40 cursor-default"
+        className="bg-surface border border-border shadow-2xl w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-xl p-8 relative space-y-4 cursor-default"
       >
         {/* Close Button */}
-        <button onClick={onClose} className="absolute right-4 md:top-4 top-20 text-primary hover:text-black transition-colors">
-          <X />
+        <button onClick={onClose} className="absolute right-6 top-6 text-text-muted hover:text-text-primary transition-colors">
+          <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-xl font-bold mb-2 text-primary">
+
+        <h2 className="text-xl font-black text-text-primary tracking-tight">
           Instructor Details
         </h2>
 
         {/* Profile */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-28 h-28 rounded-full overflow-hidden border border-primary/20 bg-primary/5 flex items-center justify-center">
+          <div className="w-28 h-28 rounded-full overflow-hidden border border-border bg-slate-50 flex items-center justify-center">
             {previewImage ? (
               <img
                 src={previewImage}
@@ -91,16 +90,16 @@ const InstructorViewModal: React.FC<Props> = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <User className="w-10 h-10 text-primary/40" />
+              <User className="w-10 h-10 text-text-muted/40" />
             )}
           </div>
 
-          <h3 className="text-lg font-semibold text-primary">
+          <h3 className="text-lg font-black text-text-primary">
             {instructor.name}
           </h3>
 
           {instructor.title && (
-            <p className="text-secondary/70">{instructor.title}</p>
+            <p className="text-xs text-text-muted font-semibold uppercase tracking-wider">{instructor.title}</p>
           )}
         </div>
 
@@ -128,12 +127,12 @@ const InstructorViewModal: React.FC<Props> = ({
         {/* Availability Schedule */}
         {(instructor as any).availabilities?.length > 0 && (
           <div>
-            <p className="text-sm font-semibold text-primary mb-3 italic">Free Hours / Availability</p>
+            <p className="text-xs font-black text-text-muted uppercase tracking-wider mb-3">Free Hours / Availability</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(instructor as any).availabilities.map((avail: any, i: number) => (
-                <div key={i} className="flex items-center justify-between bg-white/40 border border-primary/20 rounded-xl px-4 py-3 shadow-sm hover:border-primary/40 transition">
-                  <span className="text-xs font-black text-primary uppercase tracking-widest italic">Daily</span>
-                  <span className="text-xs font-bold text-secondary italic">
+                <div key={i} className="flex items-center justify-between bg-background border border-border rounded-xl px-4 py-3 shadow-inner">
+                  <span className="text-[10px] font-black text-primary uppercase tracking-widest">Daily</span>
+                  <span className="text-xs font-bold text-text-primary">
                     {to12h(avail.start_time)} – {to12h(avail.end_time)}
                   </span>
                 </div>
@@ -142,18 +141,18 @@ const InstructorViewModal: React.FC<Props> = ({
           </div>
         )}
         {(instructor as any).availabilities?.length === 0 && (
-          <div className="text-center py-6 border-2 border-dashed border-primary/10 rounded-xl bg-white/20">
-            <p className="text-xs text-primary/30 font-black uppercase tracking-widest italic">No availability slots defined</p>
+          <div className="text-center py-6 border-2 border-dashed border-border rounded-xl bg-slate-50">
+            <p className="text-xs text-text-muted font-black uppercase tracking-widest">No availability slots defined</p>
           </div>
         )}
 
         {/* Programs Section */}
         {(instructor as any).programs?.length > 0 && (
-          <div className="pt-4 border-t border-primary/10">
-            <p className="text-sm font-semibold text-primary mb-3 italic">Programs Taught</p>
+          <div className="pt-4 border-t border-border">
+            <p className="text-xs font-black text-text-muted uppercase tracking-wider mb-3">Programs Taught</p>
             <div className="flex flex-wrap gap-2">
               {(instructor as any).programs.map((program: any, i: number) => (
-                <span key={i} className="px-3 py-1.5 bg-secondary/10 text-secondary border border-secondary/20 rounded-lg text-[10px] font-black uppercase tracking-widest italic shadow-sm hover:scale-105 transition-transform duration-200">
+                <span key={i} className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-[10px] font-black uppercase tracking-widest">
                   {program.title}
                 </span>
               ))}
@@ -162,6 +161,7 @@ const InstructorViewModal: React.FC<Props> = ({
         )}
       </div>
     </div>
+
   );
 };
 

@@ -276,7 +276,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ program, onClose }) => {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { value: "physical", label: "Physical", icon: <Users className="w-4 h-4" /> },
-                    { value: "online", label: "Online", icon: <Monitor className="w-4 h-4" /> },
+                    // { value: "online", label: "Online", icon: <Monitor className="w-4 h-4" /> },
                   ].map(({ value, label, icon }) => (
                     <button
                       key={value}

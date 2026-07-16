@@ -2,15 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import InputField from "@/components/layout/InputField";
-import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, Search, ArrowRight, AlertCircle, AlertTriangle } from "lucide-react";
+import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, Search, ArrowRight, AlertCircle, AlertTriangle, Hash } from "lucide-react";
 import toast from "react-hot-toast";
 import { to12h } from "@/lib/timeFormat";
 import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
-import { formatDate } from "@/lib/utils";
 
 interface StudentData {
   id?: number;
   name: string;
+  roll_no?: string;
   phone: string;
   email?: string;
   dob?: string;
@@ -45,6 +45,7 @@ const StudentAddEditModal: React.FC<Props> = ({
 
   const [form, setForm] = useState<StudentData>({
     name: "",
+    roll_no: "",
     phone: "",
     email: "",
     dob: "",
@@ -118,6 +119,9 @@ const StudentAddEditModal: React.FC<Props> = ({
           custom_end_time: b.custom_end_time,
           custom_fee: "",
           commission_percentage: "",
+          billing_mode: "duration",
+          monthly_discount: "",
+          monthly_discount_type: "cash",
         }
       ]
     });
@@ -193,6 +197,7 @@ const StudentAddEditModal: React.FC<Props> = ({
     if (student) {
       setForm({
         name: student.name || "",
+        roll_no: student.roll_no || "",
         phone: student.phone || "",
         email: student.email || "",
         dob: student.dob ? student.dob.split('T')[0] : "",
@@ -218,6 +223,9 @@ const StudentAddEditModal: React.FC<Props> = ({
           custom_end_time: e.booking?.custom_end_time,
           custom_fee: e.custom_fee !== null && e.custom_fee !== undefined ? String(e.custom_fee) : "",
           commission_percentage: e.commission_percentage !== null && e.commission_percentage !== undefined ? String(e.commission_percentage) : "",
+          billing_mode: e.billing_mode || "duration",
+          monthly_discount: e.monthly_discount !== null && e.monthly_discount !== undefined ? String(e.monthly_discount) : "",
+          monthly_discount_type: e.monthly_discount_type || "cash",
         })) || [],
       });
 
@@ -232,6 +240,7 @@ const StudentAddEditModal: React.FC<Props> = ({
     } else {
       setForm({
         name: "",
+        roll_no: "",
         phone: "",
         email: "",
         dob: "",
@@ -292,6 +301,9 @@ const StudentAddEditModal: React.FC<Props> = ({
             custom_end_time: null,
             custom_fee: "",
             commission_percentage: "",
+            billing_mode: "duration",
+            monthly_discount: "",
+            monthly_discount_type: "cash",
           }
         ]
       }));
@@ -355,6 +367,13 @@ const StudentAddEditModal: React.FC<Props> = ({
             }
             if (e.commission_percentage !== undefined && e.commission_percentage !== null && e.commission_percentage !== "") {
               formData.append(`enrollments[${index}][commission_percentage]`, String(e.commission_percentage));
+            }
+            formData.append(`enrollments[${index}][billing_mode]`, e.billing_mode || "duration");
+            if (e.monthly_discount !== undefined && e.monthly_discount !== null && e.monthly_discount !== "") {
+              formData.append(`enrollments[${index}][monthly_discount]`, String(e.monthly_discount));
+            }
+            if (e.monthly_discount_type) {
+              formData.append(`enrollments[${index}][monthly_discount_type]`, e.monthly_discount_type);
             }
           });
         } else {
@@ -539,6 +558,15 @@ const StudentAddEditModal: React.FC<Props> = ({
                 onChange={(e) => handleChange("name", e.target.value)}
                 disabled={loading}
                 error={errors.name}
+              />
+              <InputField
+                label="Roll Number"
+                id="roll_no"
+                icon={Hash}
+                value={form.roll_no}
+                onChange={(e) => handleChange("roll_no", e.target.value)}
+                disabled={loading}
+                error={errors.roll_no}
               />
               <InputField
                 label="Phone Number"
@@ -857,42 +885,109 @@ const StudentAddEditModal: React.FC<Props> = ({
                         </div>
                       )}
 
-                      {/* Custom Fee & Commission Input */}
-                      <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-4">
+                      {/* Billing Mode + Fee + Discount + Commission */}
+                      <div className="pt-2 border-t border-slate-100 space-y-3">
+                        {/* Row 1: Billing Mode */}
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Custom Monthly Fee (Override)</p>
-                            <span className="text-[9px] text-gray-400 font-medium">Default: Rs. {Number(prog.program_fee || 0).toLocaleString()}</span>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Billing Mode</p>
+                          <div className="flex gap-2">
+                            {(["duration", "monthly", "fixed"] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => updateEnrollment(e.program_id, { billing_mode: mode })}
+                                className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${
+                                  (e.billing_mode || "duration") === mode
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                }`}
+                              >
+                                {mode === "duration" ? "Duration" : mode === "monthly" ? "Monthly" : "Fixed"}
+                              </button>
+                            ))}
                           </div>
-                          <div className="relative flex items-center">
-                            <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
-                            <input
-                              type="number"
-                              placeholder={`Default: ${prog.program_fee}`}
-                              value={e.custom_fee || ""}
-                              onChange={(ev) => updateEnrollment(e.program_id, { custom_fee: ev.target.value })}
-                              className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
-                            />
+                          <p className="text-[9px] text-slate-400 font-medium">
+                            {(e.billing_mode || "duration") === "duration" && "Fee × duration months (current default)"}
+                            {e.billing_mode === "monthly" && "Per-month rate — no multiplier. Supports carry-forward dues."}
+                            {e.billing_mode === "fixed" && "Lump sum fee — can be paid in installments."}
+                          </p>
+                        </div>
+
+                        {/* Row 2: Custom Fee + Commission */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                {(e.billing_mode || "duration") === "monthly" ? "Monthly Rate (Override)" : (e.billing_mode === "fixed" ? "Fixed Total (Override)" : "Custom Monthly Fee (Override)")}
+                              </p>
+                              <span className="text-[9px] text-gray-400 font-medium">Default: Rs. {Number(prog.program_fee || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="relative flex items-center">
+                              <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
+                              <input
+                                type="number"
+                                placeholder={`Default: ${prog.program_fee}`}
+                                value={e.custom_fee || ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { custom_fee: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Teacher Commission % (Override)</p>
+                              <span className="text-[9px] text-gray-400 font-medium">Default: Global rate</span>
+                            </div>
+                            <div className="relative flex items-center">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                placeholder="e.g. 100, 0, or 50"
+                                value={e.commission_percentage || ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { commission_percentage: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                              <span className="absolute right-3 text-xs font-bold text-gray-400">%</span>
+                            </div>
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Teacher Commission % (Override)</p>
-                            <span className="text-[9px] text-gray-400 font-medium">Default: Global rate</span>
+
+                        {/* Row 3: Monthly Discount (only for Monthly mode) */}
+                        {e.billing_mode === "monthly" && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Monthly Discount (auto-applies each session)</p>
+                            <div className="flex gap-2 items-center">
+                              <div className="relative flex items-center flex-1">
+                                <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={e.monthly_discount || ""}
+                                  onChange={(ev) => updateEnrollment(e.program_id, { monthly_discount: ev.target.value })}
+                                  className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <div className="flex gap-1">
+                                {(["cash", "percentage"] as const).map((type) => (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => updateEnrollment(e.program_id, { monthly_discount_type: type })}
+                                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${
+                                      (e.monthly_discount_type || "cash") === type
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-slate-100 text-slate-500"
+                                    }`}
+                                  >
+                                    {type === "cash" ? "Rs." : "%"}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              placeholder="e.g. 100, 0, or 50"
-                              value={e.commission_percentage || ""}
-                              onChange={(ev) => updateEnrollment(e.program_id, { commission_percentage: ev.target.value })}
-                              className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-blue-500/20"
-                            />
-                            <span className="absolute right-3 text-xs font-bold text-gray-400">%</span>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   );

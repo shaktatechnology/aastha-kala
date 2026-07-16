@@ -14,6 +14,7 @@ import ProgramManagementView from "@/components/admin/ProgramManagementView";
 interface Student {
   id: number;
   name: string;
+  roll_no?: string;
   phone: string;
   email?: string;
   dob?: string;
@@ -74,6 +75,7 @@ const StudentPage = () => {
     const columns = [
       { key: "sn", label: "SN" },
       { key: "image", label: "Photo" },
+      { key: "roll_no", label: "Roll No" },
       { key: "name", label: "Name" },
       { key: "phone", label: "Phone" },
       { key: "status", label: "Status" },
@@ -118,6 +120,7 @@ const StudentPage = () => {
     const formattedData = React.useMemo(() => students.map((student, index) => ({
       ...student,
       sn: (pagination.currentPage - 1) * pagination.itemsPerPage + index + 1,
+      roll_no: student.roll_no || "-",
       image: student.image_url ? (
         <div className="relative group/img">
           <img src={student.image_url} alt={student.name} className="w-12 h-12 object-cover rounded-xl ring-2 ring-border group-hover/img:ring-primary transition-all duration-300 shadow-sm" />
@@ -147,11 +150,27 @@ const StudentPage = () => {
       setFormModalOpen(true);
     };
   
-    const handleView = (row: any) => {
-      const original = students.find(s => s.id === row.id);
-      setViewStudent(original || row);
-      setViewModalOpen(true);
+    const handleView = async (row: any) => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/students/${row.id}`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const result = await res.json();
+        if (res.ok) {
+          setViewStudent(result.data);
+          setViewModalOpen(true);
+        } else {
+          toast.error("Failed to load student details");
+        }
+      } catch (err) {
+        toast.error("Error loading student details");
+      }
     };
+
   
     const handleDeleteClick = (row: any) => {
       const original = students.find(s => s.id === row.id);

@@ -47,6 +47,12 @@ interface StudentFee {
   payment_method?: string;
   net_amount?: number;
   remaining_amount?: number;
+  admission_fee?: number;
+  admission_discount?: number;
+  admission_discount_type?: "cash" | "percentage";
+  admission_paid_amount?: number;
+  programs_breakdown?: any[];
+  shift?: string;
 }
 
 const FeesPage = () => {
@@ -147,9 +153,41 @@ const FeesPage = () => {
     documentTitle: "Bill_" + (printingFee?.student?.name || "Customer"),
   });
 
-  const triggerPrint = (row: any) => {
-    const original = fees.find((f) => f.id === row.id);
-    setPrintingFee(original);
+  const triggerPrint = async (row: any) => {
+    try {
+      const original = fees.find((f) => f.id === row.id);
+      if (!original) return;
+
+      const toastId = toast.loading("Preparing bill...");
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${row.student_id}/fee-info?month_year=${encodeURIComponent(row.month_year)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const result = await res.json();
+      toast.dismiss(toastId);
+
+      if (res.ok && result.data) {
+        const d = result.data;
+        setPrintingFee({
+          ...original,
+          admission_fee: d.admission_amount || original.admission_fee,
+          admission_discount: d.admission_discount,
+          admission_discount_type: d.admission_discount_type,
+          admission_paid_amount: d.admission_paid_amount,
+          programs_breakdown: d.program_fees?.programs_breakdown || [],
+          shift: d.student?.shift || original.shift,
+        });
+      } else {
+        setPrintingFee(original);
+      }
+    } catch (e) {
+      console.error("Failed to fetch bill details", e);
+      const original = fees.find((f) => f.id === row.id);
+      setPrintingFee(original);
+    }
   };
 
   useEffect(() => {
@@ -611,7 +649,7 @@ const FeesPage = () => {
         </div>
 
         {/* Table Card */}
-        <div className="overflow-hidden">
+        <div className="nvidden">
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-gray-100">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">

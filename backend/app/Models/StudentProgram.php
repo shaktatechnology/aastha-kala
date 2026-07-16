@@ -17,6 +17,9 @@ class StudentProgram extends Model
         'booking_id',
         'custom_fee',
         'commission_percentage',
+        'billing_mode',
+        'monthly_discount',
+        'monthly_discount_type',
     ];
 
     protected $casts = [

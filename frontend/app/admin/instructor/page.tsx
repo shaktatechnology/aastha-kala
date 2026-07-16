@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Table from "@/components/layout/Table";
 import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
-import { Plus } from "lucide-react";
+import { Plus, Clock, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import InstructorModal from "@/components/admin/InstructorModal";
 import InstructorViewModal from "@/components/admin/InstructorViewModal";
 import InstructorAvailabilityModal from "@/components/admin/InstructorAvailabilityModal";
-import { Clock } from "lucide-react";
 import { Pagination } from "@/components/global/Pagination";
+import { useRouter } from "next/navigation";
 
 interface Instructor {
   id: number;
@@ -25,8 +25,11 @@ interface Instructor {
 }
 
 const Page = () => {
+  const router = useRouter();
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedInstructor, setSelectedInstructor] =
@@ -82,13 +85,13 @@ const Page = () => {
   const fetchInstructors = async (page: number = 1) => {
     try {
       setLoading(true);
-
+      const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/instructors?page=${page}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/instructors?page=${page}&search=${searchTerm}`,
         {
           headers: {
             Accept: "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         },
       );
@@ -124,8 +127,22 @@ const Page = () => {
   };
 
   useEffect(() => {
-    fetchInstructors();
-  }, []);
+    fetchInstructors(1);
+  }, [searchTerm]);
+
+  const handleApplyFilters = () => {
+    setSearchTerm(searchInput);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setSearchTerm("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleApplyFilters();
+  };
 
   const formattedData = instructors.map((inst, index) => ({
     ...inst,
@@ -213,28 +230,75 @@ const Page = () => {
   const actions: ("view" | "edit" | "delete")[] = ["view", "edit", "delete"];
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-center p-6 bg-surface border border-border rounded-xl gap-6 shadow-sm relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-primary/10 transition-colors duration-500" />
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+      <header className="flex flex-col lg:flex-row justify-between items-center p-6 bg-surface border border-border rounded-xl gap-6 shadow-sm relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full -mr-40 -mt-40 blur-3xl group-hover:bg-primary/10 transition-colors duration-500" />
         
-        <div className="relative z-10 flex flex-col items-center sm:items-start">
+        <div className="relative z-10 flex flex-col items-center lg:items-start w-full lg:w-auto">
           <h1 className="text-xl lg:text-2xl font-black text-text-primary tracking-tight">
-            Our Instructors
+            Instructor Management
           </h1>
-          <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-1">Manage and organize your professional teaching staff</p>
+          
+          <div className="flex bg-background border border-border p-1 rounded-lg mt-3 w-fit shadow-sm">
+            <button 
+              onClick={() => router.push("/admin/instructor")}
+              className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all bg-surface text-primary shadow-sm"
+            >
+              Instructor List
+            </button>
+            <button 
+              onClick={() => router.push("/admin/instructor/schedule")}
+              className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all text-text-muted hover:text-text-secondary"
+            >
+              Schedules
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingInstructor(null);
-            setFormModalOpen(true);
-          }}
-          className="w-full sm:w-auto relative z-10 px-6 py-2 bg-primary text-white rounded-lg shadow-lg shadow-primary/20 flex gap-2 items-center justify-center cursor-pointer font-black uppercase tracking-widest text-[10px] hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
-        >
-          <Plus className="h-4 w-4" strokeWidth={3} />
-          <span>Add Instructor</span>
-        </button>
-      </div>
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64 group/search">
+              <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within/search:text-primary transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search instructors..." 
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 text-xs font-bold bg-background border border-border rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-text-primary placeholder:text-text-muted shadow-sm"
+              />
+            </div>
+            
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button 
+                type="submit"
+                className="flex-1 sm:flex-none px-4 py-2.5 text-[9px] font-black uppercase tracking-widest bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                Search
+              </button>
+              {(searchInput || searchTerm) && (
+                <button 
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest border border-border text-text-secondary rounded-xl hover:bg-surface-hover transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
+
+          <button
+            onClick={() => {
+              setEditingInstructor(null);
+              setFormModalOpen(true);
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 flex gap-2 items-center justify-center cursor-pointer font-black uppercase tracking-widest text-[9px] hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={3} />
+            <span>Add Instructor</span>
+          </button>
+        </div>
+      </header>
 
       <div className="mt-6">
         <Table
@@ -245,6 +309,7 @@ const Page = () => {
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
+
           customActions={[
             {
               icon: <Clock className="h-4 w-4" />,
