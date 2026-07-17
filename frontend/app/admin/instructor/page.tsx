@@ -3,11 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Table from "@/components/layout/Table";
 import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
-import { Plus, Clock, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import toast from "react-hot-toast";
 import InstructorModal from "@/components/admin/InstructorModal";
 import InstructorViewModal from "@/components/admin/InstructorViewModal";
-import InstructorAvailabilityModal from "@/components/admin/InstructorAvailabilityModal";
 import { Pagination } from "@/components/global/Pagination";
 import { useRouter } from "next/navigation";
 
@@ -46,8 +45,6 @@ const Page = () => {
     null,
   );
 
-  const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
-  const [availabilityInstructor, setAvailabilityInstructor] = useState<Instructor | null>(null);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -182,17 +179,14 @@ const Page = () => {
     setFormModalOpen(true);
   };
 
+
   const handleDeleteClick = (row: any) => {
     const original = instructors.find((i) => i.id === row.id);
     setSelectedInstructor(original || null);
     setDeleteModalOpen(true);
   };
 
-  const handleAvailability = (row: any) => {
-    const original = instructors.find((i) => i.id === row.id);
-    setAvailabilityInstructor(original || null);
-    setAvailabilityModalOpen(true);
-  };
+
 
   const confirmDelete = async () => {
     if (!selectedInstructor) return;
@@ -227,7 +221,7 @@ const Page = () => {
     }
   };
 
-  const actions: ("view" | "edit" | "delete")[] = ["view", "edit", "delete"];
+  const actions: ("view" | "edit")[] = ["view", "edit"];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -287,17 +281,7 @@ const Page = () => {
             </div>
           </form>
 
-          <button
-            onClick={() => {
-              setEditingInstructor(null);
-              setFormModalOpen(true);
-            }}
-            className="w-full sm:w-auto px-4 py-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 flex gap-2 items-center justify-center cursor-pointer font-black uppercase tracking-widest text-[9px] hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={3} />
-            <span>Add Instructor</span>
-          </button>
-        </div>
+          </div>
       </header>
 
       <div className="mt-6">
@@ -310,14 +294,6 @@ const Page = () => {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
 
-          customActions={[
-            {
-              icon: <Clock className="h-4 w-4" />,
-              label: "Availability",
-              onClick: handleAvailability,
-              color: "text-secondary",
-            },
-          ]}
           emptyMessage="No instructors found"
         />
 
@@ -337,11 +313,11 @@ const Page = () => {
           setEditingInstructor(null);
         }}
         instructor={editingInstructor}
-        onSuccess={fetchInstructors}
+        onSuccess={() => fetchInstructors(pagination.currentPage)}
       />
 
       <InstructorViewModal
-        key={editingInstructor?.id || "create"}
+        key={viewingInstructor?.id || "view"}
         isOpen={viewModalOpen}
         onClose={() => {
           setViewModalOpen(false);
@@ -361,11 +337,6 @@ const Page = () => {
         }"? This action cannot be undone.`}
       />
 
-      <InstructorAvailabilityModal
-        isOpen={availabilityModalOpen}
-        onClose={() => setAvailabilityModalOpen(false)}
-        instructor={availabilityInstructor}
-      />
     </div>
   );
 };
