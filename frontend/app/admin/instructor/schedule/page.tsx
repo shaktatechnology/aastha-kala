@@ -25,6 +25,8 @@ import { Pagination } from "@/components/global/Pagination";
 import { to12h } from "@/lib/timeFormat";
 import { motion, AnimatePresence } from "framer-motion";
 import { Spinner } from "@/components/ui/spinner";
+import { useRouter } from "next/navigation";
+
 
 /** Convert "HH:MM" or "HH:MM:SS" → integer minutes since midnight */
 const toMins = (t: string): number => {
@@ -87,8 +89,10 @@ const computeFreeSegments = (
 };
 
 const InstructorSchedulePage = () => {
+  const router = useRouter();
   const [instructorsSchedules, setInstructorsSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedInstructor, setExpandedInstructor] = useState<number | null>(null);
 
@@ -169,81 +173,102 @@ const InstructorSchedulePage = () => {
 
   if (loading && instructorsSchedules.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <Spinner size="lg" />
-          <p className="mt-4 text-gray-500">Loading schedules...</p>
+          <p className="mt-4 text-text-muted text-xs font-bold uppercase tracking-wider">Loading schedules...</p>
         </div>
       </div>
     );
   }
 
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 uppercase italic tracking-tight">Instructor Schedule</h1>
-            <p className="text-sm text-gray-500 mt-1 uppercase tracking-widest font-medium">Track teaching sessions & free slots</p>
-          </div>
-        </div>
-
-        {/* Stats Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
-              <p className="text-sm text-gray-500 font-medium">Total Instructors</p>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mt-3">{pagination.totalItems}</p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-50 rounded-lg">
-                <Activity className="w-5 h-5 text-green-600" />
-              </div>
-              <p className="text-sm text-gray-500 font-medium">Active Classes Today</p>
-            </div>
-            <p className="text-3xl font-bold text-green-600 mt-3">
-              {instructorsSchedules.reduce((acc, item) => acc + item.classes.length, 0)}
-            </p>
-          </div>
-        </div>
-
-        {/* Filters Section */}
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by instructor or program..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white shadow-sm"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="px-5 py-2.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all font-bold cursor-pointer"
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+      {/* Header Section */}
+      <header className="flex flex-col lg:flex-row justify-between items-center p-6 bg-surface border border-border rounded-xl gap-6 shadow-sm relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full -mr-40 -mt-40 blur-3xl group-hover:bg-primary/10 transition-colors duration-500" />
+        
+        <div className="relative z-10 flex flex-col items-center lg:items-start w-full lg:w-auto">
+          <h1 className="text-xl lg:text-2xl font-black text-text-primary tracking-tight">
+            Instructor Schedules
+          </h1>
+          
+          <div className="flex bg-background border border-border p-1 rounded-lg mt-3 w-fit shadow-sm">
+            <button 
+              onClick={() => router.push("/admin/instructor")}
+              className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all text-text-muted hover:text-text-secondary"
             >
-              Apply
+              Instructor List
             </button>
-
-            {(searchInput !== "" || searchTerm !== "") && (
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="px-4 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-all font-medium cursor-pointer"
-              >
-                Clear
-              </button>
-            )}
+            <button 
+              onClick={() => router.push("/admin/instructor/schedule")}
+              className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all bg-surface text-primary shadow-sm"
+            >
+              Schedules
+            </button>
           </div>
-        </form>
+        </div>
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {/* Filters Section */}
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64 group/search">
+              <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within/search:text-primary transition-colors" />
+              <input
+                type="text"
+                placeholder="Search by instructor or program..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 text-xs font-bold bg-background border border-border rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-text-primary placeholder:text-text-muted shadow-sm"
+              />
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                type="submit"
+                className="flex-1 sm:flex-none px-4 py-2.5 text-[9px] font-black uppercase tracking-widest bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                Apply
+              </button>
+
+              {(searchInput !== "" || searchTerm !== "") && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest border border-border text-text-secondary rounded-xl hover:bg-surface-hover transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      </header>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Users className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-xs text-text-muted font-black uppercase tracking-wider">Total Instructors</p>
+          </div>
+          <p className="text-2xl font-black text-text-primary mt-3">{pagination.totalItems}</p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-success/10 rounded-lg">
+              <Activity className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-xs text-text-muted font-black uppercase tracking-wider">Active Classes Today</p>
+          </div>
+          <p className="text-2xl font-black text-success mt-3">
+            {instructorsSchedules.reduce((acc, item) => acc + item.classes.length, 0)}
+          </p>
+        </div>
+      </div>
+
 
         {/* Instructors Table */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
@@ -444,10 +469,10 @@ const InstructorSchedulePage = () => {
             </div>
           )}
         </div>
-      </div>
       <Toaster richColors position="top-right" />
     </div>
   );
 };
 
 export default InstructorSchedulePage;
+

@@ -24,7 +24,7 @@ const fetchPrograms = async () => {
 export const metadata = {
   title: "Our Programs | Aastha Kala Kendra",
   description:
-    "Explore our performing arts programs including vocal training, dance, instrumental music, and acting. Book your class online or in person.",
+    "Explore our performing arts programs including vocal training, dance, instrumental music, and acting. Book your class.",
 };
 
 const ProgramsPage = async () => {

@@ -39,6 +39,7 @@ interface Setting {
   opening_hour: string;
   closing_hour: string;
   admission_fee: string;
+  vat_percentage: string;
 }
 
 interface SocialLinks {
@@ -97,6 +98,7 @@ const Settings: React.FC = () => {
     opening_hour: "",
     closing_hour: "",
     admission_fee: "",
+    vat_percentage: "13",
   });
 
   // SOCIAL
@@ -172,6 +174,7 @@ const Settings: React.FC = () => {
             opening_hour: s.opening_hour || "",
             closing_hour: s.closing_hour || "",
             admission_fee: s.admission_fee?.toString() || "",
+            vat_percentage: s.vat_percentage?.toString() || "13",
           };
           setSetting(settingData);
 
@@ -275,6 +278,8 @@ const Settings: React.FC = () => {
     formData.append("closing_hour", setting.closing_hour);
     if (setting.admission_fee)
       formData.append("admission_fee", setting.admission_fee);
+    if (setting.vat_percentage)
+      formData.append("vat_percentage", setting.vat_percentage);
 
     // STATS
     formData.append("years_of_experience", stats.experience);
@@ -594,6 +599,38 @@ const Settings: React.FC = () => {
                       }
                       disabled={isSaving}
                       error={errors.admission_fee}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-background border border-border rounded-xl p-6 flex items-start gap-6 shadow-sm">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="w-6 h-6 text-primary" />
+                </div>
+                <div className="space-y-4 flex-1">
+                  <div>
+                    <h3 className="text-base font-black text-text-primary tracking-tight">
+                      VAT Configuration
+                    </h3>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Set the default VAT percentage for fee and commission calculations.
+                    </p>
+                  </div>
+                  <div className="max-w-md">
+                    <InputField
+                      label="VAT Percentage (%)"
+                      type="number"
+                      placeholder="e.g. 13"
+                      value={setting.vat_percentage}
+                      onChange={(e) =>
+                        setSetting({
+                          ...setting,
+                          vat_percentage: e.target.value,
+                        })
+                      }
+                      disabled={isSaving}
+                      error={errors.vat_percentage}
                     />
                   </div>
                 </div>

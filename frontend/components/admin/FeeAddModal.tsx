@@ -26,7 +26,13 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Portal } from "../global/Portal";
-import { formatMonthYear } from "@/lib/utils";
+import {
+  formatMonthYear,
+  nepaliMonthNames,
+  toNepaliDigits,
+  getBsDateParts,
+  bsToAd,
+} from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "./ThermalBill";
@@ -45,9 +51,13 @@ interface ProgramFeeEntry {
   discountType: "cash" | "percentage";
   payingNow: string;
   initialPaid?: number;
+  billingMode?: "duration" | "monthly" | "fixed";
+  dueMonth?: string; // set = carry-forward row, null/undefined = current month
+  monthlyDiscount?: number;
+  monthlyDiscountType?: "cash" | "percentage";
 }
 interface FeeInfo {
-  student: { id: number; name: string; classes?: string };
+  student: { id: number; name: string; classes?: string; shift?: string };
   admission_paid: boolean;
   admission_exists: boolean;
   admission_amount: number | null;
@@ -64,6 +74,10 @@ interface FeeInfo {
       discount?: number;
       discount_type?: string;
       status?: string;
+      billing_mode?: "duration" | "monthly" | "fixed";
+      monthly_discount?: number;
+      monthly_discount_type?: string;
+      due_month?: string | null;
     }[];
   } | null;
   period_record?: { remarks?: string; payment_method?: string };
@@ -73,6 +87,7 @@ interface Props {
   onClose: () => void;
   onSuccess: () => void;
   fee?: any;
+  instructorId?: string;
 }
 
 /* ─── Helpers ────────────────────────────────────────────── */
@@ -102,14 +117,27 @@ function initials(name: string) {
 }
 function getCurrentPeriod() {
   const d = new Date();
-  return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+  return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+}
+
+function bsMonthYearToAdPeriod(by: number, bm: number) {
+  let adY: number;
+  let adM: number;
+  if (bm >= 1 && bm <= 8) {
+    adM = bm + 4;
+    adY = by - 57;
+  } else {
+    adM = bm - 8;
+    adY = by - 56;
+  }
+  return `${adY}-${String(adM).padStart(2, "0")}`;
 }
 
 function formatPeriodToReadable(val: string) {
   if (!val || !val.includes("-")) return val;
   const [y, m] = val.split("-");
   const d = new Date(parseInt(y), parseInt(m) - 1);
-  return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+  return d.toLocaleString("default", { month: "long", year: "numeric" });
 }
 
 /**
@@ -212,7 +240,8 @@ const MethodDropdown: React.FC<{
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
@@ -264,7 +293,7 @@ const MethodDropdown: React.FC<{
 };
 
 /* ─── Main Modal ──────────────────────────────────────────── */
-const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
+const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instructorId }) => {
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -282,12 +311,74 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
   const [admDiscType, setAdmDiscType] = useState<"cash" | "percentage">("cash");
   const [admPayingNow, setAdmPayingNow] = useState("");
   const [initialAdmPaid, setInitialAdmPaid] = useState(0);
+  const [isOverwriteMode, setIsOverwriteMode] = useState(false);
 
   const [progEntries, setProgEntries] = useState<ProgramFeeEntry[]>([]);
   const [progPeriod, setProgPeriod] = useState(getCurrentPeriod());
   const [paymentMethods, setPaymentMethods] = useState<string[]>(["Cash"]);
+  const [shift, setShift] = useState("");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleToggleOverwriteMode = (enabled: boolean) => {
+    setIsOverwriteMode(enabled);
+    if (feeInfo) {
+      if (enabled) {
+        // Overwrite Mode: set initialPaid to 0, pre-populate payingNow with db values
+        setInitialAdmPaid(0);
+        setAdmPayingNow(
+          feeInfo.admission_paid_amount
+            ? feeInfo.admission_paid_amount.toString()
+            : ""
+        );
+        setProgEntries((prev) =>
+          prev.map((pe) => {
+            const pb = feeInfo.program_fees?.programs_breakdown?.find(
+              (x) => x.id === pe.id
+            );
+            return {
+              ...pe,
+              initialPaid: 0,
+              payingNow: pb?.paid_amount ? pb.paid_amount.toString() : "",
+            };
+          })
+        );
+      } else {
+        // Add Payment Mode: set initialPaid to db values, clear payingNow
+        setInitialAdmPaid(feeInfo.admission_paid_amount ?? 0);
+        setAdmPayingNow("");
+        setProgEntries((prev) =>
+          prev.map((pe) => {
+            const pb = feeInfo.program_fees?.programs_breakdown?.find(
+              (x) => x.id === pe.id
+            );
+            return {
+              ...pe,
+              initialPaid: pb?.paid_amount || 0,
+              payingNow: "",
+            };
+          })
+        );
+      }
+    }
+  };
+
+  const bsParts = useMemo(() => {
+    return getBsDateParts(progPeriod || getCurrentPeriod());
+  }, [progPeriod]);
+
+  const selectedBsYear = bsParts?.year || 2083;
+  const selectedBsMonth = bsParts?.month || 3;
+
+  const handleBsYearChange = (year: number) => {
+    const newPeriod = bsMonthYearToAdPeriod(year, selectedBsMonth);
+    setProgPeriod(newPeriod);
+  };
+
+  const handleBsMonthChange = (month: number) => {
+    const newPeriod = bsMonthYearToAdPeriod(selectedBsYear, month);
+    setProgPeriod(newPeriod);
+  };
 
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
@@ -339,9 +430,14 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
       if (!studentId) return;
       try {
         setLoadingFeeInfo(true);
+        setIsOverwriteMode(false);
         const token = localStorage.getItem("token");
         let url = `${BASE_URL}/admin/students/${studentId}/fee-info`;
-        if (month) url += `?month_year=${encodeURIComponent(month)}`;
+        const params = new URLSearchParams();
+        if (month) params.append("month_year", month);
+        if (instructorId) params.append("instructor_id", instructorId);
+        const qStr = params.toString();
+        if (qStr) url += `?${qStr}`;
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -349,24 +445,28 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         if (res.ok) {
           const d = data.data as FeeInfo;
           setFeeInfo(d);
+          setShift(d.student?.shift || "");
           if (d.admission_exists) {
             setAdmBase((d.admission_amount ?? 0).toString());
             setAdmDisc(d.admission_discount ?? 0);
             setAdmDiscType(d.admission_discount_type ?? "cash");
             setInitialAdmPaid(d.admission_paid_amount ?? 0);
+            setAdmPayingNow("");
           } else {
             setAdmBase((d.global_admission_fee ?? 0).toString());
             setAdmDisc(0);
             setAdmDiscType("cash");
             setInitialAdmPaid(0);
+            setAdmPayingNow("");
           }
-          setAdmPayingNow("");
           setTotalPayInput("");
           if (d.period_record) {
             setRemarks((prev) => prev || d.period_record?.remarks || "");
             setPaymentMethods((prev) => {
               if (prev.length === 1 && prev[0] === "Cash") {
-                const methods = String(d.period_record?.payment_method || "Cash")
+                const methods = String(
+                  d.period_record?.payment_method || "Cash",
+                )
                   .split(",")
                   .map((m) => m.trim())
                   .filter(Boolean);
@@ -381,11 +481,18 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                 id: pb.id,
                 title: pb.title,
                 base: pb.program_fee,
-                discount: pb.discount || 0,
-                discountType:
-                  (pb.discount_type as "cash" | "percentage") || "cash",
+                // For carry-forward rows (due_month set): no discount; for monthly: use monthly_discount as default
+                discount: pb.due_month ? 0 : (pb.discount ?? 0),
+                discountType: pb.due_month
+                  ? "cash"
+                  : ((pb.discount_type as "cash" | "percentage") ?? "cash"),
                 payingNow: "",
                 initialPaid: pb.paid_amount || 0,
+                billingMode: pb.billing_mode,
+                dueMonth: pb.due_month ?? undefined,
+                monthlyDiscount: pb.monthly_discount ?? 0,
+                monthlyDiscountType:
+                  (pb.monthly_discount_type as "cash" | "percentage") ?? "cash",
               })),
             );
           }
@@ -396,8 +503,14 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         setLoadingFeeInfo(false);
       }
     },
-    [BASE_URL],
+    [BASE_URL, instructorId],
   );
+
+  useEffect(() => {
+    if (selectedStudentId && isOpen) {
+      fetchFeeInfo(selectedStudentId, progPeriod);
+    }
+  }, [selectedStudentId, progPeriod, isOpen, fetchFeeInfo]);
 
   useEffect(() => {
     if (!feeInfo) return;
@@ -438,9 +551,9 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         .filter(Boolean);
       setPaymentMethods(methods.length > 0 ? methods : ["Cash"]);
       setRemarks(fee.remarks ?? "");
-      fetchFeeInfo(fee.student_id?.toString(), fee.month_year);
+      setShift(fee.shift ?? "");
     }
-  }, [isOpen, fee, fetchFeeInfo, BASE_URL]);
+  }, [isOpen, fee, BASE_URL]);
 
   /* ─── Calculations ─────────────────────────────────── */
   const calculations = useMemo(() => {
@@ -495,13 +608,25 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
       grandDue,
       totalDiscount,
     };
-  }, [admBase, admDisc, admDiscType, admPayingNow, initialAdmPaid, progEntries, fee, feeInfo]);
+  }, [
+    admBase,
+    admDisc,
+    admDiscType,
+    admPayingNow,
+    initialAdmPaid,
+    progEntries,
+    fee,
+    feeInfo,
+  ]);
 
   // Total Gross (before discount) for checked items
   const selectedGrossTotal = useMemo(() => {
     let t = 0;
-    if (checkedIds.has("admission") && calculations.hasAdm) t += calculations.admBaseNum;
-    calculations.progData.forEach(p => { if (checkedIds.has(String(p.id))) t += p.base; });
+    if (checkedIds.has("admission") && calculations.hasAdm)
+      t += calculations.admBaseNum;
+    calculations.progData.forEach((p) => {
+      if (checkedIds.has(String(p.id))) t += p.base;
+    });
     return t;
   }, [checkedIds, calculations]);
 
@@ -671,29 +796,39 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         month_year: progPeriod,
         payment_method: paymentMethods.join(", "),
         remarks: remarks || `${activeFeeType} — ${formatMonthYear(progPeriod)}`,
+        shift: shift || undefined,
       };
 
-      if (calculations.hasAdm) {
-        payload.admission_fee = calculations.admBaseNum;
-        payload.admission_discount = admDisc;
-        payload.admission_discount_type = admDiscType;
-        payload.admission_paid_amount = calculations.totalAdmPaid;
-      }
+      const feeItems: any[] = [];
 
-      if (calculations.hasProg) {
-        payload.selected_programs = calculations.progData.map((p) => p.id);
-        payload.program_payments = {};
-        calculations.progData.forEach(p => { payload.program_payments[p.id] = p.totalPaid; });
-        payload.program_fees = {};
-        calculations.progData.forEach(p => { payload.program_fees[p.id] = p.base; });
-        payload.program_discounts = {};
-        calculations.progData.forEach((p) => {
-          payload.program_discounts[p.id] = {
-            amount: p.discount,
-            type: p.discountType,
-          };
+      // 1. Admission item if checked and exists
+      if (checkedIds.has("admission") && calculations.hasAdm) {
+        feeItems.push({
+          type: "admission",
+          month_year: progPeriod,
+          base_amount: calculations.admBaseNum,
+          discount: admDisc,
+          discount_type: admDiscType,
+          paying_now: fee ? calculations.totalAdmPaid : calculations.admCurrentPaying,
         });
       }
+
+      // 2. Program items
+      calculations.progData.forEach((p) => {
+        if (checkedIds.has(String(p.id))) {
+          feeItems.push({
+            type: "program",
+            program_id: p.id,
+            month_year: p.dueMonth || progPeriod,
+            base_amount: p.base,
+            discount: p.discount,
+            discount_type: p.discountType,
+            paying_now: fee ? p.totalPaid : p.currentPaying,
+          });
+        }
+      });
+
+      payload.fee_items = feeItems;
 
       const res = await fetch(url, {
         method: fee ? "PUT" : "POST",
@@ -714,6 +849,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         student: selectedStudent,
         month_year: progPeriod,
         payment_method: paymentMethods.join(", "),
+        shift: shift || undefined,
+        remarks: remarks || undefined,
         fee_type: activeFeeType,
         total_amount: calculations.grandTotal,
         gross_amount:
@@ -721,6 +858,22 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
           (calculations.hasAdm ? calculations.admBaseNum : 0),
         discount_amount: calculations.totalDiscount,
         paid_amount: calculations.totalCollected,
+        return_amount: excessAmount,
+        admission_fee: calculations.hasAdm ? calculations.admBaseNum : 0,
+        admission_discount: admDisc,
+        admission_discount_type: admDiscType,
+        admission_paid_amount: calculations.totalAdmPaid,
+        admission_last_payment: calculations.hasAdm ? calculations.admCurrentPaying : 0,
+        programs_breakdown: calculations.progData
+          .filter((p) => checkedIds.has(String(p.id)))
+          .map((p) => ({
+            title: p.title,
+            program_fee: p.base,
+            discount: p.discount,
+            discount_type: p.discountType,
+            paid_amount: p.totalPaid,
+            last_payment_amount: p.currentPaying,
+          })),
         payments: [
           {
             created_at: new Date().toISOString(),
@@ -772,7 +925,9 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                   {selectedStudent ? (
                     <>
                       Processing for{" "}
-                      <span className="text-primary">{selectedStudent.name}</span>
+                      <span className="text-primary">
+                        {selectedStudent.name}
+                      </span>
                     </>
                   ) : (
                     "Manage fees and billing"
@@ -793,14 +948,6 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
             <div className="p-4 sm:p-6 space-y-5">
               {/* 1. Student */}
               <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
-                    1
-                  </span>
-                  <h3 className="text-[15px] font-black text-text-primary tracking-tight">
-                    Student Selection
-                  </h3>
-                </div>
                 {!fee && !selectedStudent ? (
                   <div ref={dropdownRef} className="relative">
                     <div className="flex items-center gap-3 border border-border rounded-lg px-3 py-2 bg-background focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm group">
@@ -826,7 +973,6 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                               setSelectedStudent(s);
                               setSelectedStudentId(s.id.toString());
                               setDropdownOpen(false);
-                              fetchFeeInfo(s.id.toString());
                             }}
                             className="w-full text-left px-4 py-3 hover:bg-surface-hover text-sm flex items-center justify-between transition-colors border-b border-border/50 last:border-0 group"
                           >
@@ -890,19 +1036,47 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                     </h3>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <MethodDropdown value={paymentMethods} onChange={setPaymentMethods} />
-                    <div className="relative flex items-center gap-2 border border-border rounded-xl px-3 sm:px-4 py-2 bg-background shadow-inner">
-                      <Calendar className="w-3.5 h-3.5 text-text-muted" />
-                      <span className="text-[11px] font-bold text-text-primary">
-                        {formatMonthYear(progPeriod || getCurrentPeriod())}
-                      </span>
-                      <input
-                        type="month"
-                        value={progPeriod}
-                        onChange={(e) => setProgPeriod(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        aria-label="Select month and year"
-                      />
+                    <MethodDropdown
+                      value={paymentMethods}
+                      onChange={setPaymentMethods}
+                    />
+
+                    {/* Nepali Year Selector */}
+                    <div className="relative">
+                      <select
+                        value={selectedBsYear}
+                        onChange={(e) =>
+                          handleBsYearChange(Number(e.target.value))
+                        }
+                        className="px-3 py-2 text-xs font-black uppercase tracking-wider text-text-primary bg-background border border-border rounded-lg hover:bg-surface-hover hover:border-primary/50 transition-all cursor-pointer shadow-sm outline-none appearance-none pr-8 min-w-[90px]"
+                      >
+                        {Array.from({ length: 11 }, (_, i) => 2080 + i).map(
+                          (year) => (
+                            <option key={year} value={year}>
+                              {toNepaliDigits(year)}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+
+                    {/* Nepali Month Selector */}
+                    <div className="relative">
+                      <select
+                        value={selectedBsMonth}
+                        onChange={(e) =>
+                          handleBsMonthChange(Number(e.target.value))
+                        }
+                        className="px-3 py-2 text-xs font-black uppercase tracking-wider text-text-primary bg-background border border-border rounded-lg hover:bg-surface-hover hover:border-primary/50 transition-all cursor-pointer shadow-sm outline-none appearance-none pr-8 min-w-[110px]"
+                      >
+                        {nepaliMonthNames.map((name, index) => (
+                          <option key={name} value={index + 1}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                 </div>
@@ -914,7 +1088,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                       Loading fee details...
                     </p>
                   </div>
-                ) : selectedStudent && (calculations.hasAdm || calculations.hasProg) ? (
+                ) : selectedStudent &&
+                  (calculations.hasAdm || calculations.hasProg) ? (
                   <div className="space-y-3">
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="overflow-x-auto">
@@ -922,101 +1097,365 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                           <thead>
                             <tr className="border-b border-gray-100 bg-gray-50/70">
                               <th className="w-10 px-3 py-2.5">
-                                <Checkbox checked={allChecked} onChange={toggleAll} />
+                                <Checkbox
+                                  checked={allChecked}
+                                  onChange={toggleAll}
+                                />
                               </th>
-                              <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Item</th>
-                              <th className="text-right px-3 py-2.5 w-[90px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Base</th>
-                              <th className="text-center px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Discount</th>
-                              <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Net</th>
-                              <th className="px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center">Paying Now</th>
-                              <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Balance</th>
-                              <th className="text-center px-3 py-2.5 w-[70px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                              <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                Item
+                              </th>
+                              <th className="text-right px-3 py-2.5 w-[90px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                Base
+                              </th>
+                              <th className="text-center px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                Discount
+                              </th>
+                              <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                Net
+                              </th>
+                              <th className="px-3 py-2.5 w-[170px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center">
+                                Paying Now
+                              </th>
+                              <th className="text-right px-3 py-2.5 w-[80px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                Balance
+                              </th>
+                              <th className="text-center px-3 py-2.5 w-[70px] text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                Status
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
                             {calculations.hasAdm && (
-                              <tr className={`group transition-colors ${calculations.admissionPaidGlobally ? "bg-emerald-50/40" : "hover:bg-gray-50/50"}`}>
+                              <tr
+                                className={`group transition-colors ${calculations.admissionPaidGlobally ? "bg-emerald-50/40" : "hover:bg-gray-50/50"}`}
+                              >
                                 <td className="px-3 py-3">
-                                  <Checkbox checked={checkedIds.has("admission")} onChange={() => toggleCheck("admission")} disabled={calculations.admissionPaidGlobally} />
+                                  <Checkbox
+                                    checked={checkedIds.has("admission")}
+                                    onChange={() => toggleCheck("admission")}
+                                    disabled={
+                                      calculations.admissionPaidGlobally
+                                    }
+                                  />
                                 </td>
                                 <td className="px-3 py-3">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><Wallet className="w-3.5 h-3.5 text-blue-500" /></div>
+                                    <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                      <Wallet className="w-3.5 h-3.5 text-blue-500" />
+                                    </div>
                                     <div>
-                                      <p className="text-[13px] font-semibold text-gray-800">Admission Fee</p>
-                                      {calculations.admissionPaidGlobally && <span className="text-[10px] text-emerald-600 font-bold">FULLY PAID</span>}
+                                      <p className="text-[13px] font-semibold text-gray-800">
+                                        Admission Fee
+                                      </p>
+                                      {calculations.admissionPaidGlobally && (
+                                        <span className="text-[10px] text-emerald-600 font-bold">
+                                          FULLY PAID
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-3 py-3">
-                                  <input type="number" min={0} value={admBase} onChange={(e) => setAdmBase(clamp(e.target.value))} onKeyDown={blockNeg} disabled={calculations.admissionPaidGlobally} className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium disabled:opacity-50" />
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={admBase}
+                                    onChange={(e) =>
+                                      setAdmBase(clamp(e.target.value))
+                                    }
+                                    onKeyDown={blockNeg}
+                                    disabled={
+                                      calculations.admissionPaidGlobally
+                                    }
+                                    className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium disabled:opacity-50"
+                                  />
                                 </td>
                                 <td className="px-3 py-3">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    <input type="number" min={0} value={admDisc || ""} onChange={(e) => setAdmDisc(Math.max(0, Number(e.target.value) || 0))} onKeyDown={blockNeg} disabled={calculations.admissionPaidGlobally} placeholder="0" className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 disabled:opacity-50" />
-                                    <TogglePill size="xs" options={[{ label: "Rs.", value: "cash" }, { label: "%", value: "percentage" }]} value={admDiscType} onChange={(v) => setAdmDiscType(v as "cash" | "percentage")} disabled={calculations.admissionPaidGlobally} />
-                                  </div>
-                                </td>
-                                <td className="px-3 py-3 text-right"><span className="text-[13px] font-bold text-gray-900">{fmtS(calculations.admNet)}</span></td>
-                                <td className="px-3 py-3">
-                                  <div className="space-y-1">
-                                    {initialAdmPaid > 0 && <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5"><span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Prev paid</span><span className="text-[11px] font-bold text-emerald-700">{fmtS(initialAdmPaid)}</span></div>}
-                                    <input type="number" min={0} value={admPayingNow} onChange={(e) => setAdmPayingNow(clamp(e.target.value))} onKeyDown={blockNeg} disabled={calculations.admissionPaidGlobally} placeholder="0" className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold disabled:opacity-50 placeholder:text-gray-300" />
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={admDisc || ""}
+                                      onChange={(e) =>
+                                        setAdmDisc(
+                                          Math.max(
+                                            0,
+                                            Number(e.target.value) || 0,
+                                          ),
+                                        )
+                                      }
+                                      onKeyDown={blockNeg}
+                                      disabled={
+                                        calculations.admissionPaidGlobally
+                                      }
+                                      placeholder="0"
+                                      className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 disabled:opacity-50"
+                                    />
+                                    <TogglePill
+                                      size="xs"
+                                      options={[
+                                        { label: "Rs.", value: "cash" },
+                                        { label: "%", value: "percentage" },
+                                      ]}
+                                      value={admDiscType}
+                                      onChange={(v) =>
+                                        setAdmDiscType(
+                                          v as "cash" | "percentage",
+                                        )
+                                      }
+                                      disabled={
+                                        calculations.admissionPaidGlobally
+                                      }
+                                    />
                                   </div>
                                 </td>
                                 <td className="px-3 py-3 text-right">
-                                  <span className={`text-[13px] font-bold ${calculations.admRemaining > 0 ? "text-amber-600" : calculations.admRemaining < 0 ? "text-emerald-600" : "text-gray-300"}`}>
-                                    {calculations.admRemaining !== 0 ? (calculations.admRemaining < 0 ? `+${fmtS(Math.abs(calculations.admRemaining))} CR` : fmtS(calculations.admRemaining)) : "—"}
+                                  <span className="text-[13px] font-bold text-gray-900">
+                                    {fmtS(calculations.admNet)}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="space-y-1">
+                                    {initialAdmPaid > 0 && (
+                                      <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5">
+                                        <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
+                                          Prev paid
+                                        </span>
+                                        <span className="text-[11px] font-bold text-emerald-700">
+                                          {fmtS(initialAdmPaid)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={admPayingNow}
+                                      onChange={(e) =>
+                                        setAdmPayingNow(clamp(e.target.value))
+                                      }
+                                      onKeyDown={blockNeg}
+                                      disabled={
+                                        calculations.admissionPaidGlobally
+                                      }
+                                      placeholder="0"
+                                      className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold disabled:opacity-50 placeholder:text-gray-300"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 text-right">
+                                  <span
+                                    className={`text-[13px] font-bold ${calculations.admRemaining > 0 ? "text-amber-600" : calculations.admRemaining < 0 ? "text-emerald-600" : "text-gray-300"}`}
+                                  >
+                                    {calculations.admRemaining !== 0
+                                      ? calculations.admRemaining < 0
+                                        ? `+${fmtS(Math.abs(calculations.admRemaining))} CR`
+                                        : fmtS(calculations.admRemaining)
+                                      : "—"}
                                   </span>
                                 </td>
                                 <td className="px-3 py-3 text-center">
-                                  {calculations.admRemaining <= 0 && calculations.admNet > 0 ? (
-                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">PAID</span>
+                                  {calculations.admRemaining <= 0 &&
+                                  calculations.admNet > 0 ? (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                                      PAID
+                                    </span>
                                   ) : calculations.admNet > 0 ? (
-                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">DUE</span>
-                                  ) : <span className="text-gray-300">—</span>}
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+                                      DUE
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-300">—</span>
+                                  )}
                                 </td>
                               </tr>
                             )}
 
                             {calculations.progData.map((p) => (
-                              <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
+                              <tr
+                                key={p.dueMonth ? `${p.id}-${p.dueMonth}` : `${p.id}-current`}
+                                className="group hover:bg-gray-50/50 transition-colors"
+                              >
                                 <td className="px-3 py-3">
-                                  <Checkbox checked={checkedIds.has(String(p.id))} onChange={() => toggleCheck(String(p.id))} />
+                                  <Checkbox
+                                    checked={checkedIds.has(String(p.id))}
+                                    onChange={() => toggleCheck(String(p.id))}
+                                  />
                                 </td>
                                 <td className="px-3 py-3">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0"><BookOpen className="w-3.5 h-3.5 text-violet-500" /></div>
-                                    <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[180px]">{p.title}</p>
+                                    <div
+                                      className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${p.dueMonth ? "bg-amber-50" : "bg-violet-50"}`}
+                                    >
+                                      <BookOpen
+                                        className={`w-3.5 h-3.5 ${p.dueMonth ? "text-amber-500" : "text-violet-500"}`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[160px]">
+                                        {p.title}
+                                      </p>
+                                      {p.dueMonth ? (
+                                        <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                          DUE:{" "}
+                                          {formatMonthYear(p.dueMonth)}
+                                        </span>
+                                      ) : p.billingMode === "monthly" ? (
+                                        <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">
+                                          Monthly
+                                        </span>
+                                      ) : p.billingMode === "fixed" ? (
+                                        <span className="text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full">
+                                          Fixed
+                                        </span>
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="px-3 py-3">
-                                  <input type="number" min={0} value={p.base} onChange={e => setProgEntries(prev => prev.map(o => o.id === p.id ? { ...o, base: Number(clamp(e.target.value)) || 0 } : o))} onKeyDown={blockNeg} className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium" />
+                                  {/* Carry-forward rows: base is read-only (historical amount) */}
+                                  {p.dueMonth ? (
+                                    <div className="text-right text-[12px] font-bold text-gray-700 px-2">
+                                      {fmtS(p.base)}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={p.base}
+                                      onChange={(e) =>
+                                        setProgEntries((prev) =>
+                                          prev.map((o) =>
+                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                              ? {
+                                                  ...o,
+                                                  base:
+                                                    Number(
+                                                      clamp(e.target.value),
+                                                    ) || 0,
+                                                }
+                                              : o,
+                                          ),
+                                        )
+                                      }
+                                      onKeyDown={blockNeg}
+                                      className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium"
+                                    />
+                                  )}
                                 </td>
                                 <td className="px-3 py-3">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    <input type="number" min={0} value={p.discount || ""} onChange={(e) => setProgEntries((prev) => prev.map((o) => o.id === p.id ? { ...o, discount: Math.max(0, Number(e.target.value) || 0) } : o))} onKeyDown={blockNeg} placeholder="0" className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300" />
-                                    <TogglePill size="xs" options={[{ label: "Rs.", value: "cash" }, { label: "%", value: "percentage" }]} value={p.discountType} onChange={(v) => setProgEntries((prev) => prev.map((o) => o.id === p.id ? { ...o, discountType: v as "cash" | "percentage" } : o))} />
-                                  </div>
-                                </td>
-                                <td className="px-3 py-3 text-right"><span className="text-[13px] font-bold text-gray-900">{fmtS(p.net)}</span></td>
-                                <td className="px-3 py-3">
-                                  <div className="space-y-1">
-                                    {(p.initialPaid ?? 0) > 0 && <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5"><span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Prev paid</span><span className="text-[11px] font-bold text-emerald-700">{fmtS(p.initialPaid!)}</span></div>}
-                                    <input type="number" min={0} value={p.payingNow} onChange={(e) => setProgEntries((prev) => prev.map((o) => o.id === p.id ? { ...o, payingNow: clamp(e.target.value) } : o))} onKeyDown={blockNeg} placeholder="0" className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold placeholder:text-gray-300" />
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={p.discount || ""}
+                                      onChange={(e) =>
+                                        setProgEntries((prev) =>
+                                          prev.map((o) =>
+                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                              ? {
+                                                  ...o,
+                                                  discount: Math.max(
+                                                    0,
+                                                    Number(e.target.value) || 0,
+                                                  ),
+                                                }
+                                              : o,
+                                          ),
+                                        )
+                                      }
+                                      onKeyDown={blockNeg}
+                                      placeholder="0"
+                                      className="w-14 text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300"
+                                    />
+                                    <TogglePill
+                                      size="xs"
+                                      options={[
+                                        { label: "Rs.", value: "cash" },
+                                        { label: "%", value: "percentage" },
+                                      ]}
+                                      value={p.discountType}
+                                      onChange={(v) =>
+                                        setProgEntries((prev) =>
+                                          prev.map((o) =>
+                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                              ? {
+                                                  ...o,
+                                                  discountType: v as
+                                                    | "cash"
+                                                    | "percentage",
+                                                }
+                                              : o,
+                                          ),
+                                        )
+                                      }
+                                    />
                                   </div>
                                 </td>
                                 <td className="px-3 py-3 text-right">
-                                  <span className={`text-[13px] font-bold ${p.remaining > 0 ? "text-amber-600" : p.remaining < 0 ? "text-emerald-600" : "text-gray-300"}`}>
-                                    {p.remaining !== 0 ? (p.remaining < 0 ? `+${fmtS(Math.abs(p.remaining))} CR` : fmtS(p.remaining)) : "—"}
+                                  <span className="text-[13px] font-bold text-gray-900">
+                                    {fmtS(p.net)}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="space-y-1">
+                                    {(p.initialPaid ?? 0) > 0 && (
+                                      <div className="flex justify-between items-center bg-emerald-50/80 rounded-md px-2 py-0.5">
+                                        <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
+                                          Prev paid
+                                        </span>
+                                        <span className="text-[11px] font-bold text-emerald-700">
+                                          {fmtS(p.initialPaid!)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={p.payingNow}
+                                      onChange={(e) =>
+                                        setProgEntries((prev) =>
+                                          prev.map((o) =>
+                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                              ? {
+                                                  ...o,
+                                                  payingNow: clamp(
+                                                    e.target.value,
+                                                  ),
+                                                }
+                                              : o,
+                                          ),
+                                        )
+                                      }
+                                      onKeyDown={blockNeg}
+                                      placeholder="0"
+                                      className="w-full text-right bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-400 font-semibold placeholder:text-gray-300"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 text-right">
+                                  <span
+                                    className={`text-[13px] font-bold ${p.remaining > 0 ? "text-amber-600" : p.remaining < 0 ? "text-emerald-600" : "text-gray-300"}`}
+                                  >
+                                    {p.remaining !== 0
+                                      ? p.remaining < 0
+                                        ? `+${fmtS(Math.abs(p.remaining))} CR`
+                                        : fmtS(p.remaining)
+                                      : "—"}
                                   </span>
                                 </td>
                                 <td className="px-3 py-3 text-center">
                                   {p.remaining <= 0 && p.net > 0 ? (
-                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">PAID</span>
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                                      PAID
+                                    </span>
                                   ) : p.net > 0 ? (
-                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">DUE</span>
-                                  ) : <span className="text-gray-300">—</span>}
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+                                      DUE
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-300">—</span>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -1025,38 +1464,134 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                       </div>
                     </div>
 
-                    <div className={`rounded-xl px-4 py-3 border transition-colors ${hasExcess ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+                    <div
+                      className={`rounded-xl px-4 py-3 border transition-colors ${hasExcess ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}
+                    >
                       <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1.5"><span className="text-[11px] text-gray-400 font-medium">Selected</span><span className="text-[13px] font-bold text-gray-900">{selectedCheckedCount}<span className="text-gray-400 font-medium text-[11px]">/{totalItemCount}</span></span></div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-gray-400 font-medium">
+                              Selected
+                            </span>
+                            <span className="text-[13px] font-bold text-gray-900">
+                              {selectedCheckedCount}
+                              <span className="text-gray-400 font-medium text-[11px]">
+                                /{totalItemCount}
+                              </span>
+                            </span>
+                          </div>
                           <div className="w-px h-5 bg-gray-200" />
-                          <div><span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">Gross Total</span><span className="text-[15px] font-extrabold text-gray-500">{fmt(selectedGrossTotal)}</span></div>
+                          <div>
+                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">
+                              Gross Total
+                            </span>
+                            <span className="text-[15px] font-extrabold text-gray-500">
+                              {fmt(selectedGrossTotal)}
+                            </span>
+                          </div>
                           <div className="w-px h-5 bg-gray-200" />
-                          <div><span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">Due This Session</span><span className={`text-[15px] font-extrabold ${selectedDueTotal > 0 ? "text-gray-900" : "text-emerald-600"}`}>{fmt(selectedDueTotal)}</span></div>
+                          <div>
+                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-px">
+                              Due This Session
+                            </span>
+                            <span
+                              className={`text-[15px] font-extrabold ${selectedDueTotal > 0 ? "text-gray-900" : "text-emerald-600"}`}
+                            >
+                              {fmt(selectedDueTotal)}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-2.5 flex-wrap">
                           {hasExcess && (
                             <div className="flex items-center gap-1.5 bg-white border border-amber-200 rounded-lg px-2.5 py-1.5">
                               <RotateCcw className="w-3 h-3 text-amber-500" />
-                              <div><span className="text-[8px] text-amber-500 font-bold uppercase tracking-widest block leading-none mb-0.5">Return</span><span className="text-[13px] font-extrabold text-amber-600 leading-none">{fmt(excessAmount)}</span></div>
+                              <div>
+                                <span className="text-[8px] text-amber-500 font-bold uppercase tracking-widest block leading-none mb-0.5">
+                                  Return
+                                </span>
+                                <span className="text-[13px] font-extrabold text-amber-600 leading-none">
+                                  {fmt(excessAmount)}
+                                </span>
+                              </div>
                             </div>
                           )}
-                          <button onClick={handleClear} className="flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:text-red-500 rounded-lg text-[11px] font-medium transition-colors border border-transparent hover:border-red-100 hover:bg-red-50"><RotateCcw className="w-3 h-3" />Clear</button>
-                          <button onClick={handlePayFull} disabled={selectedCheckedCount === 0 || selectedDueTotal <= 0} className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-30">Pay Full</button>
+                          <button
+                            onClick={handleClear}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:text-red-500 rounded-lg text-[11px] font-medium transition-colors border border-transparent hover:border-red-100 hover:bg-red-50"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Clear
+                          </button>
+                          <button
+                            onClick={handlePayFull}
+                            disabled={
+                              selectedCheckedCount === 0 ||
+                              selectedDueTotal <= 0
+                            }
+                            className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-30"
+                          >
+                            Pay Full
+                          </button>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400 pointer-events-none">Rs.</span>
-                            <input type="number" min={0} value={totalPayInput} onChange={(e) => handleTotalPayChange(e.target.value)} onKeyDown={blockNeg} placeholder={selectedDueTotal > 0 ? fmtS(selectedDueTotal) : "0"} disabled={selectedCheckedCount === 0} className={`w-[160px] bg-white border rounded-xl pl-7 pr-3 py-2 text-[14px] font-bold outline-none transition-all placeholder:text-gray-300 disabled:opacity-40 ${hasExcess ? "border-amber-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 text-amber-700" : Number(totalPayInput) > 0 ? "border-emerald-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-emerald-700" : "border-gray-300 focus:border-gray-400"}`} />
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400 pointer-events-none">
+                              Rs.
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={totalPayInput}
+                              onChange={(e) =>
+                                handleTotalPayChange(e.target.value)
+                              }
+                              onKeyDown={blockNeg}
+                              placeholder={
+                                selectedDueTotal > 0
+                                  ? fmtS(selectedDueTotal)
+                                  : "0"
+                              }
+                              disabled={selectedCheckedCount === 0}
+                              className={`w-[160px] bg-white border rounded-xl pl-7 pr-3 py-2 text-[14px] font-bold outline-none transition-all placeholder:text-gray-300 disabled:opacity-40 ${hasExcess ? "border-amber-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 text-amber-700" : Number(totalPayInput) > 0 ? "border-emerald-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-emerald-700" : "border-gray-300 focus:border-gray-400"}`}
+                            />
                           </div>
                         </div>
                       </div>
-                      {selectedCheckedCount === 0 && <p className="text-[11px] text-gray-400 mt-2">☝ Check items above to activate payment entry</p>}
+                      {selectedCheckedCount === 0 && (
+                        <p className="text-[11px] text-gray-400 mt-2">
+                          ☝ Check items above to activate payment entry
+                        </p>
+                      )}
+                      {fee && (
+                        <div className="mt-3 flex items-center justify-end">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isOverwriteMode}
+                              onChange={(e) =>
+                                handleToggleOverwriteMode(e.target.checked)
+                              }
+                              className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5"
+                            />
+                            Correct previous payment typo (overwrite mode)
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : !selectedStudent ? (
-                  <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl"><User className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-xs text-gray-400 font-medium">Select a student to view fee breakdown</p></div>
+                  <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl">
+                    <User className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-xs text-gray-400 font-medium">
+                      Select a student to view fee breakdown
+                    </p>
+                  </div>
                 ) : (
-                  <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl"><Receipt className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-xs text-gray-400 font-medium">No fee items found for this student</p></div>
+                  <div className="text-center py-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl">
+                    <Receipt className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-xs text-gray-400 font-medium">
+                      No fee items found for this student
+                    </p>
+                  </div>
                 )}
               </section>
 
@@ -1066,9 +1601,19 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                   <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-black shadow-lg shadow-primary/20">
                     <MessageSquare className="w-4 h-4" />
                   </span>
-                  <h3 className="text-[15px] font-black text-text-primary tracking-tight">Additional Notes</h3>
+                  <h3 className="text-[15px] font-black text-text-primary tracking-tight">
+                    Additional Notes
+                  </h3>
                 </div>
-                <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Add any specific details or remarks about this payment..." className="w-full border border-border rounded-2xl px-5 py-4 text-sm font-medium outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all resize-none h-24 bg-background placeholder:text-text-muted" rows={3} />
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <textarea
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Add any specific details or remarks about this payment..."
+                    className="flex-1 border border-border rounded-2xl px-5 py-4 text-sm font-medium outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all resize-none h-24 bg-background placeholder:text-text-muted"
+                    rows={3}
+                  />
+                </div>
               </section>
             </div>
           </div>
@@ -1077,29 +1622,85 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
           <div className="p-4 sm:p-6 border-t border-border bg-surface/80 backdrop-blur-sm sticky bottom-0 z-20">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
               <div className="flex flex-wrap items-center gap-4 sm:gap-6 justify-center sm:justify-start">
-                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Total cost</span><span className="text-xl font-black text-text-primary tracking-tight">{fmt(calculations.progBaseSum + (calculations.hasAdm ? calculations.admBaseNum : 0))}</span></div>
-                <div className="text-border text-lg font-light hidden sm:block">−</div>
-                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Discount</span><span className="text-xl font-black text-primary tracking-tight">{fmt(calculations.totalDiscount)}</span></div>
-                <div className="text-border text-lg font-light hidden sm:block">=</div>
-                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Final Bill</span><span className="text-xl font-black text-text-primary tracking-tight">{fmt(calculations.grandTotal)}</span></div>
-                <div className="w-px h-10 bg-border hidden sm:block mx-1" />
-                <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Collecting</span><span className="text-xl font-black text-success tracking-tight">{fmt(calculations.totalCollected)}</span></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
+                    Total cost
+                  </span>
+                  <span className="text-xl font-black text-text-primary tracking-tight">
+                    {fmt(
+                      calculations.progBaseSum +
+                        (calculations.hasAdm ? calculations.admBaseNum : 0),
+                    )}
+                  </span>
+                </div>
+                <div className="text-border text-lg font-light hidden sm:block">
+                  −
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
+                    Discount
+                  </span>
+                  <span className="text-xl font-black text-primary tracking-tight">
+                    {fmt(calculations.totalDiscount)}
+                  </span>
+                </div>
+                <div className="text-border text-lg font-light hidden sm:block">
+                  =
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
+                    Final Bill
+                  </span>
+                  <span className="text-xl font-black text-text-primary tracking-tight">
+                    {fmt(calculations.grandTotal)}
+                  </span>
+                </div>
                 <div className="w-px h-10 bg-border hidden sm:block mx-1" />
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Balance Due</span>
-                  <span className={`text-xl font-black tracking-tight ${calculations.grandDue > 0 ? "text-warning" : "text-success"}`}>
-                    {calculations.grandDue < 0 ? `+${fmt(Math.abs(calculations.grandDue))} Credit` : fmt(calculations.grandDue)}
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
+                    Collecting
+                  </span>
+                  <span className="text-xl font-black text-success tracking-tight">
+                    {fmt(calculations.totalCollected)}
+                  </span>
+                </div>
+                <div className="w-px h-10 bg-border hidden sm:block mx-1" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">
+                    Balance Due
+                  </span>
+                  <span
+                    className={`text-xl font-black tracking-tight ${calculations.grandDue > 0 ? "text-warning" : "text-success"}`}
+                  >
+                    {calculations.grandDue < 0
+                      ? `+${fmt(Math.abs(calculations.grandDue))} Credit`
+                      : fmt(calculations.grandDue)}
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 w-full sm:w-auto">
-                <button onClick={onClose} className="flex-1 sm:flex-none px-6 py-3.5 text-sm font-black uppercase tracking-widest text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-2xl transition-all cursor-pointer">Cancel</button>
-                <button onClick={handleSubmit} disabled={loading || !selectedStudentId} className="flex-1 sm:flex-none px-8 py-3.5 bg-primary text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/25 hover:bg-primary-hover hover:-translate-y-1 active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer">
+                <button
+                  onClick={onClose}
+                  className="flex-1 sm:flex-none px-6 py-3.5 text-sm font-black uppercase tracking-widest text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-2xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading || !selectedStudentId}
+                  className="flex-1 sm:flex-none px-8 py-3.5 bg-primary text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/25 hover:bg-primary-hover hover:-translate-y-1 active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
+                >
                   {loading ? (
-                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Processing...</span></>
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Processing...</span>
+                    </>
                   ) : (
-                    <><CreditCard className="w-4 h-4" /><span>{fee ? "Update Payment" : "Record Payment"}</span></>
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>{fee ? "Update Payment" : "Record Payment"}</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -1110,7 +1711,11 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
                 className="h-full rounded-full transition-all duration-1000 ease-out"
                 style={{
                   width: `${calculations.grandTotal > 0 ? Math.min(100, (calculations.totalCollected / calculations.grandTotal) * 100) : 0}%`,
-                  backgroundColor: calculations.totalCollected >= calculations.grandTotal && calculations.grandTotal > 0 ? "var(--success)" : "var(--primary)",
+                  backgroundColor:
+                    calculations.totalCollected >= calculations.grandTotal &&
+                    calculations.grandTotal > 0
+                      ? "var(--success)"
+                      : "var(--primary)",
                 }}
               />
             </div>
@@ -1121,6 +1726,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
           {thermalFee && (
             <div ref={printRef} className="print-wrapper">
+              <ThermalBill fee={thermalFee} settings={settings} />
               <ThermalBill fee={thermalFee} settings={settings} />
             </div>
           )}

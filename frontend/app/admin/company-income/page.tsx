@@ -227,7 +227,7 @@ const CompanyIncomePage = () => {
                     </div>
                     <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                         <p className="text-sm text-gray-500">
-                            {monthlyTotal !== null ? "Total for Selected Period" : "Total for Current Filter"}
+                            {monthFilter || yearFilter ? "Total for Selected Period" : "Total Income"}
                         </p>
                         <p className="text-3xl font-bold text-emerald-600 mt-1">
                             Rs. {(monthlyTotal ?? 0).toLocaleString()}

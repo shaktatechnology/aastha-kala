@@ -2,15 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import InputField from "@/components/layout/InputField";
-import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, Search, ArrowRight, AlertCircle, AlertTriangle } from "lucide-react";
+import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, Search, ArrowRight, AlertCircle, AlertTriangle, Hash } from "lucide-react";
 import toast from "react-hot-toast";
 import { to12h } from "@/lib/timeFormat";
 import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
-import { formatDate } from "@/lib/utils";
 
 interface StudentData {
   id?: number;
   name: string;
+  roll_no?: string;
   phone: string;
   email?: string;
   dob?: string;
@@ -45,6 +45,7 @@ const StudentAddEditModal: React.FC<Props> = ({
 
   const [form, setForm] = useState<StudentData>({
     name: "",
+    roll_no: "",
     phone: "",
     email: "",
     dob: "",
@@ -116,6 +117,13 @@ const StudentAddEditModal: React.FC<Props> = ({
           schedule_ids: b.schedules?.map((s: any) => s.id) || (b.schedule_id ? [b.schedule_id] : []),
           custom_start_time: b.custom_start_time,
           custom_end_time: b.custom_end_time,
+          custom_fee: "",
+          commission_percentage: "",
+          billing_mode: "duration",
+          monthly_discount: "",
+          monthly_discount_type: "cash",
+          duration_value: b.duration_value !== null && b.duration_value !== undefined ? String(b.duration_value) : "",
+          duration_unit: b.duration_unit || "months",
         }
       ]
     });
@@ -191,6 +199,7 @@ const StudentAddEditModal: React.FC<Props> = ({
     if (student) {
       setForm({
         name: student.name || "",
+        roll_no: student.roll_no || "",
         phone: student.phone || "",
         email: student.email || "",
         dob: student.dob ? student.dob.split('T')[0] : "",
@@ -214,6 +223,13 @@ const StudentAddEditModal: React.FC<Props> = ({
           schedule_ids: e.booking?.schedules?.map((s: any) => s.id) || (e.booking?.schedule_id ? [e.booking?.schedule_id] : []),
           custom_start_time: e.booking?.custom_start_time,
           custom_end_time: e.booking?.custom_end_time,
+          custom_fee: e.custom_fee !== null && e.custom_fee !== undefined ? String(e.custom_fee) : "",
+          commission_percentage: e.commission_percentage !== null && e.commission_percentage !== undefined ? String(e.commission_percentage) : "",
+          billing_mode: e.billing_mode || "duration",
+          monthly_discount: e.monthly_discount !== null && e.monthly_discount !== undefined ? String(e.monthly_discount) : "",
+          monthly_discount_type: e.monthly_discount_type || "cash",
+          duration_value: e.duration_value !== null && e.duration_value !== undefined ? String(e.duration_value) : "",
+          duration_unit: e.duration_unit || "months",
         })) || [],
       });
 
@@ -228,6 +244,7 @@ const StudentAddEditModal: React.FC<Props> = ({
     } else {
       setForm({
         name: "",
+        roll_no: "",
         phone: "",
         email: "",
         dob: "",
@@ -278,14 +295,19 @@ const StudentAddEditModal: React.FC<Props> = ({
           ...currentEnrollments,
           {
             program_id: program.id,
-            program_title: program.title,
-            type: "regular",
+            type: 'regular',
+            status: 'active',
+            booking_id: null,
             instructor_id: null,
-            status: "active",
             schedule_id: null,
-            schedule_ids: [],
+            schedule_ids: [], 
             custom_start_time: null,
             custom_end_time: null,
+            custom_fee: program.program_fee ?? "",
+            commission_percentage: "",
+            billing_mode: "duration",
+            monthly_discount: "",
+            monthly_discount_type: "cash",
           }
         ]
       }));
@@ -311,6 +333,10 @@ const StudentAddEditModal: React.FC<Props> = ({
       setPreviewImage(URL.createObjectURL(file));
     }
   };
+
+  const hasDurationMode = form.enrollments?.some(
+    (e: any) => (e.billing_mode || "duration") === "duration"
+  );  
 
   const handleSubmit = async () => {
     try {
@@ -344,7 +370,34 @@ const StudentAddEditModal: React.FC<Props> = ({
             if (e.custom_end_time) {
               formData.append(`enrollments[${index}][custom_end_time]`, e.custom_end_time.substring(0, 5));
             }
+            if (e.custom_fee !== undefined && e.custom_fee !== null && e.custom_fee !== "") {
+              formData.append(`enrollments[${index}][custom_fee]`, String(e.custom_fee));
+            } else {
+              // Always send the fee — fall back to the displayed default
+              // Backend model accessor treats null as "use program default"
+              // but sending the explicit value is more robust
+            }
+            if (e.commission_percentage !== undefined && e.commission_percentage !== null && e.commission_percentage !== "") {
+              formData.append(`enrollments[${index}][commission_percentage]`, String(e.commission_percentage));
+            }
+            formData.append(`enrollments[${index}][billing_mode]`, e.billing_mode || "duration");
+            if ((e.billing_mode || "duration") === "duration") {
+              if (e.duration_value !== undefined && e.duration_value !== null && e.duration_value !== "") {
+                formData.append(`enrollments[${index}][duration_value]`, String(e.duration_value));
+              }
+              if (e.duration_unit) {
+                formData.append(`enrollments[${index}][duration_unit]`, e.duration_unit);
+              }
+            }
+            if (e.monthly_discount !== undefined && e.monthly_discount !== null && e.monthly_discount !== "") {
+              formData.append(`enrollments[${index}][monthly_discount]`, String(e.monthly_discount));
+            }
+            if (e.monthly_discount_type) {
+              formData.append(`enrollments[${index}][monthly_discount_type]`, e.monthly_discount_type);
+            }
           });
+        } else if (key === 'duration_value' || key === 'duration_unit') {
+          formData.append(key, "");
         } else {
           formData.append(key, (form as any)[key] || "");
         }
@@ -529,6 +582,15 @@ const StudentAddEditModal: React.FC<Props> = ({
                 error={errors.name}
               />
               <InputField
+                label="Roll Number"
+                id="roll_no"
+                icon={Hash}
+                value={form.roll_no}
+                onChange={(e) => handleChange("roll_no", e.target.value)}
+                disabled={loading}
+                error={errors.roll_no}
+              />
+              <InputField
                 label="Phone Number"
                 id="phone"
                 required
@@ -616,9 +678,43 @@ const StudentAddEditModal: React.FC<Props> = ({
                 <p className="text-[10px] font-medium text-gray-400 italic">Select one or more</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {programs.map(p => (
-                  <React.Fragment key={p.id}>
+                {programs.map(p => {
+                  const hasSub = p.sub_programs && p.sub_programs.length > 0;
+                  if (hasSub) {
+                    return p.sub_programs.map((sp: any) => (
+                      <label
+                        key={sp.id}
+                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(sp.id)
+                          ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
+                          : 'border-slate-200 hover:border-blue-200'
+                          }`}
+                      >
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isClassSelected(sp.id)
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-slate-50 border-slate-200'
+                          }`}>
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={isClassSelected(sp.id)}
+                            onChange={() => toggleClass(sp)}
+                          />
+                          {isClassSelected(sp.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xs font-black text-gray-900">
+                          {sp.title}
+                        </span>
+                      </label>
+                    ));
+                  }
+
+                  return (
                     <label
+                      key={p.id}
                       className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(p.id)
                         ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
                         : 'border-slate-200 hover:border-blue-200'
@@ -644,38 +740,8 @@ const StudentAddEditModal: React.FC<Props> = ({
                         {p.title}
                       </span>
                     </label>
-
-                    {p.sub_programs?.map((sp: any) => (
-                      <label
-                        key={sp.id}
-                        className={`flex items-center gap-3 p-3 ml-4 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(sp.id)
-                          ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
-                          : 'border-slate-200 hover:border-blue-200 opacity-80'
-                          }`}
-                      >
-                        <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-colors ${isClassSelected(sp.id)
-                          ? 'bg-blue-600 border-blue-600'
-                          : 'bg-slate-50 border-slate-200'
-                          }`}>
-                          <input
-                            type="checkbox"
-                            className="hidden"
-                            checked={isClassSelected(sp.id)}
-                            onChange={() => toggleClass(sp)}
-                          />
-                          {isClassSelected(sp.id) && (
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-[11px] font-bold text-gray-700">
-                          <span className="text-gray-300 mr-1">—</span> {sp.title}
-                        </span>
-                      </label>
-                    ))}
-                  </React.Fragment>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Config for selected programs */}
@@ -694,7 +760,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-black text-gray-900">{prog.title}</span>
                         <div className="flex items-center gap-3">
-                          <select
+                          {/* <select
                             value={e.status || "active"}
                             onChange={(ev) => updateEnrollment(e.program_id, { status: ev.target.value })}
                             className={`text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded-lg border-none focus:ring-2 focus:ring-blue-500/20 transition-all ${e.status === 'graduated' ? 'bg-green-100 text-green-700' :
@@ -705,7 +771,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                             <option value="graduated">Graduate</option>
-                          </select>
+                          </select> */}
 
                           <div className="flex bg-gray-100 p-1 rounded-xl">
                             <button
@@ -844,35 +910,145 @@ const StudentAddEditModal: React.FC<Props> = ({
                           )}
                         </div>
                       )}
+
+                      {/* Billing Mode + Fee + Discount + Commission */}
+                      <div className="pt-2 border-t border-slate-100 space-y-3">
+                        {/* Row 1: Billing Mode */}
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Billing Mode</p>
+                          <div className="flex gap-2">
+                            {(["duration", "monthly", "fixed"] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => updateEnrollment(e.program_id, { billing_mode: mode })}
+                                className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${
+                                  (e.billing_mode || "duration") === mode
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                }`}
+                              >
+                                {mode === "duration" ? "Duration" : mode === "monthly" ? "Monthly" : "Fixed"}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[9px] text-slate-400 font-medium">
+                            {(e.billing_mode || "duration") === "duration" && "Fee × duration months (current default)"}
+                            {e.billing_mode === "monthly" && "Per-month rate — no multiplier. Supports carry-forward dues."}
+                            {e.billing_mode === "fixed" && "Lump sum fee — can be paid in installments."}
+                          </p>
+                        </div>
+
+                        {/* Row 2: Custom Fee + Commission */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                {(e.billing_mode || "duration") === "monthly" ? "Monthly Rate" : (e.billing_mode === "fixed" ? "Fixed Total" : "Program Fee")}
+                              </p>
+                              {String(e.custom_fee) === String(prog.program_fee) && (
+                                <span className="text-[9px] text-blue-400 font-bold">Default</span>
+                              )}
+                            </div>
+                            <div className="relative flex items-center">
+                              <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={e.custom_fee !== undefined && e.custom_fee !== "" ? e.custom_fee : (prog?.program_fee ?? "")}
+                                onChange={(ev) => updateEnrollment(e.program_id, { custom_fee: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Teacher Commission % (Override)</p>
+                              <span className="text-[9px] text-gray-400 font-medium">Default: Global rate</span>
+                            </div>
+                            <div className="relative flex items-center">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                placeholder="e.g. 100, 0, or 50"
+                                value={e.commission_percentage || ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { commission_percentage: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                              <span className="absolute right-3 text-xs font-bold text-gray-400">%</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Row 3: Duration Settings (only for Duration mode) */}
+                        {(e.billing_mode === "duration" || !e.billing_mode) && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Duration Value</p>
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="e.g. 3"
+                                value={e.duration_value !== undefined && e.duration_value !== null ? e.duration_value : ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { duration_value: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Duration Unit</p>
+                              <select
+                                value={e.duration_unit || "months"}
+                                onChange={(ev) => updateEnrollment(e.program_id, { duration_unit: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                              >
+                                <option value="months">Months</option>
+                                <option value="years">Years</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Row 4: Monthly Discount (only for Monthly mode) */}
+                        {e.billing_mode === "monthly" && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Monthly Discount (auto-applies each session)</p>
+                            <div className="flex gap-2 items-center">
+                              <div className="relative flex items-center flex-1">
+                                <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={e.monthly_discount || ""}
+                                  onChange={(ev) => updateEnrollment(e.program_id, { monthly_discount: ev.target.value })}
+                                  className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <div className="flex gap-1">
+                                {(["cash", "percentage"] as const).map((type) => (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => updateEnrollment(e.program_id, { monthly_discount_type: type })}
+                                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${
+                                      (e.monthly_discount_type || "cash") === type
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-slate-100 text-slate-500"
+                                    }`}
+                                  >
+                                    {type === "cash" ? "Rs." : "%"}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <InputField
-                label="Duration Value"
-                type="number"
-                placeholder="e.g. 3"
-                icon={Clock}
-                value={form.duration_value}
-                min={1}
-                onChange={(e) => handleChange("duration_value", e.target.value)}
-                disabled={loading}
-              />
-              <InputField
-                label="Duration Unit"
-                type="select"
-                icon={Calendar}
-                value={form.duration_unit}
-                onChange={(e) => handleChange("duration_unit", e.target.value)}
-                options={[
-                  { label: "Months", value: "months" },
-                  { label: "Years", value: "years" },
-                ]}
-                disabled={loading}
-              />
             </div>
 
             <InputField

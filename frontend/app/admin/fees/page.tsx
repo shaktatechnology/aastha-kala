@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Table from "@/components/layout/Table";
-import DeleteConfirmationModal from "@/components/layout/DeleteConfirmationModal";
 import toast from "react-hot-toast";
 import { Pagination } from "@/components/global/Pagination";
 import FeeAddModal from "@/components/admin/FeeAddModal";
@@ -22,8 +21,15 @@ import FeeViewModal from "@/components/admin/FeeViewModal";
 import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "@/components/admin/ThermalBill";
-import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
-import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits, formatMonthYear, bsMonthYearToAdMonthYear } from "@/lib/utils";
+import {
+  formatDate,
+  getBsDateParts,
+  nepaliMonthNames,
+  toNepaliDigits,
+  formatMonthYear,
+  bsMonthYearToAdMonthYear,
+  bsToAd,
+} from "@/lib/utils";
 
 interface Student {
   id: number;
@@ -35,6 +41,7 @@ interface StudentFee {
   student_id: number;
   student: Student;
   fee_type: "admission" | "program";
+  fee_types?: string;
   month_year?: string;
   total_amount: number;
   discount: number;
@@ -49,6 +56,13 @@ interface StudentFee {
   payment_method?: string;
   net_amount?: number;
   remaining_amount?: number;
+  admission_fee?: number;
+  admission_discount?: number;
+  admission_discount_type?: "cash" | "percentage";
+  admission_paid_amount?: number;
+  programs_breakdown?: any[];
+  shift?: string;
+  return_amount?: number;
 }
 
 const FeesPage = () => {
@@ -57,17 +71,27 @@ const FeesPage = () => {
 
   const [fees, setFees] = useState<StudentFee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "admission" | "program">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">(
+    "all",
+  );
+  const [typeFilter, setTypeFilter] = useState<"all" | "admission" | "program">(
+    "all",
+  );
   const [programFilter, setProgramFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
+  const [instructorFilter, setInstructorFilter] = useState("all");
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
-  const [statusInput, setStatusInput] = useState<"all" | "paid" | "pending">("all");
-  const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">("all");
+  const [statusInput, setStatusInput] = useState<"all" | "paid" | "pending">(
+    "all",
+  );
+  const [typeInput, setTypeInput] = useState<"all" | "admission" | "program">(
+    "all",
+  );
   const [shiftInput, setShiftInput] = useState("all");
   const [programInput, setProgramInput] = useState("all");
+  const [instructorInput, setInstructorInput] = useState("all");
   const [nepaliYearInput, setNepaliYearInput] = useState("");
   const [nepaliMonthInput, setNepaliMonthInput] = useState("");
   const [nepaliYearFilter, setNepaliYearFilter] = useState("");
@@ -79,6 +103,7 @@ const FeesPage = () => {
     setTypeFilter(typeInput);
     setShiftFilter(shiftInput);
     setProgramFilter(programInput);
+    setInstructorFilter(instructorInput);
     setNepaliYearFilter(nepaliYearInput);
     setNepaliMonthFilter(nepaliMonthInput);
   };
@@ -89,6 +114,7 @@ const FeesPage = () => {
     setTypeInput("all");
     setShiftInput("all");
     setProgramInput("all");
+    setInstructorInput("all");
     setNepaliYearInput("");
     setNepaliMonthInput("");
     setSearchTerm("");
@@ -96,6 +122,7 @@ const FeesPage = () => {
     setTypeFilter("all");
     setShiftFilter("all");
     setProgramFilter("all");
+    setInstructorFilter("all");
     setNepaliYearFilter("");
     setNepaliMonthFilter("");
   };
@@ -107,6 +134,7 @@ const FeesPage = () => {
 
   const [programs, setPrograms] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [instructors, setInstructors] = useState<any[]>([]);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -144,9 +172,52 @@ const FeesPage = () => {
     pageStyle: "@page { size: 80mm auto; margin: 0; }",
   });
 
-  const triggerPrint = (row: any) => {
-    const original = fees.find((f) => f.id === row.id);
-    setPrintingFee(original);
+  const triggerPrint = async (row: any) => {
+    try {
+      const original = fees.find((f) => f.id === row.id);
+      if (!original) return;
+
+      const toastId = toast.loading("Preparing bill...");
+      const token = localStorage.getItem("token");
+      let printUrl = `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`;
+      if (instructorFilter !== "all") {
+        printUrl += `&instructor_id=${instructorFilter}`;
+      }
+      const res = await fetch(
+        printUrl,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        },
+      );
+      const result = await res.json();
+      toast.dismiss(toastId);
+
+      if (res.ok && result.data) {
+        const d = result.data;
+        const feeTypes = original.fee_types ? original.fee_types.split(",") : [];
+        const hasAdmission = feeTypes.includes("admission");
+        setPrintingFee({
+          ...original,
+          admission_fee: hasAdmission ? (d.admission_amount || original.admission_fee) : 0,
+          admission_discount: hasAdmission ? d.admission_discount : 0,
+          admission_discount_type: hasAdmission ? d.admission_discount_type : "cash",
+          admission_paid_amount: hasAdmission ? d.admission_paid_amount : 0,
+          admission_last_payment: hasAdmission ? (d.admission_last_payment || 0) : 0,
+          programs_breakdown: (d.program_fees?.programs_breakdown || []).map((pb: any) => ({
+            ...pb,
+            last_payment_amount: pb.last_payment_amount || 0,
+          })),
+          shift: d.student?.shift || original.shift,
+        });
+      } else {
+        setPrintingFee(original);
+      }
+    } catch (e) {
+      console.error("Failed to fetch bill details", e);
+      const original = fees.find((f) => f.id === row.id);
+      setPrintingFee(original);
+    }
   };
 
   useEffect(() => {
@@ -175,29 +246,56 @@ const FeesPage = () => {
 
   const fetchPrograms = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/programs`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/programs`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
       const result = await res.json();
       const list = result.data?.data || result.data || [];
       setPrograms(Array.isArray(list) ? list : []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const fetchSchedules = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/student-fees/schedules`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/student-fees/schedules`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
       const result = await res.json();
       setSchedules(result.data || []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchInstructors = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
+      const result = await res.json();
+      const list = result.data?.data || result.data || [];
+      setInstructors(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
     fetchSettings();
     fetchPrograms();
     fetchSchedules();
+    fetchInstructors();
   }, []);
 
   const columns = [
@@ -207,6 +305,7 @@ const FeesPage = () => {
     { key: "total_amount", label: "Gross Total" },
     { key: "discount", label: "Discount" },
     { key: "paid_amount", label: "Paid" },
+    { key: "return_amount", label: "Return" },
     { key: "remaining", label: "Remaining" },
     { key: "status", label: "Status" },
   ];
@@ -220,23 +319,35 @@ const FeesPage = () => {
       if (typeFilter !== "all") url += `&fee_type=${typeFilter}`;
       if (shiftFilter !== "all") url += `&shift=${shiftFilter}`;
       if (programFilter !== "all") url += `&program_id=${programFilter}`;
-      if (nepaliYearFilter && nepaliMonthFilter) {
-        const formatted = bsMonthYearToAdMonthYear(parseInt(nepaliYearFilter), parseInt(nepaliMonthFilter));
-        if (formatted) {
-          url += `&month_year=${encodeURIComponent(formatted)}`;
+      if (instructorFilter !== "all")
+        url += `&instructor_id=${instructorFilter}`;
+      let yearForConversion = nepaliYearFilter;
+      if (!yearForConversion && nepaliMonthFilter) {
+        yearForConversion = (
+          getBsDateParts(new Date())?.year || 2083
+        ).toString();
+      }
+
+      if (yearForConversion && nepaliMonthFilter) {
+        const by = parseInt(yearForConversion);
+        const bm = parseInt(nepaliMonthFilter);
+        let adY: number;
+        let adM: number;
+        if (bm >= 1 && bm <= 8) {
+          adM = bm + 4;
+          adY = by - 57;
+        } else {
+          adM = bm - 8;
+          adY = by - 56;
         }
+        const formatted = `${adY}-${String(adM).padStart(2, "0")}`;
+        url += `&month_year=${encodeURIComponent(formatted)}`;
       } else if (nepaliYearFilter) {
-        // If only year is selected, we can't easily map to a single AD month-year string,
-        // but we can try to send the year. However, BS year spans two AD years.
-        // For now, let's keep it simple or just not filter if not both are present
-        // or send the BS year if the backend supports it (it likely won't if data is in AD).
-        // Let's try to find the year part of the AD equivalent.
-        const midYearAD = bsMonthYearToAdMonthYear(parseInt(nepaliYearFilter), 6); // Mid year (Ashwinish)
-        const adYear = midYearAD.split(" ")[1];
-        url += `&month_year=${encodeURIComponent(adYear)}`;
-      } else if (nepaliMonthFilter) {
-        // This is even harder as a Nepali month maps to two AD months.
-        // We'll skip filtering if only month is selected for now to avoid incorrect results.
+        const midAd = bsToAd(`${nepaliYearFilter}-06-15`);
+        if (midAd) {
+          const adYear = midAd.split("-")[0];
+          url += `&month_year=${encodeURIComponent(adYear)}`;
+        }
       }
       if (studentIdParam) url += `&student_id=${studentIdParam}`;
       if (searchTerm) url += `&search=${searchTerm}`;
@@ -272,7 +383,17 @@ const FeesPage = () => {
   useEffect(() => {
     setLoading(true);
     fetchFees();
-  }, [statusFilter, typeFilter, shiftFilter, programFilter, nepaliYearFilter, nepaliMonthFilter, studentIdParam, searchTerm]);
+  }, [
+    statusFilter,
+    typeFilter,
+    shiftFilter,
+    programFilter,
+    instructorFilter,
+    nepaliYearFilter,
+    nepaliMonthFilter,
+    studentIdParam,
+    searchTerm,
+  ]);
 
   const handleDelete = async () => {
     if (!selectedFee) return;
@@ -318,10 +439,11 @@ const FeesPage = () => {
         ),
         fee_type: (
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fee.fee_type === "admission"
-              ? "bg-secondary/10 text-secondary"
-              : "bg-info/10 text-info"
-              }`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+              fee.fee_type === "admission"
+                ? "bg-secondary/10 text-secondary"
+                : "bg-info/10 text-info"
+            }`}
           >
             {fee.fee_type === "admission"
               ? "Admission"
@@ -332,12 +454,15 @@ const FeesPage = () => {
         ),
         month_year: (
           <span className="text-xs text-gray-600 font-medium">
-            {fee.month_year ? (
-              // Check if fee.month_year looks like a date or just month-year
-              fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year) ?
-                (/\d{1,2}\s/.test(fee.month_year) ? formatDate(fee.month_year) : formatMonthYear(fee.month_year))
-                : fee.month_year
-            ) : "—"}
+            {fee.month_year
+              ? fee.month_year.includes("-")
+                ? formatMonthYear(fee.month_year)
+                : fee.month_year.includes(" ") && /\d{4}/.test(fee.month_year)
+                  ? /\d{1,2}\s/.test(fee.month_year)
+                    ? formatDate(fee.month_year)
+                    : formatMonthYear(fee.month_year)
+                  : fee.month_year
+              : "—"}
           </span>
         ),
         total_amount: (
@@ -357,6 +482,13 @@ const FeesPage = () => {
             Rs. {Number(fee.paid_amount).toLocaleString()}
           </span>
         ),
+        return_amount: (
+          <span className="text-sm font-bold text-amber-700">
+            {Number(fee.return_amount || 0) > 0
+              ? `Rs. ${Number(fee.return_amount).toLocaleString()}`
+              : "—"}
+          </span>
+        ),
         remaining: (
           <span
             className={`text-sm font-bold ${Number((fee.net_amount || fee.total_amount) - fee.paid_amount) > 0 ? "text-amber-600" : "text-gray-400"}`}
@@ -370,10 +502,11 @@ const FeesPage = () => {
         ),
         status: (
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fee.status === "paid"
-              ? "bg-success/10 text-success"
-              : "bg-warning/10 text-warning"
-              }`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+              fee.status === "paid"
+                ? "bg-success/10 text-success"
+                : "bg-warning/10 text-warning"
+            }`}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${fee.status === "paid" ? "bg-success" : "bg-warning"}`}
@@ -399,7 +532,10 @@ const FeesPage = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 w-full">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-wrap items-center gap-3 w-full"
+          >
             {/* Search */}
             <div className="relative w-full sm:w-64 group">
               <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
@@ -416,7 +552,7 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={statusInput}
-                onChange={e => setStatusInput(e.target.value as any)}
+                onChange={(e) => setStatusInput(e.target.value as any)}
                 className="w-full px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-bold appearance-none min-w-[120px]"
               >
                 <option value="all">All Status</option>
@@ -429,12 +565,14 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={shiftInput}
-                onChange={e => setShiftInput(e.target.value)}
+                onChange={(e) => setShiftInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Schedules</option>
-                {schedules.map(s => (
-                  <option key={s.id} value={s.id}>{s.title}</option>
+                {schedules.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
                 ))}
               </select>
             </div>
@@ -443,17 +581,37 @@ const FeesPage = () => {
             <div className="relative flex-1 sm:flex-none">
               <select
                 value={programInput}
-                onChange={e => setProgramInput(e.target.value)}
+                onChange={(e) => setProgramInput(e.target.value)}
                 className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
               >
                 <option value="all">All Programs</option>
-                {programs.map(p => (
+                {programs.map((p) => (
                   <React.Fragment key={p.id}>
-                    <option value={p.id} className="font-bold">{p.title}</option>
+                    <option value={p.id} className="font-bold">
+                      {p.title}
+                    </option>
                     {p.sub_programs?.map((sp: any) => (
-                      <option key={sp.id} value={sp.id}>&nbsp;&nbsp;— {sp.title}</option>
+                      <option key={sp.id} value={sp.id}>
+                        &nbsp;&nbsp;— {sp.title}
+                      </option>
                     ))}
                   </React.Fragment>
+                ))}
+              </select>
+            </div>
+
+            {/* Teacher Filter */}
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                value={instructorInput}
+                onChange={(e) => setInstructorInput(e.target.value)}
+                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
+              >
+                <option value="all">All Teachers</option>
+                {instructors.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -468,11 +626,13 @@ const FeesPage = () => {
                   className="w-full sm:w-28 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
                 >
                   <option value="">Year</option>
-                  {Array.from({ length: 11 }, (_, i) => 2080 + i).map((year) => (
-                    <option key={year} value={year}>
-                      {toNepaliDigits(year)}
-                    </option>
-                  ))}
+                  {Array.from({ length: 11 }, (_, i) => 2080 + i).map(
+                    (year) => (
+                      <option key={year} value={year}>
+                        {toNepaliDigits(year)}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
 
@@ -501,7 +661,20 @@ const FeesPage = () => {
                 Apply
               </button>
 
-              {(shiftInput !== 'all' || programInput !== 'all' || nepaliYearInput !== '' || nepaliMonthInput !== '' || statusInput !== 'all' || searchInput !== '' || shiftFilter !== 'all' || programFilter !== 'all' || nepaliYearFilter !== '' || nepaliMonthFilter !== '' || statusFilter !== 'all' || searchTerm !== '') && (
+              {(shiftInput !== "all" ||
+                programInput !== "all" ||
+                instructorInput !== "all" ||
+                nepaliYearInput !== "" ||
+                nepaliMonthInput !== "" ||
+                statusInput !== "all" ||
+                searchInput !== "" ||
+                shiftFilter !== "all" ||
+                programFilter !== "all" ||
+                instructorFilter !== "all" ||
+                nepaliYearFilter !== "" ||
+                nepaliMonthFilter !== "" ||
+                statusFilter !== "all" ||
+                searchTerm !== "") && (
                 <button
                   type="button"
                   onClick={handleClearFilters}
@@ -572,7 +745,7 @@ const FeesPage = () => {
         </div>
 
         {/* Table Card */}
-        <div className="overflow-hidden">
+        <div className="nvidden">
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-gray-100">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
@@ -585,9 +758,40 @@ const FeesPage = () => {
             data={formattedData}
             loading={loading}
             actions={["view", "edit"]}
-            onView={(row) => {
+            onView={async (row) => {
               const original = fees.find((f) => f.id === row.id);
-              setFeeToView(original);
+              if (!original) return;
+              try {
+                const toastId = toast.loading("Loading fee details...");
+                const token = localStorage.getItem("token");
+                let feeInfoUrl = `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`;
+                if (instructorFilter !== "all") {
+                  feeInfoUrl += `&instructor_id=${instructorFilter}`;
+                }
+                const res = await fetch(
+                  feeInfoUrl,
+                  {
+                    headers: { Authorization: `Bearer ${token}` },
+                    cache: "no-store",
+                  },
+                );
+                const result = await res.json();
+                toast.dismiss(toastId);
+
+                if (res.ok && result.data) {
+                  const d = result.data;
+                  setFeeToView({
+                    ...original,
+                    payments: d.payments || [],
+                    programs_breakdown: d.program_fees?.programs_breakdown || [],
+                  });
+                } else {
+                  setFeeToView(original);
+                }
+              } catch (e) {
+                console.error("Failed to load fee details", e);
+                setFeeToView(original);
+              }
               setViewModalOpen(true);
             }}
             onEdit={(row) => {
@@ -625,6 +829,7 @@ const FeesPage = () => {
       <FeeAddModal
         isOpen={feeModalOpen}
         fee={feeToEdit}
+        instructorId={instructorFilter !== "all" ? instructorFilter : undefined}
         onClose={() => setFeeModalOpen(false)}
         onSuccess={() => {
           if (

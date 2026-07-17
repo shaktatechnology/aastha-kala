@@ -50,6 +50,7 @@ class SettingController extends Controller
             $request->validate([
                 'company_name' => 'required|string|max:255',
                 'email' => 'required|email|max:255',
+                'vat_percentage' => 'nullable|numeric|min:0|max:100',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -64,7 +65,7 @@ class SettingController extends Controller
                 'company_name','email','phone','address','location_map',
                 'about_short','about','mission','years_of_experience',
                 'awards','number_of_instructors','number_of_students','success_rate',
-                'opening_hour','closing_hour','admission_fee'
+                'opening_hour','closing_hour','admission_fee','vat_percentage'
             ]);
 
             // Ensure numeric fields are not null
@@ -157,6 +158,7 @@ class SettingController extends Controller
             $request->validate([
                 'company_name' => 'required|string|max:255',
                 'email' => 'required|email|max:255',
+                'vat_percentage' => 'nullable|numeric|min:0|max:100',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -171,7 +173,7 @@ class SettingController extends Controller
                 'company_name','email','phone','address','location_map',
                 'about_short','about','mission','years_of_experience',
                 'awards','number_of_instructors','number_of_students','success_rate',
-                'opening_hour','closing_hour','admission_fee'
+                'opening_hour','closing_hour','admission_fee','vat_percentage'
             ]);
 
             // Ensure numeric fields are not null

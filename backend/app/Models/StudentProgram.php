@@ -15,11 +15,37 @@ class StudentProgram extends Model
         'enrolled_at',
         'status',
         'booking_id',
+        'custom_fee',
+        'commission_percentage',
+        'billing_mode',
+        'monthly_discount',
+        'monthly_discount_type',
+        'duration_value',
+        'duration_unit',
     ];
 
     protected $casts = [
-        'enrolled_at' => 'date',
+        'enrolled_at'    => 'date',
+        'monthly_discount' => 'float',
     ];
+
+    /**
+     * Treat empty-string custom_fee as null (not stored properly as NULL in some cases).
+     */
+    public function getCustomFeeAttribute($value): ?float
+    {
+        if ($value === null || $value === '') return null;
+        return (float) $value;
+    }
+
+    /**
+     * Treat empty-string commission_percentage as null.
+     */
+    public function getCommissionPercentageAttribute($value): ?float
+    {
+        if ($value === null || $value === '') return null;
+        return (float) $value;
+    }
 
     public function student()
     {

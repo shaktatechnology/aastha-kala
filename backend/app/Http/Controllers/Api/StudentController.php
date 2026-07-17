@@ -15,7 +15,8 @@ class StudentController extends Controller
         $query = Student::with([
             'enrollments.program',
             'enrollments.booking.instructor',
-            'enrollments.booking.schedules'
+            'enrollments.booking.schedules',
+            'enrollments.booking.schedule'
         ])->latest();
 
         if ($request->filled('status')) {
@@ -44,8 +45,10 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+            'roll_no' => 'nullable|string|max:255',
             'phone' => 'required|string|max:20',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'dob' => 'nullable|date',
@@ -69,6 +72,12 @@ class StudentController extends Controller
             'enrollments.*.status' => 'nullable|in:active,inactive,graduated',
             'enrollments.*.custom_start_time' => 'nullable|date_format:H:i',
             'enrollments.*.custom_end_time' => 'nullable|date_format:H:i',
+            'enrollments.*.custom_fee' => 'nullable|numeric|min:0',
+            'enrollments.*.billing_mode' => 'nullable|in:duration,monthly,fixed',
+            'enrollments.*.monthly_discount' => 'nullable|numeric|min:0',
+            'enrollments.*.monthly_discount_type' => 'nullable|in:cash,percentage',
+            'enrollments.*.duration_value' => 'nullable|integer|min:1',
+            'enrollments.*.duration_unit' => 'nullable|string|in:months,years',
         ]);
 
         if ($validator->fails()) {
@@ -96,9 +105,9 @@ class StudentController extends Controller
                 'pending_amount' => $admissionFee,
                 'status' => 'pending',
                 'admission_fee' => $admissionFee,
-                'month_year' => date('j F Y'),
+                'month_year' => date('Y-m'),
                 'payment_method' => 'Cash',
-                'remarks' => 'Auto-generated admission fee on enrollment',
+                'remarks' => '',
             ]);
         }
 
@@ -133,6 +142,7 @@ class StudentController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
+            'roll_no' => 'nullable|string|max:255',
             'phone' => 'sometimes|required|string|max:20',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'dob' => 'nullable|date',
@@ -156,6 +166,12 @@ class StudentController extends Controller
             'enrollments.*.status' => 'nullable|in:active,inactive,graduated',
             'enrollments.*.custom_start_time' => 'nullable|date_format:H:i',
             'enrollments.*.custom_end_time' => 'nullable|date_format:H:i',
+            'enrollments.*.custom_fee' => 'nullable|numeric|min:0',
+            'enrollments.*.billing_mode' => 'nullable|in:duration,monthly,fixed',
+            'enrollments.*.monthly_discount' => 'nullable|numeric|min:0',
+            'enrollments.*.monthly_discount_type' => 'nullable|in:cash,percentage',
+            'enrollments.*.duration_value' => 'nullable|integer|min:1',
+            'enrollments.*.duration_unit' => 'nullable|string|in:months,years',
         ]);
 
         if ($validator->fails()) {
@@ -188,8 +204,9 @@ class StudentController extends Controller
      * Syncs student_programs table, links to bookings, and auto-generates student_fees records.
      */
     private function syncProgramsAndFees($student, array $enrollmentData = [])
+    
     {
-        $currentMonth = date('j F Y');
+        $currentMonth = date('Y-m');
         $studentStatus = $student->status;
 
         // 1. Determine which programs we are dealing with
@@ -235,9 +252,21 @@ class StudentController extends Controller
                 ($studentStatus === 'graduated' ? 'graduated' :
                     ($studentStatus === 'inactive' ? 'inactive' : 'active'));
 
+            $customFee = (isset($enrollInfo['custom_fee']) && $enrollInfo['custom_fee'] !== '') ? (float)$enrollInfo['custom_fee'] : null;
+            $commPct = (isset($enrollInfo['commission_percentage']) && $enrollInfo['commission_percentage'] !== '') ? (float)$enrollInfo['commission_percentage'] : null;
+
             $sp = \App\Models\StudentProgram::updateOrCreate(
                 ['student_id' => $student->id, 'program_id' => $pId],
-                ['status' => $spStatus]
+                [
+                    'status'               => $spStatus,
+                    'custom_fee'           => $customFee,
+                    'commission_percentage'=> $commPct,
+                    'billing_mode'         => $enrollInfo['billing_mode'] ?? 'duration',
+                    'monthly_discount'     => (isset($enrollInfo['monthly_discount']) && $enrollInfo['monthly_discount'] !== '') ? (float)$enrollInfo['monthly_discount'] : 0,
+                    'monthly_discount_type'=> $enrollInfo['monthly_discount_type'] ?? 'cash',
+                    'duration_value'       => (isset($enrollInfo['duration_value']) && $enrollInfo['duration_value'] !== '') ? (int)$enrollInfo['duration_value'] : null,
+                    'duration_unit'        => $enrollInfo['duration_unit'] ?? null,
+                ]
             );
 
             // Handle Shadow Booking to block instructor's time
@@ -288,58 +317,122 @@ class StudentController extends Controller
                 $booking->schedules()->sync($enrollInfo['schedule_ids']);
             }
 
-            // 4. Handle Fees
-            $baseFee = (float) ($prog->program_fee ?? 0);
-            
-            // Calculate duration multiplier based on student's enrollment duration
-            $multiplier = 1;
-            if ($student->duration_value && $student->duration_unit) {
-                $val = (float) $student->duration_value;
-                if ($student->duration_unit === 'months') {
-                    $multiplier = $val;
-                } elseif ($student->duration_unit === 'years') {
-                    $multiplier = $val * 12;
+            // 4. Handle Fees (auto-generate for all billing modes: duration, monthly, and fixed)
+            $billingMode = $sp->billing_mode ?? 'duration';
+            $baseFee = ($sp->custom_fee !== null && (float)$sp->custom_fee > 0) ? (float) $sp->custom_fee : (float) ($prog->program_fee ?? 0);
+
+            $discount = 0;
+            $discountType = 'cash';
+
+            if ($billingMode === 'duration') {
+                $multiplier = 1;
+                $val = $sp->duration_value ?? $student->duration_value;
+                $unit = $sp->duration_unit ?? $student->duration_unit;
+                if ($val && $unit) {
+                    $valFloat = (float) $val;
+                    if ($unit === 'months') {
+                        $multiplier = $valFloat;
+                    } elseif ($unit === 'years') {
+                        $multiplier = $valFloat * 12;
+                    }
                 }
+                $feeAmount = $baseFee * $multiplier;
+                $netAmount = $feeAmount;
+            } elseif ($billingMode === 'monthly') {
+                $feeAmount = $baseFee;
+                $discount = (float) ($sp->monthly_discount ?? 0);
+                $discountType = $sp->monthly_discount_type ?? 'cash';
+                $netAmount = $discountType === 'percentage'
+                    ? max(0, $feeAmount - ($feeAmount * $discount / 100))
+                    : max(0, $feeAmount - $discount);
+            } else { // fixed
+                $feeAmount = $baseFee;
+                $netAmount = $feeAmount;
             }
-            
-            $feeAmount = $baseFee * $multiplier;
 
-            $existingBase = \App\Models\StudentFee::where('student_id', $student->id)
-                ->where('program_id', $pId)
-                ->where('month_year', $currentMonth)
-                ->sum('program_fee');
+            $existingRecord = null;
+            if (in_array($billingMode, ['duration', 'fixed'])) {
+                $existingRecord = \App\Models\StudentFee::where('student_id', $student->id)
+                    ->where('program_id', $pId)
+                    ->where('fee_type', 'program')
+                    ->first();
+            }
 
-            if ($existingBase <= 0) {
-                // No fee yet, create it
-                \App\Models\StudentFee::create([
-                    'student_id' => $student->id,
-                    'program_id' => $pId,
-                    'fee_type' => 'program',
-                    'total_amount' => $feeAmount,
-                    'paid_amount' => 0,
-                    'pending_amount' => $feeAmount,
-                    'status' => 'pending',
-                    'program_fee' => $feeAmount,
-                    'month_year' => $currentMonth,
-                    'payment_method' => 'Cash',
-                    'remarks' => 'Auto-generated for program enrollment',
-                ]);
-            } elseif (abs($feeAmount - $existingBase) > 0.01) {
-                // Base fee changed (e.g. duration edited), create adjustment record
-                $diff = $feeAmount - $existingBase;
-                \App\Models\StudentFee::create([
-                    'student_id' => $student->id,
-                    'program_id' => $pId,
-                    'fee_type' => 'program',
-                    'total_amount' => $diff,
-                    'paid_amount' => 0,
-                    'pending_amount' => $diff,
-                    'status' => $diff > 0 ? 'pending' : 'paid',
-                    'program_fee' => $diff,
-                    'month_year' => $currentMonth,
-                    'payment_method' => 'Cash',
-                    'remarks' => 'Auto-adjustment due to duration change',
-                ]);
+            if (in_array($billingMode, ['duration', 'fixed'])) {
+                if (!$existingRecord) {
+                    \App\Models\StudentFee::create([
+                        'student_id'    => $student->id,
+                        'program_id'    => $pId,
+                        'fee_type'      => 'program',
+                        'total_amount'  => $netAmount,
+                        'paid_amount'   => 0,
+                        'pending_amount'=> $netAmount,
+                        'status'        => 'pending',
+                        'program_fee'   => $feeAmount,
+                        'program_discount' => $discount,
+                        'program_discount_type' => $discountType,
+                        'month_year'    => $currentMonth,
+                        'payment_method'=> 'Cash',
+                        'remarks'       => '',
+                    ]);
+                } else {
+                    if (abs($feeAmount - (float)$existingRecord->program_fee) > 0.01) {
+                        $existingRecord->update([
+                            'program_fee'   => $feeAmount,
+                            'total_amount'  => $netAmount,
+                            'pending_amount'=> max(0, $netAmount - (float)$existingRecord->paid_amount),
+                        ]);
+                        $existingRecord->status = $existingRecord->pending_amount <= 0.01 ? 'paid' : 'pending';
+                        $existingRecord->save();
+                    }
+                }
+            } else {
+                $existingBase = \App\Models\StudentFee::where('student_id', $student->id)
+                    ->where('program_id', $pId)
+                    ->where('month_year', $currentMonth)
+                    ->sum('program_fee');
+
+                if ($existingBase <= 0) {
+                    // No fee yet, create it
+                    \App\Models\StudentFee::create([
+                        'student_id'    => $student->id,
+                        'program_id'    => $pId,
+                        'fee_type'      => 'program',
+                        'total_amount'  => $netAmount,
+                        'paid_amount'   => 0,
+                        'pending_amount'=> $netAmount,
+                        'status'        => 'pending',
+                        'program_fee'   => $feeAmount,
+                        'program_discount' => $discount,
+                        'program_discount_type' => $discountType,
+                        'month_year'    => $currentMonth,
+                        'payment_method'=> 'Cash',
+                        'remarks'       => '',
+                    ]);
+                } elseif (abs($feeAmount - $existingBase) > 0.01) {
+                    // Base fee changed (e.g. settings or duration edited), create adjustment record
+                    $diff = $feeAmount - $existingBase;
+
+                    $existingNet = \App\Models\StudentFee::where('student_id', $student->id)
+                        ->where('program_id', $pId)
+                        ->where('month_year', $currentMonth)
+                        ->sum('total_amount');
+                    $diffNet = $netAmount - $existingNet;
+
+                    \App\Models\StudentFee::create([
+                        'student_id'    => $student->id,
+                        'program_id'    => $pId,
+                        'fee_type'      => 'program',
+                        'total_amount'  => $diffNet,
+                        'paid_amount'   => 0,
+                        'pending_amount'=> $diffNet,
+                        'status'        => $diffNet > 0 ? 'pending' : 'paid',
+                        'program_fee'   => $diff,
+                        'month_year'    => $currentMonth,
+                        'payment_method'=> 'Cash',
+                        'remarks'       => 'Auto-adjustment due to change in fee/billing settings',
+                    ]);
+                }
             }
         }
     }
@@ -347,6 +440,7 @@ class StudentController extends Controller
     public function destroy($id)
     {
         $student = Student::findOrFail($id);
+
         if ($student->image) {
             Storage::disk('public')->delete($student->image);
         }

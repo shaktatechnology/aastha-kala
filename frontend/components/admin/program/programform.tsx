@@ -322,25 +322,36 @@ export function ProgramForm({
         {/* Pricing & Status */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Wallet className="size-5 text-blue-600" />
-            Pricing & Status
+            {subPrograms.length > 0 ? (
+              <>
+                <Activity className="size-5 text-blue-600" />
+                Status
+              </>
+            ) : (
+              <>
+                <Wallet className="size-5 text-blue-600" />
+                Pricing & Status
+              </>
+            )}
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div>
-              <FieldLabel label="Monthly Fee" required />
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
-                <Input
-                  type="number"
-                  value={programFee}
-                  onChange={(e) => setProgramFee(e.target.value)}
-                  className="pl-8 h-11 text-base"
-                  placeholder="0"
-                />
+            {subPrograms.length === 0 && (
+              <div>
+                <FieldLabel label="Monthly Fee" required />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
+                  <Input
+                    type="number"
+                    value={programFee}
+                    onChange={(e) => setProgramFee(e.target.value)}
+                    className="pl-8 h-11 text-base"
+                    placeholder="0"
+                  />
+                </div>
+                <ErrorMessage message={errors.program_fee?.[0]} />
               </div>
-              <ErrorMessage message={errors.program_fee?.[0]} />
-            </div>
+            )}
 
             <div>
               <FieldLabel label="Status" />
@@ -372,7 +383,7 @@ export function ProgramForm({
         </div>
 
         {/* Specialities */}
-        <div className="space-y-4">
+        {/* <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Hash className="size-5 text-blue-600" />
             Specialities
@@ -411,7 +422,7 @@ export function ProgramForm({
               ))}
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Schedules */}
         <div className="space-y-4">

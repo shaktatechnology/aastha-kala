@@ -25,8 +25,14 @@ interface SalaryPayment {
   payment_date: string;
   month: number;
   year: number;
-  payment_type: 'salary' | 'pre-pay' | 'bonus';
+  payment_type: 'salary' | 'pre-pay' | 'bonus' | 'commission';
   remarks: string | null;
+  commission_gross?: number | null;
+  commission_vat?: number | null;
+  commission_percentage?: number | null;
+  commission_collected_amount?: number | null;
+  commission_method?: string | null;
+  commission_basis?: string | null;
   employee?: {
     name: string;
     type: string;
@@ -346,8 +352,17 @@ const SalaryManagementPage = () => {
                         </TableCell>
                         <TableCell>
                           <div className="font-black text-gray-900">Rs. {Number(payment.amount).toLocaleString()}</div>
+                          {payment.commission_percentage && (
+                            <div className="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-medium">
+                              <span>Rate: {payment.commission_percentage}%</span>
+                              <span>Base: Rs. {Number(payment.commission_collected_amount).toLocaleString()} ({payment.commission_basis})</span>
+                              {Number(payment.commission_vat) > 0 && (
+                                <span className="text-red-500 font-semibold">VAT: -Rs. {Number(payment.commission_vat).toLocaleString()}</span>
+                              )}
+                            </div>
+                          )}
                           {payment.remarks && (
-                            <div className="text-xs text-gray-500 truncate max-w-[200px]">{payment.remarks}</div>
+                            <div className="text-xs text-gray-500 truncate max-w-[200px] mt-0.5">{payment.remarks}</div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -359,10 +374,12 @@ const SalaryManagementPage = () => {
                           <div className="text-sm text-gray-600">{formatDate(payment.payment_date)}</div>
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${payment.payment_type === 'salary' ? 'bg-green-100 text-green-700' :
+                          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${
+                            payment.payment_type === 'salary' ? 'bg-green-100 text-green-700' :
+                            payment.payment_type === 'commission' ? 'bg-amber-100 text-amber-700' :
                             payment.payment_type === 'pre-pay' ? 'bg-blue-100 text-blue-700' :
-                              'bg-purple-100 text-purple-700'
-                            }`}>
+                            'bg-purple-100 text-purple-700'
+                          }`}>
                             {payment.payment_type}
                           </span>
                         </TableCell>

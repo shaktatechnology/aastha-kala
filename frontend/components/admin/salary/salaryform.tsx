@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 import {
   User, Wallet, AlertCircle, Save, Calendar, Info
 } from 'lucide-react';
-import { cn, formatDate, formatBsMonthYear, getBsDateParts, toNepaliDigits } from '@/lib/utils';
+import { cn, formatDate, formatBsMonthYear, getBsDateParts, toNepaliDigits, nepaliMonthNames } from '@/lib/utils';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { NepaliDateInput } from '@/components/ui/NepaliDateInput';
+
+const getMonthName = (m: number) => nepaliMonthNames[m - 1] || "Unknown";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -61,6 +63,57 @@ export function SalaryForm({
   const [paymentType, setPaymentType] = React.useState(initialData?.payment_type || "salary");
   const [remarks, setRemarks] = React.useState(initialData?.remarks || "");
 
+  // Commission States
+  const [commissionData, setCommissionData] = React.useState<any>(null);
+  const [commissionBasis, setCommissionBasis] = React.useState<"collected" | "billed">(
+    initialData?.commission_basis || "collected"
+  );
+  const [loadingCommission, setLoadingCommission] = React.useState(false);
+
+  const fetchCommission = async (empId: string, m: number, y: number) => {
+    if (!empId) return;
+    const emp = employees.find(e => e.id.toString() === empId.toString());
+    if (emp?.salary_basis !== 'percentage') {
+      setCommissionData(null);
+      return;
+    }
+
+    try {
+      setLoadingCommission(true);
+      const res = await fetch(`${API_URL}/admin/salary-payments/calculate-commission?employee_id=${empId}&month=${m}&year=${y}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCommissionData(data.data);
+      } else {
+        setCommissionData(null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch commission calculations", error);
+      setCommissionData(null);
+    } finally {
+      setLoadingCommission(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (employeeId && month && year && employees.length > 0) {
+      fetchCommission(employeeId.toString(), Number(month), Number(year));
+    }
+  }, [employeeId, month, year, employees]);
+
+  React.useEffect(() => {
+    const emp = employees.find(e => e.id.toString() === employeeId.toString());
+    if (emp) {
+      if (emp.salary_basis === 'percentage') {
+        setPaymentType('commission');
+      } else {
+        setPaymentType('salary');
+      }
+    }
+  }, [employeeId, employees]);
+
   React.useEffect(() => {
     fetchEmployees();
   }, []);
@@ -92,6 +145,9 @@ export function SalaryForm({
         setIsLoading(false);
         return;
       }
+      const isCommissionBasis = selectedEmployee?.salary_basis === 'percentage';
+      const calcResult = isCommissionBasis && commissionData?.bases?.[commissionBasis];
+
       const payload = {
         employee_id: employeeId,
         amount,
@@ -99,7 +155,16 @@ export function SalaryForm({
         month,
         year,
         payment_type: paymentType,
-        remarks
+        remarks,
+        // Commission fields
+        ...(isCommissionBasis && calcResult && {
+          commission_gross: calcResult.gross_commission,
+          commission_vat: calcResult.vat_cut,
+          commission_percentage: commissionData?.employee?.percentage || null,
+          commission_collected_amount: commissionBasis === 'collected' ? commissionData?.total_collected : commissionData?.total_billed,
+          commission_method: 'deduct_from_commission',
+          commission_basis: commissionBasis || null,
+        })
       };
 
       const response = await fetch(`${API_URL}/admin/salary-payments${initialData ? `/${initialData.id}` : ''}`, {
@@ -184,6 +249,7 @@ export function SalaryForm({
               onChange={(val) => setPaymentType(val)}
               options={[
                 { value: 'salary', label: 'Regular Salary' },
+                { value: 'commission', label: 'Commission' },
                 { value: 'pre-pay', label: 'Pre-pay (Advance)' },
                 { value: 'bonus', label: 'Bonus / Extra' }
               ]}
@@ -257,6 +323,165 @@ export function SalaryForm({
               />
             </div>
           </div>
+
+          {selectedEmployee && selectedEmployee.salary_basis === 'percentage' && (
+            <div className="md:col-span-2 p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Commission Calculations Helper</h4>
+                  <p className="text-xs text-slate-500">Based on fee collections for {getMonthName(Number(month))} {toNepaliDigits(Number(year))}</p>
+                </div>
+                {/* Basis Selector Pills */}
+                <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCommissionBasis("collected");
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer",
+                      commissionBasis === "collected"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    Fees Collected (Paid)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCommissionBasis("billed");
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer",
+                      commissionBasis === "billed"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    Fees Billed (Total)
+                  </button>
+                </div>
+              </div>
+
+              {loadingCommission ? (
+                <div className="flex flex-col items-center justify-center py-6 gap-2">
+                  <Spinner size="sm" />
+                  <span className="text-xs text-slate-500">Calculating commission...</span>
+                </div>
+              ) : commissionData ? (
+                <div className="space-y-4">
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Basis Amount</span>
+                      <p className="text-xl font-extrabold text-slate-800">
+                        Rs. {Number(commissionBasis === 'collected' ? commissionData.total_collected : commissionData.total_billed).toLocaleString()}
+                      </p>
+                      <span className="text-[10px] text-slate-500 block">
+                        {commissionBasis === 'collected' ? 'Actual cash received' : 'Billed (incl. pending)'}
+                      </span>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Commission Rate</span>
+                      <p className="text-xl font-extrabold text-primary">
+                        {commissionData.employee?.percentage}%
+                      </p>
+                      <span className="text-[10px] text-slate-500 block">
+                        Configured in Employee Profile
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Calculations breakdown list */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Calculation Summary</span>
+                    
+                    <div className="divide-y divide-slate-100 text-sm">
+                      <div className="flex justify-between py-2">
+                        <span className="text-slate-500">Gross Commission:</span>
+                        <span className="font-semibold text-slate-800">
+                          Rs. {Number(commissionData.bases[commissionBasis]?.gross_commission || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-2 text-red-500 font-medium">
+                        <span>VAT Deduction ({commissionData.vat_percentage}%):</span>
+                        <span>
+                          - Rs. {Number(commissionData.bases[commissionBasis]?.vat_cut || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-2.5 text-base font-extrabold text-slate-900 border-t border-slate-200 pt-3">
+                        <span>Net Paid Commission:</span>
+                        <span>
+                          Rs. {Number(commissionData.bases[commissionBasis]?.net_commission || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const opt = commissionData.bases[commissionBasis];
+                        setAmount(opt.net_commission.toString());
+                        setRemarks(
+                          `Commission of ${commissionData.employee.percentage}% on ${
+                            commissionBasis === 'collected' ? 'collected' : 'billed'
+                          } fee Rs. ${Number(
+                            commissionBasis === 'collected'
+                              ? commissionData.total_collected
+                              : commissionData.total_billed
+                          ).toLocaleString()} after deducting VAT`
+                        );
+                        toast.success("Applied calculated commission to amount");
+                      }}
+                      className="w-full py-2.5 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer mt-2 flex items-center justify-center gap-1.5"
+                    >
+                      Apply Calculation
+                    </button>
+                  </div>
+
+                  {/* Breakdown details */}
+                  {commissionData.breakdown && commissionData.breakdown.length > 0 && (
+                    <div className="mt-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Student/Program Fee Breakdown</span>
+                      <div className="max-h-28 overflow-y-auto border border-slate-200 rounded-lg mt-1 bg-white divide-y divide-slate-100">
+                        {commissionData.breakdown.map((row: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center px-3 py-2 text-xs">
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-slate-800">{row.student_name}</span>
+                                <span className={cn(
+                                  "px-1 py-0.5 rounded text-[9px] font-bold leading-none",
+                                  row.is_custom_rate
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-slate-100 text-slate-600"
+                                )}>
+                                  Rate: {row.commission_rate}% {row.is_custom_rate && "(Custom)"}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{row.program_title}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-slate-700">
+                                Paid: Rs. {row.paid_amount.toLocaleString()}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                Billed: Rs. {row.billed_amount.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-xs text-slate-400 italic">
+                  No fee collections recorded for this instructor in {getMonthName(Number(month))} {toNepaliDigits(Number(year))}.
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="md:col-span-2">
             <FieldLabel label="Remarks / Notes" />

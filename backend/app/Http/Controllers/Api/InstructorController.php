@@ -11,14 +11,29 @@ use Illuminate\Support\Facades\Storage;
 class InstructorController extends Controller
 {
     // GET /api/instructors
-    public function index()
+    public function index(Request $request)
     {
-        $instructors = Instructor::whereHas('employee', function($query) {
-                $query->where('type', 'instructor')->where('status', true);
+        $query = Instructor::whereHas('employee', function($query) use ($request) {
+                $query->where('type', 'instructor');
+                if ($request->filled('status')) {
+                    $status = $request->status === 'active' ? true : false;
+                    $query->where('status', $status);
+                } else {
+                    $query->where('status', true);
+                }
             })
-            ->with(['availabilities', 'programs', 'employee'])
-            ->latest()
-            ->paginate(10);
+            ->with(['availabilities', 'programs', 'employee']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%');
+            });
+        }
+
+        $instructors = $query->latest()->paginate(10);
 
         return response()->json([
             'success' => true,

@@ -167,6 +167,7 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
             paid_amount: fee.paid_amount,
             pending_amount: fee.pending_amount,
             payments: data.payments || [],
+            shift: data.student?.shift || fee.shift,
           });
         }
       } catch (error) {
@@ -489,14 +490,25 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                   </p>
                   <StatusBadge remaining={footerDue} net={footerBill} />
                 </div>
-                <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
-                    <FileText className="w-3 h-3" /> Receipt
-                  </p>
-                  <p className="text-xs font-black text-gray-900 uppercase">
-                    #{activeFee.id}
-                  </p>
-                </div>
+                {activeFee.shift ? (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                    <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                      <BookOpen className="w-3 h-3" /> Shift
+                    </p>
+                    <p className="text-xs font-black text-gray-900 uppercase">
+                      {activeFee.shift}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                    <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5 flex items-center gap-2">
+                      <FileText className="w-3 h-3" /> Receipt
+                    </p>
+                    <p className="text-xs font-black text-gray-900 uppercase">
+                      #{activeFee.id}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Breakdown Table */}
@@ -539,6 +551,56 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                 </table>
               </div>
 
+              {/* Payment History Table */}
+              {activeFee?.payments && activeFee.payments.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="bg-gray-50/70 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      Payment History / Installments
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400">
+                      {activeFee.payments.length} Transaction(s)
+                    </span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50/30 border-b border-gray-100 text-left">
+                        <th className="px-5 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          Date
+                        </th>
+                        <th className="px-5 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          Method
+                        </th>
+                        <th className="px-5 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">
+                          Amount
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {activeFee.payments.map((p: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-5 py-3">
+                            <p className="text-xs font-bold text-gray-700">
+                              {formatDate(p.created_at || p.payment_date || new Date())}
+                            </p>
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
+                              {p.payment_method || "Cash"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <p className="text-xs font-black text-gray-900">
+                              {fmt(Number(p.paid_amount || p.last_payment_amount || 0))}
+                            </p>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {activeFee.remarks && (
                 <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl">
                   <div className="flex items-center gap-2 mb-1.5">
@@ -565,6 +627,15 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Collected</span>
                 <span className="text-lg font-black text-emerald-600 tracking-tight">{fmt(footerCollected)}</span>
               </div>
+              {Number(activeFee.return_amount) > 0 && (
+                <>
+                  <div className="w-px h-8 bg-gray-200" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1">Returned</span>
+                    <span className="text-lg font-black text-amber-700 tracking-tight">{fmt(Number(activeFee.return_amount))}</span>
+                  </div>
+                </>
+              )}
               {footerDue > 0 && (
                 <>
                   <div className="w-px h-8 bg-gray-200" />
@@ -576,12 +647,12 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <button
+              {/* <button
                 onClick={() => handleA4Print()}
                 className="px-6 py-3 border border-border bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 A4 Receipt
-              </button>
+              </button> */}
               <button
                 onClick={() => handleThermalPrint()}
                 className="px-6 py-3 bg-primary text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-95 cursor-pointer flex items-center gap-2"

@@ -1,6 +1,6 @@
-import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { ADToBS, BSToAD } from 'bikram-sambat-js';
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { ADToBS, BSToAD } from "bikram-sambat-js";
 
 export const nepaliMonthNames = [
   "बैशाख",
@@ -107,7 +107,9 @@ export function formatBsMonthYear(year: number, month: number) {
 export function getBsMonthDays(year: number, month: number) {
   for (let day = 1; day <= 33; day += 1) {
     try {
-      BSToAD(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
+      BSToAD(
+        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      );
     } catch {
       return day - 1;
     }
@@ -176,15 +178,15 @@ export function bsMonthYearToAdMonthYear(year: number, month: number) {
     const adDate = bsToAd(`${year}-${String(month).padStart(2, "0")}-15`);
     if (!adDate) return "";
     const date = new Date(adDate);
-    return date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    return date.toLocaleString("en-US", { month: "long", year: "numeric" });
   } catch {
     return "";
   }
 }
 
 export function formatLargeNumber(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    notation: 'compact',
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
     maximumFractionDigits: 1,
   }).format(value);
 }
