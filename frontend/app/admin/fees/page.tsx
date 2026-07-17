@@ -198,10 +198,10 @@ const FeesPage = () => {
           admission_discount: hasAdmission ? d.admission_discount : 0,
           admission_discount_type: hasAdmission ? d.admission_discount_type : "cash",
           admission_paid_amount: hasAdmission ? d.admission_paid_amount : 0,
-          admission_last_payment: 0,
+          admission_last_payment: hasAdmission ? (d.admission_last_payment || 0) : 0,
           programs_breakdown: (d.program_fees?.programs_breakdown || []).map((pb: any) => ({
             ...pb,
-            last_payment_amount: 0,
+            last_payment_amount: pb.last_payment_amount || 0,
           })),
           shift: d.student?.shift || original.shift,
         });
