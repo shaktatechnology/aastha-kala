@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('voices', function (Blueprint $table) {
             $table->id();
+            $table->string('tagline')->nullable();
             $table->string('name')->nullable();
             $table->string('post')->nullable();
             $table->text('paragraph')->nullable();

@@ -8,7 +8,8 @@ import TestimonialSlider from "@/components/home/TestimonialSlider";
 import HomeGallery from "@/components/home/HomeGallery";
 import ContactHomeSection from "@/components/home/ContactHomeSection";
 import InstructorSection from "@/components/home/InstructorSection";
-import AboutHomeSection from "@/components/home/AboutHomeSection";
+import VoiceSection from "@/components/home/VoiceSection";
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -70,6 +71,10 @@ const Page = async () => {
       </Suspense>
 
       <StatsSection settings={settings} />
+
+      <Suspense fallback={<SectionPlaceholder />}>
+        <VoiceSection />
+      </Suspense>
 
       {/* {settings && (
         <AboutHomeSection settings={settings} gallery={aboutHomeGallery?.[0]} />

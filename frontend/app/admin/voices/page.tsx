@@ -11,6 +11,7 @@ import { Portal } from "@/components/global/Portal";
 
 interface Voice {
   id: number;
+  tagline?: string;
   name?: string;
   post?: string;
   paragraph?: string;
@@ -38,7 +39,7 @@ function VoiceModal({
   nextOrder: number;
 }) {
   const isEdit = !!initialData;
-  const [form, setForm] = useState({ name: "", post: "", paragraph: "", order: 0, is_featured: false });
+  const [form, setForm] = useState({ tagline: "", name: "", post: "", paragraph: "", order: 0, is_featured: false });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
@@ -56,11 +57,11 @@ function VoiceModal({
     setErrors({});
     setRemoveImage(false);
     if (initialData) {
-      setForm({ name: initialData.name || "", post: initialData.post || "", paragraph: initialData.paragraph || "", order: initialData.order ?? 0, is_featured: initialData.is_featured ?? false });
+      setForm({ tagline: initialData.tagline || "", name: initialData.name || "", post: initialData.post || "", paragraph: initialData.paragraph || "", order: initialData.order ?? 0, is_featured: initialData.is_featured ?? false });
       setPreview(getImageUrl(initialData.image));
       setImageFile(null);
     } else {
-      setForm({ name: "", post: "", paragraph: "", order: nextOrder, is_featured: false });
+      setForm({ tagline: "", name: "", post: "", paragraph: "", order: nextOrder, is_featured: false });
       setPreview(null);
       setImageFile(null);
     }
@@ -72,6 +73,7 @@ function VoiceModal({
       setErrors({});
       const url = isEdit ? `${API_URL}/admin/voices/${initialData!.id}` : `${API_URL}/admin/voices`;
       const fd = new FormData();
+      if (form.tagline) fd.append("tagline", form.tagline);
       if (form.name) fd.append("name", form.name);
       if (form.post) fd.append("post", form.post);
       if (form.paragraph) fd.append("paragraph", form.paragraph);
@@ -137,6 +139,8 @@ function VoiceModal({
             </div>
 
             {/* Fields */}
+            <InputField label="Tagline / Subheading" value={form.tagline} onChange={(e) => setForm({ ...form, tagline: e.target.value })} disabled={loading} error={errors.tagline} />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InputField label="Person Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={loading} error={errors.name} />
               <InputField label="Post / Role" value={form.post} onChange={(e) => setForm({ ...form, post: e.target.value })} disabled={loading} error={errors.post} />

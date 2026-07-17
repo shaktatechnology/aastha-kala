@@ -56,6 +56,7 @@ Route::get('/dress-hire', [DressHireController::class, 'index']);
 // Voices
 Route::get('/voices', [VoiceController::class, 'publicIndex']);
 Route::get('/voices/featured', [VoiceController::class, 'featured']);
+Route::get('/voices/about', [VoiceController::class, 'aboutVoice']);
 
 // Admin Routes
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {

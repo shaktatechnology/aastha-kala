@@ -58,6 +58,7 @@ const ClientProgramSlider: React.FC<ClientProgramSliderProps> = ({ programs, vie
   const renderCard = (program: Program, index: number) => {
     return (
       <motion.div 
+        key={program.id}
         layout 
         variants={itemVariants}
         initial="initial"
@@ -70,7 +71,6 @@ const ClientProgramSlider: React.FC<ClientProgramSliderProps> = ({ programs, vie
         className="relative group"
       >
         <HomeFlipCard 
-          key={program.id}
           program={program as any}
           onBook={() => setBookingProgram(program)}
         />

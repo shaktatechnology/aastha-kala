@@ -32,6 +32,29 @@ class VoiceController extends Controller
         return response()->json(['success' => true, 'data' => $this->transform($voice)]);
     }
 
+    /** GET /api/voices/about — the voices for the about page (up to 3 non-featured voices) */
+    public function aboutVoice()
+    {
+        $voices = Voice::where('is_featured', false)
+            ->orderBy('order')
+            ->take(3)
+            ->get();
+
+        if ($voices->isEmpty()) {
+            $voices = Voice::orderBy('order')
+                ->take(3)
+                ->get();
+        }
+
+        if ($voices->isEmpty()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $transformed = $voices->map(fn($v) => $this->transform($v));
+
+        return response()->json(['success' => true, 'data' => $transformed]);
+    }
+
     // ─── ADMIN CRUD ───────────────────────────────────────────────────────────
 
     /** GET /api/admin/voices */
@@ -46,6 +69,7 @@ class VoiceController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'tagline'     => 'nullable|string|max:255',
             'name'        => 'nullable|string|max:255',
             'post'        => 'nullable|string|max:255',
             'paragraph'   => 'nullable|string',
@@ -58,7 +82,7 @@ class VoiceController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $data = $request->only(['name', 'post', 'paragraph', 'order', 'is_featured']);
+        $data = $request->only(['tagline', 'name', 'post', 'paragraph', 'order', 'is_featured']);
         $data['order'] = $data['order'] ?? 0;
         $data['is_featured'] = filter_var($data['is_featured'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
@@ -81,6 +105,7 @@ class VoiceController extends Controller
     public function update(Request $request, Voice $voice)
     {
         $validator = Validator::make($request->all(), [
+            'tagline'     => 'nullable|string|max:255',
             'name'        => 'nullable|string|max:255',
             'post'        => 'nullable|string|max:255',
             'paragraph'   => 'nullable|string',
@@ -93,7 +118,7 @@ class VoiceController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $data = $request->only(['name', 'post', 'paragraph', 'order', 'is_featured']);
+        $data = $request->only(['tagline', 'name', 'post', 'paragraph', 'order', 'is_featured']);
         if (isset($data['is_featured'])) {
             $data['is_featured'] = filter_var($data['is_featured'], FILTER_VALIDATE_BOOLEAN);
         }
@@ -143,6 +168,7 @@ class VoiceController extends Controller
     {
         return [
             'id'          => $v->id,
+            'tagline'     => $v->tagline,
             'name'        => $v->name,
             'post'        => $v->post,
             'paragraph'   => $v->paragraph,

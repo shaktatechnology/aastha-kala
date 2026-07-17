@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Quote } from "lucide-react";
 
 interface VoiceData {
   id: number;
+  tagline?: string;
   name?: string;
   post?: string;
   paragraph?: string;
@@ -14,17 +14,26 @@ interface VoiceData {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-const VoiceSection = () => {
-  const [voice, setVoice] = useState<VoiceData | null>(null);
+interface VoiceSectionProps {
+  type?: "featured" | "about";
+}
+
+const VoiceSection = ({ type = "featured" }: VoiceSectionProps) => {
+  const [voices, setVoices] = useState<VoiceData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeatured = async () => {
+    const fetchVoices = async () => {
       try {
-        const res = await fetch(`${API_URL}/voices/featured`);
+        const endpoint = type === "about" ? "about" : "featured";
+        const res = await fetch(`${API_URL}/voices/${endpoint}`);
         const json = await res.json();
         if (json.success && json.data) {
-          setVoice(json.data);
+          if (Array.isArray(json.data)) {
+            setVoices(json.data);
+          } else {
+            setVoices([json.data]);
+          }
         }
       } catch {
         // silently fail
@@ -32,84 +41,95 @@ const VoiceSection = () => {
         setLoading(false);
       }
     };
-    fetchFeatured();
-  }, []);
+    fetchVoices();
+  }, [type]);
 
   // Don't render anything if loading or no voice configured
-  if (loading || !voice) return null;
-
-  // If every field is empty, skip rendering
-  const hasContent = voice.name || voice.post || voice.paragraph || voice.image;
-  if (!hasContent) return null;
+  if (loading || voices.length === 0) return null;
 
   return (
-    <section className="relative w-full bg-white overflow-hidden py-14 px-4">
+    <section className="relative w-full bg-[#f8fafc] overflow-hidden py-16 px-6 lg:px-8 border-y border-gray-100">
       {/* Subtle background blobs */}
-      <div className="absolute -top-16 -left-16 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-16 -right-16 w-64 h-64 bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-16 -left-16 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-16 -right-16 w-72 h-72 bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          viewport={{ once: true }}
-          className="relative flex flex-col md:flex-row items-center gap-10 bg-gradient-to-br from-primary/5 via-white to-secondary/5 border border-primary/10 rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-primary/5"
-        >
-          {/* Large decorative quote */}
-          <Quote className="absolute top-6 left-8 w-10 h-10 text-primary/10 rotate-180 pointer-events-none" />
+      <div className="max-w-6xl mx-auto space-y-20 lg:space-y-28">
+        {voices.map((voice, idx) => {
+          // If every field is empty, skip rendering this particular voice
+          const hasContent = voice.name || voice.post || voice.paragraph || voice.image;
+          if (!hasContent) return null;
 
-          {/* Avatar */}
-          {voice.image && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              viewport={{ once: true }}
-              className="shrink-0"
+          const textColSpan = voice.image ? "lg:col-span-7" : "lg:col-span-12";
+          const isOddIndex = idx % 2 === 1;
+
+          return (
+            <div
+              key={voice.id}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start"
             >
-              <div className="relative">
-                <div className="w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden ring-4 ring-white shadow-2xl">
-                  <img src={voice.image} alt={voice.name || "Voice"} className="w-full h-full object-cover" />
-                </div>
-                {/* Decorative ring */}
-                <div className="absolute -inset-2 rounded-full border-2 border-dashed border-primary/20 animate-spin-slow pointer-events-none" />
-              </div>
-            </motion.div>
-          )}
+              {/* Image Column */}
+              {voice.image && (
+                <motion.div
+                  initial={{ opacity: 0, x: isOddIndex ? 40 : -40 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                  viewport={{ once: true }}
+                  className={`lg:col-span-5 w-full flex justify-center animate-fade-in ${
+                    isOddIndex ? "lg:order-2" : "lg:order-1"
+                  }`}
+                >
+                  <div className="relative w-full max-w-md aspect-[4/5] overflow-hidden shadow-2xl border-4 border-white bg-white">
+                    <img
+                      src={voice.image}
+                      alt={voice.name || "Voice"}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </motion.div>
+              )}
 
-          {/* Text */}
-          <div className="flex-1 text-center md:text-left">
-            {voice.paragraph && (
-              <motion.p
-                initial={{ opacity: 0, y: 15 }}
+              {/* Content Column */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
                 viewport={{ once: true }}
-                className="text-lg md:text-xl font-medium text-gray-700 leading-relaxed italic mb-6"
+                className={`flex flex-col justify-center ${textColSpan} ${
+                  isOddIndex ? "lg:order-1" : "lg:order-2"
+                }`}
               >
-                "{voice.paragraph}"
-              </motion.p>
-            )}
+                {/* Tagline */}
+                {voice.tagline && voice.tagline.trim() && (
+                  <p className="text-sm md:text-base font-bold text-orange-600 uppercase tracking-wider mb-2">
+                    {voice.tagline}
+                  </p>
+                )}
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.35 }}
-              viewport={{ once: true }}
-              className="flex flex-col items-center md:items-start"
-            >
-              {/* Accent line */}
-              <div className="w-10 h-1 bg-primary rounded-full mb-3" />
-              {voice.name && (
-                <p className="text-xl font-bold text-gray-900">{voice.name}</p>
-              )}
-              {voice.post && (
-                <p className="text-sm text-primary font-semibold uppercase tracking-wider mt-1">{voice.post}</p>
-              )}
-            </motion.div>
-          </div>
-        </motion.div>
+                {/* Heading */}
+                <h2 className="text-3xl md:text-4xl text-gray-700 tracking-tight mb-6">
+                  {voice.post ? `${voice.post}, ` : ""}{voice.name}
+                </h2>
+
+                {/* Paragraphs */}
+                <div className="space-y-4">
+                  {voice.paragraph &&
+                    voice.paragraph.split("\n").map((para, i) => {
+                      const trimmed = para.trim();
+                      if (!trimmed) return null;
+                      return (
+                        <p
+                          key={i}
+                          className="text-gray-600 text-base md:text-lg leading-relaxed text-justify animate-fade-in"
+                        >
+                          {trimmed}
+                        </p>
+                      );
+                    })}
+                </div>
+              </motion.div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
