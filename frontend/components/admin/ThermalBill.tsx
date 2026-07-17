@@ -1,7 +1,14 @@
 "use client";
 
 import React, { forwardRef } from "react";
+import { JetBrains_Mono } from "next/font/google";
 import { formatDate, formatMonthYear } from "@/lib/utils";
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 interface ThermalBillProps {
   fee: any;
@@ -26,8 +33,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
 
     const fmt = (n: number) => Math.round(n).toLocaleString("en-IN");
 
-    // Calculate breakdown totals dynamically
-    // Calculate breakdown totals dynamically (using outstanding balances before today's payment)
+    // ── Calculate breakdown totals (unchanged business logic) ──
     const showAdmission = Number(fee.admission_fee) > 0;
     const admissionBase = showAdmission ? Number(fee.admission_fee) : 0;
     const admissionDiscount = showAdmission
@@ -60,7 +66,6 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
           const paid = Number(pb.paid_amount || 0);
           const lastPayment = Number(pb.last_payment_amount || 0);
           const outstandingBeforeToday = net - (paid - lastPayment);
-
           return outstandingBeforeToday > 0.01;
         })
       : [];
@@ -83,8 +88,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       programPaidToday += lastPayment;
     });
 
-    const totalGross = admissionOutstanding + programOutstandingTotal; // Outstanding sum before today
-    const totalDiscount = 0;
+    const totalGross = admissionOutstanding + programOutstandingTotal;
     const netBill = totalGross;
     const paidToday = admissionPaidToday + programPaidToday;
     const balanceDue = Math.max(0, netBill - paidToday);
@@ -99,9 +103,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
 
     const remarksParts = [];
     if (fee.remarks) remarksParts.push(fee.remarks);
-    if (dueRemarks.length > 0) {
-      remarksParts.push(...dueRemarks);
-    }
+    if (dueRemarks.length > 0) remarksParts.push(...dueRemarks);
     const finalRemarks = remarksParts.join(" | ");
 
     const billNo = `#FEE-${fee.id}`;
@@ -156,34 +158,49 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       page-break-after: avoid !important;
       break-after: avoid !important;
     }
+  }
 
-    .thermal-bill-text {
-      font-family: "Courier New", "DejaVu Sans Mono", monospace;
-    }
+  .thermal-amount {
+    font-variant-numeric: tabular-nums;
   }
 `,
           }}
         />
         <div
           ref={ref}
-          className="thermal-print-container thermal-bill-text bg-white text-black w-[72mm] mx-auto"
+          className={`thermal-print-container ${jetbrainsMono.className} bg-white text-black w-[72mm] mx-auto`}
           style={{
             width: "80mm",
             padding: "4mm",
-            fontSize: "14px",
-            lineHeight: "1.4",
+            fontSize: "13px",
+            lineHeight: "1.45",
             backgroundColor: "#fff",
             color: "#000",
           }}
         >
-          {/* ─── Header: Company Info ─── */}
-          <div style={{ textAlign: "center", marginBottom: "8px" }}>
+          {/* ─── Header: Logo + Company Info ─── */}
+          <div style={{ textAlign: "center", marginBottom: "10px" }}>
+            {/* {settings?.logo && (
+              <div style={{ marginBottom: "6px" }}>
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  style={{
+                    height: "40px",
+                    width: "auto",
+                    margin: "0 auto",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+            )} */}
             <h1
               style={{
-                fontSize: "18px",
+                fontSize: "17px",
                 fontWeight: 800,
-                margin: "0 0 2px 0",
-                letterSpacing: "0.5px",
+                margin: "0 0 3px 0",
+                letterSpacing: "0.4px",
+                textTransform: "uppercase",
                 color: "#000",
               }}
             >
@@ -192,103 +209,67 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             {settings?.address && (
               <p
                 style={{
-                  fontSize: "12px",
+                  fontSize: "10.5px",
                   margin: "1px 0",
-                  color: "#000",
-                  fontWeight: 600,
+                  color: "#333",
+                  fontWeight: 500,
                 }}
               >
                 {settings.address}
               </p>
             )}
-            {settings?.phone && (
-              <p
-                style={{
-                  fontSize: "12px",
-                  margin: "1px 0",
-                  color: "#000",
-                  fontWeight: 600,
-                }}
-              >
-                Phone: {settings.phone}
-              </p>
-            )}
-            {settings?.email && (
-              <p
-                style={{
-                  fontSize: "12px",
-                  margin: "1px 0",
-                  color: "#000",
-                  fontWeight: 600,
-                }}
-              >
-                Email: {settings.email}
-              </p>
-            )}
+            <p
+              style={{
+                fontSize: "10.5px",
+                margin: "1px 0",
+                color: "#333",
+                fontWeight: 500,
+              }}
+            >
+              {[
+                settings?.phone && `Tel: ${settings.phone}`,
+                settings?.email,
+              ]
+                .filter(Boolean)
+                .join("   ·   ")}
+            </p>
           </div>
 
-          {/* ─── Logo + Bill Details Row ─── */}
+          {/* ─── Document Title ─── */}
           <div
             style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "6px",
+              textAlign: "center",
+              borderTop: "1.5px solid #000",
+              borderBottom: "1.5px solid #000",
+              padding: "5px 0",
               marginBottom: "8px",
-              borderTop: "1px solid #000",
-              borderBottom: "1px solid #000",
-              padding: "6px 0",
             }}
           >
-            {/* Logo */}
-            <div style={{ width: "50px", flexShrink: 0 }}>
-              <img
-                src={logoUrl}
-                alt="Logo"
-                style={{ width: "100%", height: "auto" }}
-              />
-            </div>
-            {/* Bill Details */}
-            <div
+            <span
               style={{
-                flex: 1,
-                textAlign: "right",
                 fontSize: "13px",
+                fontWeight: 800,
+                letterSpacing: "3px",
                 color: "#000",
               }}
             >
-              <p
-                style={{
-                  fontSize: "20px",
-                  fontWeight: 900,
-                  margin: "0 0 4px 0",
-                }}
-              >
-                BILL
-              </p>
-              <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                <strong>Bill No.:</strong> {billNo}
-              </p>
-              <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                <strong>Date:</strong> {billDate}
-              </p>
-              <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                <strong>Student:</strong> {fee.student?.name || "N/A"}
-              </p>
-              {fee.student?.roll_no && (
-                <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                  <strong>Roll No:</strong> {fee.student.roll_no}
-                </p>
-              )}
-              <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                <strong>Period:</strong>{" "}
-                {fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
-              </p>
-              {fee.shift && (
-                <p style={{ margin: "1px 0", color: "#000", fontWeight: 600 }}>
-                  <strong>Shift:</strong> {fee.shift}
-                </p>
-              )}
-            </div>
+              PAYMENT RECEIPT
+            </span>
+          </div>
+
+          {/* ─── Bill Meta ─── */}
+          <div style={{ fontSize: "11.5px", color: "#000", marginBottom: "8px" }}>
+            <MetaRow label="Bill No." value={billNo} />
+            <MetaRow label="Date" value={billDate} />
+            <MetaRow label="Student" value={fee.student?.name || "N/A"} />
+            {fee.student?.roll_no && (
+              <MetaRow label="Roll No." value={fee.student.roll_no} />
+            )}
+            <MetaRow
+              label="Period"
+              value={fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
+            />
+            {fee.shift && <MetaRow label="Shift" value={fee.shift} />}
           </div>
 
           {/* ─── Items Table ─── */}
@@ -296,64 +277,48 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              marginBottom: "6px",
-              fontSize: "13px",
+              marginBottom: "2px",
+              fontSize: "12px",
               color: "#000",
             }}
           >
             <thead>
-              <tr style={{ backgroundColor: "#fff" }}>
+              <tr>
                 <th
                   style={{
                     textAlign: "left",
-                    padding: "4px 6px",
+                    padding: "3px 4px 5px 4px",
                     fontWeight: 700,
-                    borderBottom: "1px solid #000",
+                    fontSize: "10.5px",
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    borderBottom: "1.5px solid #000",
                   }}
                 >
                   Description
                 </th>
                 <th
                   style={{
-                    width: "100px",
+                    width: "90px",
                     whiteSpace: "nowrap",
                     textAlign: "right",
-                    padding: "4px 6px",
+                    padding: "3px 4px 5px 4px",
                     fontWeight: 700,
-                    borderBottom: "1px solid #000",
+                    fontSize: "10.5px",
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    borderBottom: "1.5px solid #000",
                   }}
                 >
-                  Amount Rs.
+                  Amount
                 </th>
               </tr>
             </thead>
             <tbody>
-              {/* Admission Fee */}
               {renderAdmission && (
-                <tr>
-                  <td
-                    style={{
-                      padding: "4px 6px",
-                      color: "#000",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Admission Fee
-                  </td>
-                  <td
-                    style={{
-                      padding: "4px 6px",
-                      textAlign: "right",
-                      color: "#000",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {fmt(admissionOutstanding)}
-                  </td>
-                </tr>
+                <LineItem label="Admission Fee" amount={fmt(admissionOutstanding)} />
               )}
 
-              {/* Program breakdown */}
               {activePrograms && activePrograms.length > 0 ? (
                 activePrograms.map((pb: any, idx: number) => {
                   const base = Number(pb.program_fee || 0);
@@ -370,88 +335,54 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   );
 
                   return (
-                    <tr key={idx}>
-                      <td
-                        style={{
-                          padding: "4px 6px",
-                          color: "#000",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {pb.title}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 6px",
-                          textAlign: "right",
-                          color: "#000",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {fmt(outstandingBeforeToday)}
-                      </td>
-                    </tr>
+                    <LineItem
+                      key={idx}
+                      label={pb.title}
+                      amount={fmt(outstandingBeforeToday)}
+                    />
                   );
                 })
               ) : (
-                <tr>
-                  <td
-                    style={{
-                      padding: "4px 6px",
-                      textTransform: "capitalize",
-                      color: "#000",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {fee.fee_type === "billing"
+                <LineItem
+                  label={
+                    fee.fee_type === "billing"
                       ? "Tuition Fees"
-                      : fee.fee_type || "Fee"}
-                  </td>
-                  <td
-                    style={{
-                      padding: "4px 6px",
-                      textAlign: "right",
-                      color: "#000",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {fmt(totalGross)}
-                  </td>
-                </tr>
+                      : fee.fee_type || "Fee"
+                  }
+                  amount={fmt(totalGross)}
+                  capitalize
+                />
               )}
             </tbody>
           </table>
 
           {/* ─── Totals ─── */}
-          <div style={{ fontSize: "13px", color: "#000", marginTop: "4px" }}>
-            {/* Amount Total */}
+          <div style={{ fontSize: "12.5px", color: "#000", marginTop: "2px" }}>
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                padding: "4px 6px",
-                borderTop: "1px solid #000",
+                padding: "5px 4px",
+                borderTop: "1px dashed #000",
                 fontWeight: 600,
               }}
             >
-              <span>Amount Total:</span>
-              <span>{fmt(totalGross)}</span>
+              <span>Subtotal</span>
+              <span className="thermal-amount">Rs. {fmt(totalGross)}</span>
             </div>
 
-            {/* Amount Paid */}
             {paidToday > 0 && (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "3px 6px",
-                  marginTop: "2px",
+                  padding: "3px 4px",
                   fontWeight: 600,
-                  color: "green",
+                  color: "#15803d",
                 }}
               >
-                <span>Amount Paid:</span>
-                <span>{fmt(paidToday)}</span>
+                <span>Amount Paid</span>
+                <span className="thermal-amount">Rs. {fmt(paidToday)}</span>
               </div>
             )}
 
@@ -460,75 +391,71 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "3px 6px",
-                  marginTop: "2px",
-                  borderTop: "1px dashed #000",
+                  padding: "3px 4px",
+                  fontWeight: 600,
                 }}
               >
-                <span style={{ fontWeight: 700, color: "#000" }}>
-                  Returned:
-                </span>
-                <span style={{ fontWeight: 700, color: "#000" }}>
-                  {fmt(Number(fee.return_amount))}
+                <span>Change Returned</span>
+                <span className="thermal-amount">
+                  Rs. {fmt(Number(fee.return_amount))}
                 </span>
               </div>
             )}
 
-            {/* Balance Due / Fully Paid */}
             {balanceDue > 0.01 ? (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "5px 6px",
-                  backgroundColor: "#fff",
-                  border: "2px solid #000",
-                  fontWeight: 900,
-                  fontSize: "15px",
-                  color: "#000",
+                  alignItems: "center",
+                  padding: "7px 6px",
+                  marginTop: "5px",
+                  backgroundColor: "#000",
+                  fontWeight: 800,
+                  fontSize: "14px",
+                  color: "#fff",
+                  letterSpacing: "0.3px",
                 }}
               >
-                <span>BALANCE DUE:</span>
-                <span>{fmt(balanceDue)}</span>
+                <span>BALANCE DUE</span>
+                <span className="thermal-amount">Rs. {fmt(balanceDue)}</span>
               </div>
             ) : (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "5px 6px",
-                  backgroundColor: "#ecfdf5",
-                  border: "2px solid #059669",
-                  fontWeight: 900,
-                  fontSize: "15px",
-                  color: "#047857",
+                  alignItems: "center",
+                  padding: "7px 6px",
+                  marginTop: "5px",
+                  backgroundColor: "#000",
+                  fontWeight: 800,
+                  fontSize: "14px",
+                  color: "#fff",
+                  letterSpacing: "0.3px",
                 }}
               >
-                <span>FULLY PAID</span>
-                <span>{fmt(balanceDue)}</span>
+                <span>✓ FULLY PAID</span>
+                <span className="thermal-amount">Rs. {fmt(balanceDue)}</span>
               </div>
             )}
-            {/* ─── Remarks ─── */}
+
             {finalRemarks && (
               <div
                 style={{
-                  marginTop: "8px",
+                  marginTop: "10px",
                   borderTop: "1px dashed #000",
-                  paddingTop: "4px",
-                  fontSize: "12px",
+                  paddingTop: "5px",
+                  fontSize: "10.5px",
                   color: "#000",
                 }}
               >
-                <p
-                  style={{
-                    fontWeight: 700,
-                    marginBottom: "2px",
-                    color: "#000",
-                  }}
-                >
-                  Remarks:
+                <p style={{ fontWeight: 700, marginBottom: "2px" }}>
+                  Remarks
                 </p>
-                <p style={{ fontWeight: 600, color: "#000" }}>{finalRemarks}</p>
+                <p style={{ fontWeight: 400, color: "#333" }}>
+                  {finalRemarks}
+                </p>
               </div>
             )}
           </div>
@@ -537,21 +464,31 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
           <div
             style={{
               textAlign: "center",
-              marginTop: "12px",
-              borderTop: "1px dashed #000",
-              paddingTop: "8px",
+              marginTop: "14px",
+              borderTop: "1.5px dashed #000",
+              paddingTop: "10px",
             }}
           >
             <p
               style={{
-                fontSize: "18px",
-                fontWeight: 500,
-                marginBottom: "6px",
+                fontSize: "13px",
+                fontWeight: 700,
+                marginBottom: "4px",
                 color: "#000",
               }}
             >
-              Thank You!
+              Thank You for Your Payment
             </p>
+            {/* <p
+              style={{
+                fontSize: "9.5px",
+                color: "#666",
+                margin: 0,
+                fontWeight: 400,
+              }}
+            >
+              This is a system-generated receipt.
+            </p> */}
           </div>
         </div>
       </>
@@ -560,3 +497,56 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
 );
 
 ThermalBill.displayName = "ThermalBill";
+
+// ─── Helper subcomponents ───
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "1.5px 0",
+      }}
+    >
+      <span style={{ color: "#555", fontWeight: 500 }}>{label}</span>
+      <span style={{ fontWeight: 700 }}>{value}</span>
+    </div>
+  );
+}
+
+function LineItem({
+  label,
+  amount,
+  capitalize = false,
+}: {
+  label: string;
+  amount: string;
+  capitalize?: boolean;
+}) {
+  return (
+    <tr>
+      <td
+        style={{
+          padding: "4px 4px",
+          color: "#000",
+          fontWeight: 500,
+          textTransform: capitalize ? "capitalize" : "none",
+        }}
+      >
+        {label}
+      </td>
+      <td
+        className="thermal-amount"
+        style={{
+          padding: "4px 4px",
+          textAlign: "right",
+          color: "#000",
+          fontWeight: 600,
+        }}
+      >
+        {amount}
+      </td>
+    </tr>
+  );
+}

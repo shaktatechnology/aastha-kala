@@ -87,6 +87,7 @@ interface Props {
   onClose: () => void;
   onSuccess: () => void;
   fee?: any;
+  instructorId?: string;
 }
 
 /* ─── Helpers ────────────────────────────────────────────── */
@@ -292,7 +293,7 @@ const MethodDropdown: React.FC<{
 };
 
 /* ─── Main Modal ──────────────────────────────────────────── */
-const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
+const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instructorId }) => {
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -431,7 +432,11 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         setIsOverwriteMode(false);
         const token = localStorage.getItem("token");
         let url = `${BASE_URL}/admin/students/${studentId}/fee-info`;
-        if (month) url += `?month_year=${encodeURIComponent(month)}`;
+        const params = new URLSearchParams();
+        if (month) params.append("month_year", month);
+        if (instructorId) params.append("instructor_id", instructorId);
+        const qStr = params.toString();
+        if (qStr) url += `?${qStr}`;
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -497,7 +502,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
         setLoadingFeeInfo(false);
       }
     },
-    [BASE_URL],
+    [BASE_URL, instructorId],
   );
 
   useEffect(() => {

@@ -75,12 +75,55 @@ class StudentFeeController extends Controller
 
         if ($request->filled('instructor_id')) {
             $instructorId = $request->instructor_id;
-            $query->whereHas('student.enrollments.booking', function ($q) use ($instructorId) {
-                $q->where('instructor_id', $instructorId)
-                  ->orWhereHas('schedules', function($sq) use ($instructorId) {
-                      $sq->where('program_schedules.instructor_id', $instructorId);
+            $query->where('fee_type', 'program')
+                  ->whereExists(function ($subQuery) use ($instructorId) {
+                      $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('student_programs')
+                          ->whereColumn('student_programs.student_id', 'student_fees.student_id')
+                          ->whereColumn('student_programs.program_id', 'student_fees.program_id')
+                          ->where(function ($spQuery) use ($instructorId) {
+                              $spQuery->where(function ($bq) use ($instructorId) {
+                                  $bq->whereExists(function ($sub) use ($instructorId) {
+                                      $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                                          ->from('bookings')
+                                          ->whereColumn('bookings.id', 'student_programs.booking_id')
+                                          ->where(function ($bi) use ($instructorId) {
+                                              $bi->where('bookings.instructor_id', $instructorId)
+                                                 ->orWhereExists(function ($bs) use ($instructorId) {
+                                                     $bs->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                        ->from('booking_schedule')
+                                                        ->join('program_schedules', 'program_schedules.id', '=', 'booking_schedule.program_schedule_id')
+                                                        ->whereColumn('booking_schedule.booking_id', 'bookings.id')
+                                                        ->where('program_schedules.instructor_id', $instructorId);
+                                                 })
+                                                 ->orWhereExists(function ($bsch) use ($instructorId) {
+                                                     $bsch->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                        ->from('program_schedules')
+                                                        ->whereColumn('program_schedules.id', 'bookings.schedule_id')
+                                                        ->where('program_schedules.instructor_id', $instructorId);
+                                                 });
+                                          });
+                                  });
+                              })
+                              ->orWhere(function ($pq) use ($instructorId) {
+                                  $pq->whereNull('student_programs.booking_id')
+                                     ->where(function ($innerP) use ($instructorId) {
+                                         $innerP->whereExists(function ($pi) use ($instructorId) {
+                                             $pi->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                ->from('program_instructor')
+                                                ->whereColumn('program_instructor.program_id', 'student_programs.program_id')
+                                                ->where('program_instructor.instructor_id', $instructorId);
+                                         })
+                                         ->orWhereExists(function ($ps) use ($instructorId) {
+                                             $ps->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                ->from('program_schedules')
+                                                ->whereColumn('program_schedules.program_id', 'student_programs.program_id')
+                                                ->where('program_schedules.instructor_id', $instructorId);
+                                         });
+                                     });
+                              });
+                          });
                   });
-            });
         }
 
         if ($request->filled('program_id')) {
@@ -240,6 +283,13 @@ class StudentFeeController extends Controller
         $admissionExists     = $admissionRecord ? true : false;
         $admissionPaidAmount = $globalAdmTotals ? (float) $globalAdmTotals->total_paid : 0;
 
+        if ($request->filled('instructor_id')) {
+            $admissionAmount = 0;
+            $admissionPaidAmount = 0;
+            $admissionPaid = true;
+            $admissionExists = false;
+        }
+
         // Build program fee breakdown
         $breakdown    = [];
         $classTitles  = [];
@@ -249,6 +299,17 @@ class StudentFeeController extends Controller
             ->where('student_id', $studentId)
             ->whereIn('status', ['active', 'graduated'])
             ->get();
+
+        if ($request->filled('instructor_id')) {
+            $instructorId = $request->instructor_id;
+            $enrollments = $enrollments->filter(function ($e) use ($instructorId) {
+                if (!$e->booking) return false;
+                if ((int)$e->booking->instructor_id === (int)$instructorId) return true;
+                return $e->booking->schedules->contains(function ($s) use ($instructorId) {
+                    return (int)$s->instructor_id === (int)$instructorId;
+                });
+            });
+        }
 
         $matchingPrograms = collect();
         if ($enrollments->isNotEmpty()) {

@@ -178,8 +178,12 @@ const FeesPage = () => {
 
       const toastId = toast.loading("Preparing bill...");
       const token = localStorage.getItem("token");
+      let printUrl = `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`;
+      if (instructorFilter !== "all") {
+        printUrl += `&instructor_id=${instructorFilter}`;
+      }
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`,
+        printUrl,
         {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
@@ -759,8 +763,12 @@ const FeesPage = () => {
               try {
                 const toastId = toast.loading("Loading fee details...");
                 const token = localStorage.getItem("token");
+                let feeInfoUrl = `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`;
+                if (instructorFilter !== "all") {
+                  feeInfoUrl += `&instructor_id=${instructorFilter}`;
+                }
                 const res = await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`,
+                  feeInfoUrl,
                   {
                     headers: { Authorization: `Bearer ${token}` },
                     cache: "no-store",
@@ -820,6 +828,7 @@ const FeesPage = () => {
       <FeeAddModal
         isOpen={feeModalOpen}
         fee={feeToEdit}
+        instructorId={instructorFilter !== "all" ? instructorFilter : undefined}
         onClose={() => setFeeModalOpen(false)}
         onSuccess={() => {
           if (

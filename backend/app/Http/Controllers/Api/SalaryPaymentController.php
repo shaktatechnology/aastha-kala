@@ -193,16 +193,55 @@ class SalaryPaymentController extends Controller
         // Convert Nepali month/year to AD YYYY-MM
         $monthYearStr = $this->getAdMonthYear($request->month, $request->year);
 
-        // Fetch program fees query for programs taught by this instructor
         $feesQuery = \App\Models\StudentFee::where('month_year', $monthYearStr)
             ->where('fee_type', 'program')
             ->whereExists(function ($query) use ($instructor) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('student_programs')
-                    ->join('bookings', 'student_programs.booking_id', '=', 'bookings.id')
                     ->whereColumn('student_programs.student_id', 'student_fees.student_id')
                     ->whereColumn('student_programs.program_id', 'student_fees.program_id')
-                    ->where('bookings.instructor_id', $instructor->id);
+                    ->where(function ($spQuery) use ($instructor) {
+                        $spQuery->where(function ($bq) use ($instructor) {
+                            $bq->whereExists(function ($sub) use ($instructor) {
+                                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                                    ->from('bookings')
+                                    ->whereColumn('bookings.id', 'student_programs.booking_id')
+                                    ->where(function ($bi) use ($instructor) {
+                                        $bi->where('bookings.instructor_id', $instructor->id)
+                                           ->orWhereExists(function ($bs) use ($instructor) {
+                                               $bs->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                  ->from('booking_schedule')
+                                                  ->join('program_schedules', 'program_schedules.id', '=', 'booking_schedule.program_schedule_id')
+                                                  ->whereColumn('booking_schedule.booking_id', 'bookings.id')
+                                                  ->where('program_schedules.instructor_id', $instructor->id);
+                                           })
+                                           ->orWhereExists(function ($bsch) use ($instructor) {
+                                               $bsch->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                  ->from('program_schedules')
+                                                  ->whereColumn('program_schedules.id', 'bookings.schedule_id')
+                                                  ->where('program_schedules.instructor_id', $instructor->id);
+                                           });
+                                    });
+                            });
+                        })
+                        ->orWhere(function ($pq) use ($instructor) {
+                            $pq->whereNull('student_programs.booking_id')
+                               ->where(function ($innerP) use ($instructor) {
+                                   $innerP->whereExists(function ($pi) use ($instructor) {
+                                       $pi->select(\Illuminate\Support\Facades\DB::raw(1))
+                                          ->from('program_instructor')
+                                          ->whereColumn('program_instructor.program_id', 'student_programs.program_id')
+                                          ->where('program_instructor.instructor_id', $instructor->id);
+                                   })
+                                   ->orWhereExists(function ($ps) use ($instructor) {
+                                       $ps->select(\Illuminate\Support\Facades\DB::raw(1))
+                                          ->from('program_schedules')
+                                          ->whereColumn('program_schedules.program_id', 'student_programs.program_id')
+                                          ->where('program_schedules.instructor_id', $instructor->id);
+                                   });
+                               });
+                        });
+                    });
             });
 
         // 1. Consolidated fee records by student and program
@@ -223,7 +262,7 @@ class SalaryPaymentController extends Controller
 
         $setting = \App\Models\Setting::first();
         $vatPercentage = $setting ? (float) $setting->vat_percentage : 13.00;
-        $vatFactor = 1 + ($vatPercentage / 100);
+        $vatRate = $vatPercentage / 100;
         $globalRate = (float) $employee->percentage;
 
         $totalCollected = 0.00;
@@ -257,13 +296,13 @@ class SalaryPaymentController extends Controller
             ];
         });
 
-        // Collected calculation
-        $collectedNet = $collectedGross / $vatFactor;
-        $collectedVatCut = $collectedGross - $collectedNet;
+        // Collected calculation: VAT is deducted from gross commission
+        $collectedVatCut = $collectedGross * $vatRate;
+        $collectedNet = $collectedGross - $collectedVatCut;
 
-        // Billed calculation
-        $billedNet = $billedGross / $vatFactor;
-        $billedVatCut = $billedGross - $billedNet;
+        // Billed calculation: VAT is deducted from gross commission
+        $billedVatCut = $billedGross * $vatRate;
+        $billedNet = $billedGross - $billedVatCut;
 
         return response()->json([
             'success' => true,
@@ -309,11 +348,11 @@ class SalaryPaymentController extends Controller
     private function calculateSingleOption($feeAmount, $percentage, $vatRate)
     {
         $pct = $percentage / 100;
-        $vatFactor = 1 + ($vatRate / 100);
+        $vatFraction = $vatRate / 100;
 
         $gross = $feeAmount * $pct;
-        $net = $gross / $vatFactor;
-        $vatCut = $gross - $net;
+        $vatCut = $gross * $vatFraction;
+        $net = $gross - $vatCut;
 
         return [
             'gross_commission' => round($gross, 2),
