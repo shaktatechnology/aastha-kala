@@ -56,6 +56,7 @@ const menuItems = [
   { name: "Gallery", icon: Image, href: "/admin/gallery" },
   { name: "Event", icon: Flag, href: "/admin/event" },
   { name: "Testimonials", icon: Mic, href: "/admin/testimonials" },
+  { name: "Voices", icon: Mic, href: "/admin/voices" },
   { name: "Contact Us", icon: Mail, href: "/admin/contact" },
 
   // System

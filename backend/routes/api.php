@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\SalaryPaymentController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\CompanyIncomeController;
 use App\Http\Controllers\Api\IncomeCategoryController;
+use App\Http\Controllers\Api\VoiceController;
 // Public Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -51,6 +52,10 @@ Route::post('/bookings', [BookingController::class, 'store']);
 Route::get('/instructor-availabilities/instructor/{id}/free-slots', [InstructorAvailabilityController::class, 'freeSlots']);
 
 Route::get('/dress-hire', [DressHireController::class, 'index']);
+
+// Voices
+Route::get('/voices', [VoiceController::class, 'publicIndex']);
+Route::get('/voices/featured', [VoiceController::class, 'featured']);
 
 // Admin Routes
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
@@ -125,6 +130,9 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('/company-incomes/years', [CompanyIncomeController::class, 'getStoredYears']);
     Route::apiResource('company-incomes', CompanyIncomeController::class);
     Route::apiResource('income-categories', IncomeCategoryController::class);
+
+    // Voices
+    Route::apiResource('voices', VoiceController::class);
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
