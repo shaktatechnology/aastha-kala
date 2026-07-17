@@ -10,6 +10,7 @@ class Voice extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tagline',
         'name',
         'post',
         'paragraph',

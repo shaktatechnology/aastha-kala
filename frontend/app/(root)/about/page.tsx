@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import React, { Suspense } from "react";
 import Heading from "@/components/global/Heading";
 import AboutIntro from "@/components/about/AboutIntro";
 import StatsSection from "@/components/about/StatsSection";
@@ -6,6 +7,9 @@ import ValuesSection from "@/components/about/ValuesSection";
 import WhyChooseUs from "@/components/about/WhyChooseUs";
 import MissionSection from "@/components/about/MissionSection";
 import JoinUsSection from "@/components/about/JoinUsSection";
+import VoiceSection from "@/components/home/VoiceSection";
+
+const SectionPlaceholder = () => <div className="min-h-[200px] animate-pulse bg-gray-50" />;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -93,6 +97,10 @@ const AboutPage = async () => {
         image1={image1}
         image2={image2}
       />
+
+      <Suspense fallback={<SectionPlaceholder />}>
+        <VoiceSection type="about" />
+      </Suspense>
 
       <StatsSection settings={settings} />
 
