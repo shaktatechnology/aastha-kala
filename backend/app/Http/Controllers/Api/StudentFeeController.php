@@ -25,6 +25,7 @@ class StudentFeeController extends Controller
                 SUM(total_amount) as net_amount, 
                 SUM(paid_amount) as paid_amount, 
                 (SUM(total_amount) - SUM(paid_amount)) as pending_amount,
+                SUM(COALESCE(return_amount, 0)) as return_amount,
                 SUM(COALESCE(admission_fee, 0) + COALESCE(program_fee, 0)) as gross_amount,
                 (SUM(COALESCE(admission_fee, 0) + COALESCE(program_fee, 0)) - SUM(total_amount)) as discount_amount,
                 GROUP_CONCAT(DISTINCT fee_type) as fee_types,
@@ -246,7 +247,7 @@ class StudentFeeController extends Controller
 
         $enrollments = \App\Models\StudentProgram::with(['program', 'booking.schedules', 'booking.schedule'])
             ->where('student_id', $studentId)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'graduated'])
             ->get();
 
         $matchingPrograms = collect();
@@ -292,16 +293,25 @@ class StudentFeeController extends Controller
 
             if (!$p) continue;
 
-            // Base fee (use custom_fee if set, else program default)
+            // Base fee (use custom_fee if explicitly set > 0, else program default)
             // NOTE: programs.admission_fee is intentionally ignored — admission is global via settings
-            $baseFee = $customFee !== null ? (float) $customFee : (float) ($p->program_fee ?? 0);
+            $baseFee = ($customFee !== null && (float)$customFee > 0) ? (float) $customFee : (float) ($p->program_fee ?? 0);
 
-            // Determine fee for the current month based on billing mode
             $multiplier = match($billingMode) {
-                'duration' => (function() use ($student) {
-                    if ($student->duration_value && $student->duration_unit) {
-                        $val = (float) $student->duration_value;
-                        return $student->duration_unit === 'years' ? $val * 12 : $val;
+                'duration' => (function() use ($student, $item) {
+                    $val = null;
+                    $unit = null;
+                    if ($item instanceof \App\Models\StudentProgram) {
+                        $val = $item->duration_value;
+                        $unit = $item->duration_unit;
+                    }
+                    if (!$val && !$unit) {
+                        $val = $student->duration_value;
+                        $unit = $student->duration_unit;
+                    }
+                    if ($val && $unit) {
+                        $valFloat = (float) $val;
+                        return $unit === 'years' ? $valFloat * 12 : $valFloat;
                     }
                     return 1;
                 })(),
@@ -314,10 +324,29 @@ class StudentFeeController extends Controller
             // Current-month payment record for this program
             $existing = $monthRecords->where('program_id', $p->id)->first();
 
+            $skipCurrentRow = false;
+            $anyExisting = null;
+            if ($item instanceof \App\Models\StudentProgram) {
+                $anyExisting = StudentFee::where('student_id', $studentId)
+                    ->where('program_id', $p->id)
+                    ->where('fee_type', 'program')
+                    ->orderBy('month_year')
+                    ->first();
+            }
+
+            if ($anyExisting && in_array($billingMode, ['duration', 'fixed'])) {
+                if ($requestedMonth !== $anyExisting->month_year) {
+                    $skipCurrentRow = true;
+                } else {
+                    $existing = $anyExisting;
+                    $fee = $anyExisting->total_amount;
+                }
+            }
+
             $matchedTitles[] = strtolower($p->title);
 
-            // --- CARRY-FORWARD: fetch all prior unpaid months for monthly & fixed ---
-            if ($requestedMonth && in_array($billingMode, ['monthly', 'fixed'])) {
+            // --- CARRY-FORWARD: fetch all prior unpaid months for monthly, fixed, & duration ---
+            if ($requestedMonth && in_array($billingMode, ['monthly', 'fixed', 'duration'])) {
                 $priorDues = StudentFee::where('student_id', $studentId)
                     ->where('program_id', $p->id)
                     ->where('fee_type', 'program')
@@ -335,6 +364,7 @@ class StudentFeeController extends Controller
                             'title'                => $p->title,
                             'program_fee'          => round($outstanding, 2),
                             'paid_amount'          => 0,
+                            'last_payment_amount'  => 0,
                             'discount'             => 0,
                             'discount_type'        => 'cash',
                             'status'               => 'pending',
@@ -347,20 +377,23 @@ class StudentFeeController extends Controller
                 }
             }
 
-            // Current-month row
-            $breakdown[] = [
-                'id'                   => $p->id,
-                'title'                => $p->title,
-                'program_fee'          => $fee,
-                'paid_amount'          => $existing ? (float) $existing->paid_amount : 0,
-                'discount'             => $existing ? (float) $existing->program_discount : ($billingMode === 'monthly' ? $monthlyDiscount : 0),
-                'discount_type'        => $existing ? ($existing->program_discount_type ?? 'cash') : $monthlyDiscountType,
-                'status'               => $existing ? $existing->status : 'pending',
-                'billing_mode'         => $billingMode,
-                'monthly_discount'     => $monthlyDiscount,
-                'monthly_discount_type'=> $monthlyDiscountType,
-                'due_month'            => null, // null = current month
-            ];
+            if (!$skipCurrentRow) {
+                // Current-month row
+                $breakdown[] = [
+                    'id'                   => $p->id,
+                    'title'                => $p->title,
+                    'program_fee'          => $fee,
+                    'paid_amount'          => $existing ? (float) $existing->paid_amount : 0,
+                    'last_payment_amount'  => $existing ? (float) $existing->last_payment_amount : 0,
+                    'discount'             => $existing ? (float) $existing->program_discount : ($billingMode === 'monthly' ? $monthlyDiscount : 0),
+                    'discount_type'        => $existing ? ($existing->program_discount_type ?? 'cash') : $monthlyDiscountType,
+                    'status'               => $existing ? $existing->status : 'pending',
+                    'billing_mode'         => $billingMode,
+                    'monthly_discount'     => $monthlyDiscount,
+                    'monthly_discount_type'=> $monthlyDiscountType,
+                    'due_month'            => null, // null = current month
+                ];
+            }
         }
 
         // Handle unmatched legacy classes
@@ -398,6 +431,7 @@ class StudentFeeController extends Controller
                 'admission_exists'       => $admissionExists,
                 'admission_amount'       => $admissionAmount,
                 'admission_paid_amount'  => $admissionPaidAmount,
+                'admission_last_payment' => $admissionRecord ? (float) $admissionRecord->last_payment_amount : 0,
                 'admission_discount'     => $admissionMonthRecord ? $monthRecords->where('fee_type', 'admission')->sum('admission_discount') : 0,
                 'admission_discount_type'=> $admissionMonthRecord ? $admissionMonthRecord->admission_discount_type : 'cash',
                 'global_admission_fee'   => $globalAdmissionFee,
@@ -494,6 +528,7 @@ class StudentFeeController extends Controller
                     $feeRecord->total_amount = $netAmount;
                     $feeRecord->net_amount = $netAmount;
                     $feeRecord->paid_amount = min($newPaid, $netAmount);
+                    $feeRecord->last_payment_amount = $payingNow;
                     $feeRecord->return_amount = $returnAmount;
                     $feeRecord->pending_amount = max(0, $netAmount - $feeRecord->paid_amount);
                     $feeRecord->status = $feeRecord->pending_amount <= 0.01 ? 'paid' : 'pending';

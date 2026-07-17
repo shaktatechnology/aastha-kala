@@ -14,15 +14,74 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
 
     const fmt = (n: number) => "Rs. " + Math.round(n).toLocaleString("en-IN");
 
-    // Calculate breakdown totals
-    const totalGross = Number(fee.gross_amount || 0);
-    const totalDiscount = Number(fee.discount_amount || 0);
-    const netBill = Number(fee.net_amount || fee.total_amount || 0);
-    const paidAmount = Number(fee.paid_amount || 0);
-    const balanceDue = Math.max(0, netBill - paidAmount);
+    // Calculate breakdown totals dynamically
+    // Calculate breakdown totals dynamically (using outstanding balances before today's payment)
+    const showAdmission = Number(fee.admission_fee) > 0;
+    const admissionBase = showAdmission ? Number(fee.admission_fee) : 0;
+    const admissionDiscount = showAdmission ? Number(fee.admission_discount || 0) : 0;
+    const admissionNet = showAdmission 
+      ? (fee.admission_discount_type === 'percentage' 
+          ? Math.max(0, admissionBase - (admissionBase * admissionDiscount / 100)) 
+          : Math.max(0, admissionBase - admissionDiscount))
+      : 0;
+    const admissionPaid = showAdmission ? Number(fee.admission_paid_amount || 0) : 0;
+    const admissionPaidToday = showAdmission ? Number(fee.admission_last_payment || 0) : 0;
+    const admissionOutstanding = showAdmission ? Math.max(0, admissionNet - (admissionPaid - admissionPaidToday)) : 0;
+    const renderAdmission = showAdmission && (admissionOutstanding > 0.01);
+
+    const activePrograms = fee.programs_breakdown
+      ? fee.programs_breakdown.filter((pb: any) => {
+          const base = Number(pb.program_fee || 0);
+          const disc = Number(pb.discount || 0);
+          const net = pb.discount_type === 'percentage'
+            ? Math.max(0, base - (base * disc / 100))
+            : Math.max(0, base - disc);
+          const paid = Number(pb.paid_amount || 0);
+          const lastPayment = Number(pb.last_payment_amount || 0);
+          const outstandingBeforeToday = net - (paid - lastPayment);
+          
+          return (outstandingBeforeToday > 0.01);
+        })
+      : [];
+
+    let programOutstandingTotal = 0;
+    let programPaidToday = 0;
+
+    activePrograms.forEach((pb: any) => {
+      const base = Number(pb.program_fee || 0);
+      const disc = Number(pb.discount || 0);
+      const net = pb.discount_type === 'percentage'
+        ? Math.max(0, base - (base * disc / 100))
+        : Math.max(0, base - disc);
+      const paid = Number(pb.paid_amount || 0);
+      const lastPayment = Number(pb.last_payment_amount || 0);
+      const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
+
+      programOutstandingTotal += outstandingBeforeToday;
+      programPaidToday += lastPayment;
+    });
+
+    const totalGross = admissionOutstanding + programOutstandingTotal; // Outstanding sum before today
+    const totalDiscount = 0;
+    const netBill = totalGross;
+    const paidToday = admissionPaidToday + programPaidToday;
+    const balanceDue = Math.max(0, netBill - paidToday);
 
     // Derived data
     const billDate = formatDate(fee.created_at || new Date());
+
+    const dueRemarks = activePrograms
+      ? activePrograms
+          .filter((pb: any) => pb.due_month)
+          .map((pb: any) => `${pb.title} — ${formatMonthYear(pb.due_month)}`)
+      : [];
+
+    const remarksParts = [];
+    if (fee.remarks) remarksParts.push(fee.remarks);
+    if (dueRemarks.length > 0) {
+      remarksParts.push(...dueRemarks);
+    }
+    const finalRemarks = remarksParts.join(" | ");
 
     const studentName = fee.student?.name || "N/A";
     const period = fee.month_year ? formatMonthYear(fee.month_year) : "N/A";
@@ -173,45 +232,43 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
             </thead>
             <tbody className="border-b border-gray-200">
               {/* Admission Fee if exists */}
-              {Number(fee.admission_fee) > 0 && (
+              {renderAdmission && (
                 <tr className="border-b border-gray-100">
                   <td className="px-5 py-4 text-sm border-r border-gray-100">
                     Admission Fee
                   </td>
                   <td className="px-5 py-4 text-right text-sm">
-                    {fmt(fee.admission_fee)}
+                    {fmt(admissionOutstanding)}
                   </td>
                 </tr>
               )}
 
               {/* Programs Breakdown */}
-              {fee.programs_breakdown && fee.programs_breakdown.length > 0 ? (
-                fee.programs_breakdown.map((pb: any, idx: number) => (
-                  <tr
-                    key={idx}
-                    className="border-b border-gray-100 last:border-0"
-                  >
-                    <td className="px-5 py-4 text-sm border-r border-gray-100">
-                      {pb.title}
-                      {pb.due_month ? (
-                        <span className="text-xs text-amber-600 font-bold ml-1.5 uppercase tracking-wide">
-                          (Due: {formatMonthYear(pb.due_month)})
-                        </span>
-                      ) : (
-                        <span className="text-xs text-blue-600 font-bold ml-1.5 uppercase tracking-wide">
-                          (Current:{" "}
-                          {fee.month_year
-                            ? formatMonthYear(fee.month_year)
-                            : "N/A"}
-                          )
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-right text-sm">
-                      {fmt(pb.program_fee)}
-                    </td>
-                  </tr>
-                ))
+              {activePrograms && activePrograms.length > 0 ? (
+                activePrograms.map((pb: any, idx: number) => {
+                  const base = Number(pb.program_fee || 0);
+                  const disc = Number(pb.discount || 0);
+                  const net = pb.discount_type === 'percentage'
+                    ? Math.max(0, base - (base * disc / 100))
+                    : Math.max(0, base - disc);
+                  const paid = Number(pb.paid_amount || 0);
+                  const lastPayment = Number(pb.last_payment_amount || 0);
+                  const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
+
+                  return (
+                    <tr
+                      key={idx}
+                      className="border-b border-gray-100 last:border-0"
+                    >
+                      <td className="px-5 py-4 text-sm border-r border-gray-100">
+                        {pb.title}
+                      </td>
+                      <td className="px-5 py-4 text-right text-sm">
+                        {fmt(outstandingBeforeToday)}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 /* Fallback if no breakdown */
                 <tr className="border-b border-gray-100 last:border-0 min-h-[40px]">
@@ -232,47 +289,18 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
           <div className="flex justify-end">
             <div className="w-full max-w-[320px]">
               <div className="flex justify-between py-2 px-5">
-                <span className="font-bold text-sm">Subtotal:</span>
+                <span className="font-bold text-sm">Amount Owed:</span>
                 <span className="text-sm">{fmt(totalGross)}</span>
               </div>
-              {totalDiscount > 0 && (
-                <div className="flex justify-between py-2 px-5 text-gray-500 italic">
-                  <span className="text-sm">Discount:</span>
-                  <span className="text-sm">({fmt(totalDiscount)})</span>
-                </div>
-              )}
-              {/* Image shows Tax (5%) - if system doesn't have it, we can calculate if needed, 
-                but usually it's already in net. Let's show it only if net doesn't equal subtotal.
-                In the provided image, subtotal is 10500, tax is 525, total is 11025.
-                If netBill (11025) > subtotal (10500), then tax exists.
-            */}
-              {netBill > totalGross - totalDiscount && (
-                <div className="flex justify-between py-2 px-5">
-                  <span className="font-bold text-sm">Tax (5%):</span>
-                  <span className="text-sm">
-                    {fmt(netBill - (totalGross - totalDiscount))}
+
+              {paidToday > 0 && (
+                <div className="flex justify-between py-2 px-5 border-t border-gray-100 mt-2">
+                  <span className="font-bold text-sm text-green-600 font-bold">Paid Today:</span>
+                  <span className="font-bold text-sm text-green-600">
+                    {fmt(paidToday)}
                   </span>
                 </div>
               )}
-
-              <div className="flex justify-between py-2 px-5 border-t border-gray-200 mt-2">
-                <span className="font-bold text-sm">Total Amount (Gross):</span>
-                <span className="text-sm">{fmt(totalGross)}</span>
-              </div>
-
-              <div className="flex justify-between py-3 px-5 bg-beige mt-2">
-                <span className="font-black text-lg">Net Bill:</span>
-                <span className="font-black text-lg">{fmt(netBill)}</span>
-              </div>
-
-              <div className="flex justify-between py-3 px-5">
-                <span className="font-bold text-sm">Amount Paid:</span>
-                <span
-                  className={`font-bold text-sm ${paidAmount === 0 ? "text-red-600" : ""}`}
-                >
-                  {fmt(paidAmount)}
-                </span>
-              </div>
 
               {Number(fee.return_amount) > 0 && (
                 <div className="flex justify-between py-3 px-5 border-t border-gray-100">
@@ -285,25 +313,32 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                 </div>
               )}
 
-              {balanceDue > 0.01 && (
-                <div className="flex justify-between py-4 px-5 bg-beige">
+              {balanceDue > 0.01 ? (
+                <div className="flex justify-between py-4 px-5 bg-beige mt-2">
                   <span className="font-black text-lg uppercase tracking-tight">
                     BALANCE DUE:
                   </span>
                   <span className="font-black text-lg">{fmt(balanceDue)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between py-4 px-5 bg-emerald-50 mt-2 border border-emerald-100">
+                  <span className="font-black text-lg text-emerald-800 uppercase tracking-tight">
+                    FULLY PAID
+                  </span>
+                  <span className="font-black text-lg text-emerald-800">{fmt(0)}</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Remarks Section */}
-          {fee.remarks && (
+          {finalRemarks && (
             <div className="mt-8 px-5 py-4 bg-beige rounded-lg">
               <p className="text-[10px] font-bold uppercase tracking-widest text-beige-dark mb-1">
                 Remarks
               </p>
               <p className="text-sm font-medium text-gray-700 italic">
-                {fee.remarks}
+                {finalRemarks}
               </p>
             </div>
           )}

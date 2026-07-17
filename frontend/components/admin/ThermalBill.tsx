@@ -24,15 +24,85 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
 
     const logoUrl = getLogoUrl(settings?.logo);
 
-    const fmt = (n: number) => "Rs. " + Math.round(n).toLocaleString("en-IN");
+    const fmt = (n: number) => Math.round(n).toLocaleString("en-IN");
 
-    const totalGross = Number(fee.gross_amount || fee.total_amount || 0);
-    const totalDiscount = Number(fee.discount_amount || fee.discount || 0);
-    const netBill = Number(fee.net_amount || fee.total_amount || 0);
-    const paidAmount = Number(fee.paid_amount || 0);
-    const balanceDue = Math.max(0, netBill - paidAmount);
+    // Calculate breakdown totals dynamically
+    // Calculate breakdown totals dynamically (using outstanding balances before today's payment)
+    const showAdmission = Number(fee.admission_fee) > 0;
+    const admissionBase = showAdmission ? Number(fee.admission_fee) : 0;
+    const admissionDiscount = showAdmission
+      ? Number(fee.admission_discount || 0)
+      : 0;
+    const admissionNet = showAdmission
+      ? fee.admission_discount_type === "percentage"
+        ? Math.max(0, admissionBase - (admissionBase * admissionDiscount) / 100)
+        : Math.max(0, admissionBase - admissionDiscount)
+      : 0;
+    const admissionPaid = showAdmission
+      ? Number(fee.admission_paid_amount || 0)
+      : 0;
+    const admissionPaidToday = showAdmission
+      ? Number(fee.admission_last_payment || 0)
+      : 0;
+    const admissionOutstanding = showAdmission
+      ? Math.max(0, admissionNet - (admissionPaid - admissionPaidToday))
+      : 0;
+    const renderAdmission = showAdmission && admissionOutstanding > 0.01;
+
+    const activePrograms = fee.programs_breakdown
+      ? fee.programs_breakdown.filter((pb: any) => {
+          const base = Number(pb.program_fee || 0);
+          const disc = Number(pb.discount || 0);
+          const net =
+            pb.discount_type === "percentage"
+              ? Math.max(0, base - (base * disc) / 100)
+              : Math.max(0, base - disc);
+          const paid = Number(pb.paid_amount || 0);
+          const lastPayment = Number(pb.last_payment_amount || 0);
+          const outstandingBeforeToday = net - (paid - lastPayment);
+
+          return outstandingBeforeToday > 0.01;
+        })
+      : [];
+
+    let programOutstandingTotal = 0;
+    let programPaidToday = 0;
+
+    activePrograms.forEach((pb: any) => {
+      const base = Number(pb.program_fee || 0);
+      const disc = Number(pb.discount || 0);
+      const net =
+        pb.discount_type === "percentage"
+          ? Math.max(0, base - (base * disc) / 100)
+          : Math.max(0, base - disc);
+      const paid = Number(pb.paid_amount || 0);
+      const lastPayment = Number(pb.last_payment_amount || 0);
+      const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
+
+      programOutstandingTotal += outstandingBeforeToday;
+      programPaidToday += lastPayment;
+    });
+
+    const totalGross = admissionOutstanding + programOutstandingTotal; // Outstanding sum before today
+    const totalDiscount = 0;
+    const netBill = totalGross;
+    const paidToday = admissionPaidToday + programPaidToday;
+    const balanceDue = Math.max(0, netBill - paidToday);
 
     const billDate = formatDate(fee.created_at || new Date());
+
+    const dueRemarks = activePrograms
+      ? activePrograms
+          .filter((pb: any) => pb.due_month)
+          .map((pb: any) => `${pb.title} — ${formatMonthYear(pb.due_month)}`)
+      : [];
+
+    const remarksParts = [];
+    if (fee.remarks) remarksParts.push(fee.remarks);
+    if (dueRemarks.length > 0) {
+      remarksParts.push(...dueRemarks);
+    }
+    const finalRemarks = remarksParts.join(" | ");
 
     const billNo = `#FEE-${fee.id}`;
 
@@ -245,19 +315,21 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 </th>
                 <th
                   style={{
+                    width: "100px",
+                    whiteSpace: "nowrap",
                     textAlign: "right",
                     padding: "4px 6px",
                     fontWeight: 700,
                     borderBottom: "1px solid #000",
                   }}
                 >
-                  Amount
+                  Amount Rs.
                 </th>
               </tr>
             </thead>
             <tbody>
               {/* Admission Fee */}
-              {Number(fee.admission_fee) > 0 && (
+              {renderAdmission && (
                 <tr>
                   <td
                     style={{
@@ -276,67 +348,53 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                       fontWeight: 600,
                     }}
                   >
-                    {fmt(fee.admission_fee)}
+                    {fmt(admissionOutstanding)}
                   </td>
                 </tr>
               )}
 
               {/* Program breakdown */}
-              {fee.programs_breakdown && fee.programs_breakdown.length > 0 ? (
-                fee.programs_breakdown.map((pb: any, idx: number) => (
-                  <tr key={idx} style={{ borderBottom: "1px solid #000" }}>
-                    <td
-                      style={{
-                        padding: "4px 6px",
-                        color: "#000",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {pb.title}
-                      {pb.due_month ? (
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            fontWeight: "bold",
-                            marginLeft: "6px",
-                            textTransform: "uppercase",
-                            color: "#d97706",
-                          }}
-                        >
-                          (Due: {formatMonthYear(pb.due_month)})
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            fontWeight: "bold",
-                            marginLeft: "6px",
-                            textTransform: "uppercase",
-                            color: "#2563eb",
-                          }}
-                        >
-                          (Current:{" "}
-                          {fee.month_year
-                            ? formatMonthYear(fee.month_year)
-                            : "N/A"}
-                          )
-                        </span>
-                      )}
-                    </td>
-                    <td
-                      style={{
-                        padding: "4px 6px",
-                        textAlign: "right",
-                        color: "#000",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {fmt(pb.program_fee)}
-                    </td>
-                  </tr>
-                ))
+              {activePrograms && activePrograms.length > 0 ? (
+                activePrograms.map((pb: any, idx: number) => {
+                  const base = Number(pb.program_fee || 0);
+                  const disc = Number(pb.discount || 0);
+                  const net =
+                    pb.discount_type === "percentage"
+                      ? Math.max(0, base - (base * disc) / 100)
+                      : Math.max(0, base - disc);
+                  const paid = Number(pb.paid_amount || 0);
+                  const lastPayment = Number(pb.last_payment_amount || 0);
+                  const outstandingBeforeToday = Math.max(
+                    0,
+                    net - (paid - lastPayment),
+                  );
+
+                  return (
+                    <tr key={idx}>
+                      <td
+                        style={{
+                          padding: "4px 6px",
+                          color: "#000",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {pb.title}
+                      </td>
+                      <td
+                        style={{
+                          padding: "4px 6px",
+                          textAlign: "right",
+                          color: "#000",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {fmt(outstandingBeforeToday)}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
-                <tr style={{ borderBottom: "1px solid #000" }}>
+                <tr>
                   <td
                     style={{
                       padding: "4px 6px",
@@ -366,65 +424,36 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
 
           {/* ─── Totals ─── */}
           <div style={{ fontSize: "13px", color: "#000", marginTop: "4px" }}>
-            {/* Gross Total */}
+            {/* Amount Total */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                padding: "2px 6px",
-                color: "#000",
+                padding: "4px 6px",
+                borderTop: "1px solid #000",
                 fontWeight: 600,
               }}
             >
-              <span style={{ color: "#000", fontWeight: 600 }}>
-                Gross Total:
-              </span>
-              <span style={{ color: "#000", fontWeight: 600 }}>
-                {fmt(totalGross)}
-              </span>
+              <span>Amount Total:</span>
+              <span>{fmt(totalGross)}</span>
             </div>
 
-            {totalDiscount > 0 && (
+            {/* Amount Paid */}
+            {paidToday > 0 && (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "2px 6px",
-                  color: "#000",
-                  fontStyle: "italic",
+                  padding: "3px 6px",
+                  marginTop: "2px",
                   fontWeight: 600,
+                  color: "green",
                 }}
               >
-                <span style={{ color: "#000", fontWeight: 600 }}>
-                  Discount:
-                </span>
-                <span style={{ color: "#000", fontWeight: 600 }}>
-                  ({fmt(totalDiscount)})
-                </span>
+                <span>Amount Paid:</span>
+                <span>{fmt(paidToday)}</span>
               </div>
             )}
-
-            {/* Amount Paid */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "3px 6px",
-                marginTop: "2px",
-              }}
-            >
-              <span style={{ fontWeight: 700, color: "#000" }}>
-                Amount Paid:
-              </span>
-              <span
-                style={{
-                  fontWeight: 700,
-                  color: "#000",
-                }}
-              >
-                {fmt(paidAmount)}
-              </span>
-            </div>
 
             {Number(fee.return_amount) > 0 && (
               <div
@@ -445,8 +474,8 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               </div>
             )}
 
-            {/* Balance Due - highlighted with border instead of tint */}
-            {balanceDue > 0.01 && (
+            {/* Balance Due / Fully Paid */}
+            {balanceDue > 0.01 ? (
               <div
                 style={{
                   display: "flex",
@@ -459,12 +488,28 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   color: "#000",
                 }}
               >
-                <span style={{ color: "#000" }}>BALANCE DUE:</span>
-                <span style={{ color: "#000" }}>{fmt(balanceDue)}</span>
+                <span>BALANCE DUE:</span>
+                <span>{fmt(balanceDue)}</span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "5px 6px",
+                  backgroundColor: "#ecfdf5",
+                  border: "2px solid #059669",
+                  fontWeight: 900,
+                  fontSize: "15px",
+                  color: "#047857",
+                }}
+              >
+                <span>FULLY PAID</span>
+                <span>{fmt(balanceDue)}</span>
               </div>
             )}
             {/* ─── Remarks ─── */}
-            {fee.remarks && (
+            {finalRemarks && (
               <div
                 style={{
                   marginTop: "8px",
@@ -483,62 +528,10 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 >
                   Remarks:
                 </p>
-                <p style={{ fontWeight: 600, color: "#000" }}>{fee.remarks}</p>
+                <p style={{ fontWeight: 600, color: "#000" }}>{finalRemarks}</p>
               </div>
             )}
           </div>
-
-          {/* ─── Payment History ─── */}
-          {fee.payments &&
-            fee.payments.filter((p: any) => Number(p.paid_amount) > 0).length >
-              0 && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  borderTop: "1px dashed #000",
-                  paddingTop: "4px",
-                }}
-              >
-                <p
-                  style={{
-                    textAlign: "center",
-                    fontWeight: 700,
-                    fontSize: "12px",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    marginBottom: "3px",
-                    color: "#000",
-                  }}
-                >
-                  Payment History
-                </p>
-                {fee.payments
-                  .filter((p: any) => Number(p.paid_amount) > 0)
-                  .map((p: any, i: number) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "12px",
-                        padding: "1px 0",
-                        color: "#000",
-                        fontWeight: 600,
-                      }}
-                    >
-                      <span style={{ color: "#000", fontWeight: 600 }}>
-                        {formatDate(p.created_at)}
-                      </span>
-                      <span style={{ color: "#000", fontWeight: 600 }}>
-                        {p.payment_method || "Cash"}
-                      </span>
-                      <span style={{ fontWeight: 700, color: "#000" }}>
-                        {fmt(p.paid_amount)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
 
           {/* ─── Footer ─── */}
           <div

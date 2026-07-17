@@ -41,6 +41,7 @@ interface StudentFee {
   student_id: number;
   student: Student;
   fee_type: "admission" | "program";
+  fee_types?: string;
   month_year?: string;
   total_amount: number;
   discount: number;
@@ -61,6 +62,7 @@ interface StudentFee {
   admission_paid_amount?: number;
   programs_breakdown?: any[];
   shift?: string;
+  return_amount?: number;
 }
 
 const FeesPage = () => {
@@ -177,9 +179,10 @@ const FeesPage = () => {
       const toastId = toast.loading("Preparing bill...");
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${row.student_id}/fee-info?month_year=${encodeURIComponent(row.month_year)}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`,
         {
           headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         },
       );
       const result = await res.json();
@@ -187,13 +190,19 @@ const FeesPage = () => {
 
       if (res.ok && result.data) {
         const d = result.data;
+        const feeTypes = original.fee_types ? original.fee_types.split(",") : [];
+        const hasAdmission = feeTypes.includes("admission");
         setPrintingFee({
           ...original,
-          admission_fee: d.admission_amount || original.admission_fee,
-          admission_discount: d.admission_discount,
-          admission_discount_type: d.admission_discount_type,
-          admission_paid_amount: d.admission_paid_amount,
-          programs_breakdown: d.program_fees?.programs_breakdown || [],
+          admission_fee: hasAdmission ? (d.admission_amount || original.admission_fee) : 0,
+          admission_discount: hasAdmission ? d.admission_discount : 0,
+          admission_discount_type: hasAdmission ? d.admission_discount_type : "cash",
+          admission_paid_amount: hasAdmission ? d.admission_paid_amount : 0,
+          admission_last_payment: 0,
+          programs_breakdown: (d.program_fees?.programs_breakdown || []).map((pb: any) => ({
+            ...pb,
+            last_payment_amount: 0,
+          })),
           shift: d.student?.shift || original.shift,
         });
       } else {
@@ -291,6 +300,7 @@ const FeesPage = () => {
     { key: "total_amount", label: "Gross Total" },
     { key: "discount", label: "Discount" },
     { key: "paid_amount", label: "Paid" },
+    { key: "return_amount", label: "Return" },
     { key: "remaining", label: "Remaining" },
     { key: "status", label: "Status" },
   ];
@@ -465,6 +475,13 @@ const FeesPage = () => {
         paid_amount: (
           <span className="text-sm font-bold text-success">
             Rs. {Number(fee.paid_amount).toLocaleString()}
+          </span>
+        ),
+        return_amount: (
+          <span className="text-sm font-bold text-amber-700">
+            {Number(fee.return_amount || 0) > 0
+              ? `Rs. ${Number(fee.return_amount).toLocaleString()}`
+              : "—"}
           </span>
         ),
         remaining: (
@@ -736,9 +753,36 @@ const FeesPage = () => {
             data={formattedData}
             loading={loading}
             actions={["view", "edit"]}
-            onView={(row) => {
+            onView={async (row) => {
               const original = fees.find((f) => f.id === row.id);
-              setFeeToView(original);
+              if (!original) return;
+              try {
+                const toastId = toast.loading("Loading fee details...");
+                const token = localStorage.getItem("token");
+                const res = await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL}/admin/students/${original.student_id}/fee-info?month_year=${encodeURIComponent(original.month_year || "")}&_t=${Date.now()}`,
+                  {
+                    headers: { Authorization: `Bearer ${token}` },
+                    cache: "no-store",
+                  },
+                );
+                const result = await res.json();
+                toast.dismiss(toastId);
+
+                if (res.ok && result.data) {
+                  const d = result.data;
+                  setFeeToView({
+                    ...original,
+                    payments: d.payments || [],
+                    programs_breakdown: d.program_fees?.programs_breakdown || [],
+                  });
+                } else {
+                  setFeeToView(original);
+                }
+              } catch (e) {
+                console.error("Failed to load fee details", e);
+                setFeeToView(original);
+              }
               setViewModalOpen(true);
             }}
             onEdit={(row) => {

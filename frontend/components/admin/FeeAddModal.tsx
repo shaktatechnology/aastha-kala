@@ -852,10 +852,12 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
           (calculations.hasAdm ? calculations.admBaseNum : 0),
         discount_amount: calculations.totalDiscount,
         paid_amount: calculations.totalCollected,
+        return_amount: excessAmount,
         admission_fee: calculations.hasAdm ? calculations.admBaseNum : 0,
         admission_discount: admDisc,
         admission_discount_type: admDiscType,
         admission_paid_amount: calculations.totalAdmPaid,
+        admission_last_payment: calculations.hasAdm ? calculations.admCurrentPaying : 0,
         programs_breakdown: calculations.progData
           .filter((p) => checkedIds.has(String(p.id)))
           .map((p) => ({
@@ -864,6 +866,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee }) => {
             discount: p.discount,
             discount_type: p.discountType,
             paid_amount: p.totalPaid,
+            last_payment_amount: p.currentPaying,
           })),
         payments: [
           {

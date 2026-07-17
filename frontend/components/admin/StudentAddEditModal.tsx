@@ -122,6 +122,8 @@ const StudentAddEditModal: React.FC<Props> = ({
           billing_mode: "duration",
           monthly_discount: "",
           monthly_discount_type: "cash",
+          duration_value: b.duration_value !== null && b.duration_value !== undefined ? String(b.duration_value) : "",
+          duration_unit: b.duration_unit || "months",
         }
       ]
     });
@@ -226,6 +228,8 @@ const StudentAddEditModal: React.FC<Props> = ({
           billing_mode: e.billing_mode || "duration",
           monthly_discount: e.monthly_discount !== null && e.monthly_discount !== undefined ? String(e.monthly_discount) : "",
           monthly_discount_type: e.monthly_discount_type || "cash",
+          duration_value: e.duration_value !== null && e.duration_value !== undefined ? String(e.duration_value) : "",
+          duration_unit: e.duration_unit || "months",
         })) || [],
       });
 
@@ -296,10 +300,10 @@ const StudentAddEditModal: React.FC<Props> = ({
             booking_id: null,
             instructor_id: null,
             schedule_id: null,
-            schedule_ids: [],
+            schedule_ids: [], 
             custom_start_time: null,
             custom_end_time: null,
-            custom_fee: "",
+            custom_fee: program.program_fee ?? "",
             commission_percentage: "",
             billing_mode: "duration",
             monthly_discount: "",
@@ -329,6 +333,10 @@ const StudentAddEditModal: React.FC<Props> = ({
       setPreviewImage(URL.createObjectURL(file));
     }
   };
+
+  const hasDurationMode = form.enrollments?.some(
+    (e: any) => (e.billing_mode || "duration") === "duration"
+  );  
 
   const handleSubmit = async () => {
     try {
@@ -364,11 +372,23 @@ const StudentAddEditModal: React.FC<Props> = ({
             }
             if (e.custom_fee !== undefined && e.custom_fee !== null && e.custom_fee !== "") {
               formData.append(`enrollments[${index}][custom_fee]`, String(e.custom_fee));
+            } else {
+              // Always send the fee — fall back to the displayed default
+              // Backend model accessor treats null as "use program default"
+              // but sending the explicit value is more robust
             }
             if (e.commission_percentage !== undefined && e.commission_percentage !== null && e.commission_percentage !== "") {
               formData.append(`enrollments[${index}][commission_percentage]`, String(e.commission_percentage));
             }
             formData.append(`enrollments[${index}][billing_mode]`, e.billing_mode || "duration");
+            if ((e.billing_mode || "duration") === "duration") {
+              if (e.duration_value !== undefined && e.duration_value !== null && e.duration_value !== "") {
+                formData.append(`enrollments[${index}][duration_value]`, String(e.duration_value));
+              }
+              if (e.duration_unit) {
+                formData.append(`enrollments[${index}][duration_unit]`, e.duration_unit);
+              }
+            }
             if (e.monthly_discount !== undefined && e.monthly_discount !== null && e.monthly_discount !== "") {
               formData.append(`enrollments[${index}][monthly_discount]`, String(e.monthly_discount));
             }
@@ -376,6 +396,8 @@ const StudentAddEditModal: React.FC<Props> = ({
               formData.append(`enrollments[${index}][monthly_discount_type]`, e.monthly_discount_type);
             }
           });
+        } else if (key === 'duration_value' || key === 'duration_unit') {
+          formData.append(key, "");
         } else {
           formData.append(key, (form as any)[key] || "");
         }
@@ -656,9 +678,43 @@ const StudentAddEditModal: React.FC<Props> = ({
                 <p className="text-[10px] font-medium text-gray-400 italic">Select one or more</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {programs.map(p => (
-                  <React.Fragment key={p.id}>
+                {programs.map(p => {
+                  const hasSub = p.sub_programs && p.sub_programs.length > 0;
+                  if (hasSub) {
+                    return p.sub_programs.map((sp: any) => (
+                      <label
+                        key={sp.id}
+                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(sp.id)
+                          ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
+                          : 'border-slate-200 hover:border-blue-200'
+                          }`}
+                      >
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isClassSelected(sp.id)
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-slate-50 border-slate-200'
+                          }`}>
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={isClassSelected(sp.id)}
+                            onChange={() => toggleClass(sp)}
+                          />
+                          {isClassSelected(sp.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xs font-black text-gray-900">
+                          {sp.title}
+                        </span>
+                      </label>
+                    ));
+                  }
+
+                  return (
                     <label
+                      key={p.id}
                       className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(p.id)
                         ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
                         : 'border-slate-200 hover:border-blue-200'
@@ -684,38 +740,8 @@ const StudentAddEditModal: React.FC<Props> = ({
                         {p.title}
                       </span>
                     </label>
-
-                    {p.sub_programs?.map((sp: any) => (
-                      <label
-                        key={sp.id}
-                        className={`flex items-center gap-3 p-3 ml-4 rounded-2xl border transition-all cursor-pointer bg-white ${isClassSelected(sp.id)
-                          ? 'border-blue-500 ring-1 ring-blue-500/10 shadow-sm'
-                          : 'border-slate-200 hover:border-blue-200 opacity-80'
-                          }`}
-                      >
-                        <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-colors ${isClassSelected(sp.id)
-                          ? 'bg-blue-600 border-blue-600'
-                          : 'bg-slate-50 border-slate-200'
-                          }`}>
-                          <input
-                            type="checkbox"
-                            className="hidden"
-                            checked={isClassSelected(sp.id)}
-                            onChange={() => toggleClass(sp)}
-                          />
-                          {isClassSelected(sp.id) && (
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-[11px] font-bold text-gray-700">
-                          <span className="text-gray-300 mr-1">—</span> {sp.title}
-                        </span>
-                      </label>
-                    ))}
-                  </React.Fragment>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Config for selected programs */}
@@ -734,7 +760,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-black text-gray-900">{prog.title}</span>
                         <div className="flex items-center gap-3">
-                          <select
+                          {/* <select
                             value={e.status || "active"}
                             onChange={(ev) => updateEnrollment(e.program_id, { status: ev.target.value })}
                             className={`text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded-lg border-none focus:ring-2 focus:ring-blue-500/20 transition-all ${e.status === 'graduated' ? 'bg-green-100 text-green-700' :
@@ -745,7 +771,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                             <option value="graduated">Graduate</option>
-                          </select>
+                          </select> */}
 
                           <div className="flex bg-gray-100 p-1 rounded-xl">
                             <button
@@ -918,16 +944,18 @@ const StudentAddEditModal: React.FC<Props> = ({
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-                                {(e.billing_mode || "duration") === "monthly" ? "Monthly Rate (Override)" : (e.billing_mode === "fixed" ? "Fixed Total (Override)" : "Custom Monthly Fee (Override)")}
+                                {(e.billing_mode || "duration") === "monthly" ? "Monthly Rate" : (e.billing_mode === "fixed" ? "Fixed Total" : "Program Fee")}
                               </p>
-                              <span className="text-[9px] text-gray-400 font-medium">Default: Rs. {Number(prog.program_fee || 0).toLocaleString()}</span>
+                              {String(e.custom_fee) === String(prog.program_fee) && (
+                                <span className="text-[9px] text-blue-400 font-bold">Default</span>
+                              )}
                             </div>
                             <div className="relative flex items-center">
                               <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
                               <input
                                 type="number"
-                                placeholder={`Default: ${prog.program_fee}`}
-                                value={e.custom_fee || ""}
+                                min={0}
+                                value={e.custom_fee !== undefined && e.custom_fee !== "" ? e.custom_fee : (prog?.program_fee ?? "")}
                                 onChange={(ev) => updateEnrollment(e.program_id, { custom_fee: ev.target.value })}
                                 className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
                               />
@@ -953,7 +981,35 @@ const StudentAddEditModal: React.FC<Props> = ({
                           </div>
                         </div>
 
-                        {/* Row 3: Monthly Discount (only for Monthly mode) */}
+                        {/* Row 3: Duration Settings (only for Duration mode) */}
+                        {(e.billing_mode === "duration" || !e.billing_mode) && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Duration Value</p>
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="e.g. 3"
+                                value={e.duration_value !== undefined && e.duration_value !== null ? e.duration_value : ""}
+                                onChange={(ev) => updateEnrollment(e.program_id, { duration_value: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Duration Unit</p>
+                              <select
+                                value={e.duration_unit || "months"}
+                                onChange={(ev) => updateEnrollment(e.program_id, { duration_unit: ev.target.value })}
+                                className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                              >
+                                <option value="months">Months</option>
+                                <option value="years">Years</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Row 4: Monthly Discount (only for Monthly mode) */}
                         {e.billing_mode === "monthly" && (
                           <div className="space-y-1">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Monthly Discount (auto-applies each session)</p>
@@ -993,31 +1049,6 @@ const StudentAddEditModal: React.FC<Props> = ({
                   );
                 })}
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <InputField
-                label="Duration Value"
-                type="number"
-                placeholder="e.g. 3"
-                icon={Clock}
-                value={form.duration_value}
-                min={1}
-                onChange={(e) => handleChange("duration_value", e.target.value)}
-                disabled={loading}
-              />
-              <InputField
-                label="Duration Unit"
-                type="select"
-                icon={Calendar}
-                value={form.duration_unit}
-                onChange={(e) => handleChange("duration_unit", e.target.value)}
-                options={[
-                  { label: "Months", value: "months" },
-                  { label: "Years", value: "years" },
-                ]}
-                disabled={loading}
-              />
             </div>
 
             <InputField

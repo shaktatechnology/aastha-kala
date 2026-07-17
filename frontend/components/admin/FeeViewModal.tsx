@@ -549,6 +549,56 @@ const FeeViewModal: React.FC<Props> = ({ isOpen, onClose, fee }) => {
                 </table>
               </div>
 
+              {/* Payment History Table */}
+              {activeFee?.payments && activeFee.payments.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="bg-gray-50/70 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      Payment History / Installments
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400">
+                      {activeFee.payments.length} Transaction(s)
+                    </span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50/30 border-b border-gray-100 text-left">
+                        <th className="px-5 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          Date
+                        </th>
+                        <th className="px-5 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          Method
+                        </th>
+                        <th className="px-5 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">
+                          Amount
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {activeFee.payments.map((p: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-5 py-3">
+                            <p className="text-xs font-bold text-gray-700">
+                              {formatDate(p.created_at || p.payment_date || new Date())}
+                            </p>
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
+                              {p.payment_method || "Cash"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <p className="text-xs font-black text-gray-900">
+                              {fmt(Number(p.paid_amount || p.last_payment_amount || 0))}
+                            </p>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {activeFee.remarks && (
                 <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl">
                   <div className="flex items-center gap-2 mb-1.5">
