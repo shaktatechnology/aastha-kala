@@ -113,13 +113,22 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
         <style
           dangerouslySetInnerHTML={{
             __html: `
-  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700;800;900&display=swap');
+
+  .thermal-print-container {
+    font-family: 'Roboto Mono', monospace !important;
+  }
 
   .thermal-bill-text {
     font-family: 'Roboto Mono', monospace;
   }
 
   @media print {
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
     body * {
       visibility: hidden !important;
     }
@@ -127,6 +136,8 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
     .print-wrapper,
     .print-wrapper * {
       visibility: visible !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
 
     html, body {
@@ -141,6 +152,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       width: 80mm;
       box-sizing: border-box;
       padding: 0;
+      margin: 0 !important;
     }
 
     .thermal-print-container {
@@ -155,6 +167,8 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       page-break-after: always !important;
       break-after: page !important;
       page-break-before: avoid !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
 
     .thermal-print-container:last-child {
@@ -214,7 +228,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 style={{
                   fontSize: "10.5px",
                   margin: "1px 0",
-                  color: "#333",
+                  color: "#000",
                   fontWeight: 500,
                 }}
               >
@@ -225,7 +239,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               style={{
                 fontSize: "10.5px",
                 margin: "1px 0",
-                color: "#333",
+                color: "#000",
                 fontWeight: 500,
               }}
             >
@@ -381,7 +395,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   justifyContent: "space-between",
                   padding: "3px 4px",
                   fontWeight: 600,
-                  color: "#15803d",
+                  color: "#000",
                 }}
               >
                 <span>Amount Paid</span>
@@ -411,13 +425,15 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "7px 6px",
+                  padding: "7px 4px",
                   marginTop: "5px",
-                  backgroundColor: "#000",
-                  fontWeight: 800,
+                  borderTop: "1px solid #000",
+                  borderBottom: "1px solid #000",
+                  fontWeight: "800",
                   fontSize: "14px",
-                  color: "#fff",
-                  letterSpacing: "0.3px",
+                  color: "#000",
+                  fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                  letterSpacing: "0px",
                 }}
               >
                 <span>BALANCE DUE</span>
@@ -429,12 +445,14 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "7px 6px",
+                  padding: "7px 4px",
                   marginTop: "5px",
-                  backgroundColor: "#000",
-                  fontWeight: 800,
+                  borderTop: "1.5px dashed #000",
+                  borderBottom: "1.5px dashed #000",
+                  fontWeight: "bold",
                   fontSize: "14px",
-                  color: "#fff",
+                  color: "#000",
+                  fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                   letterSpacing: "0.3px",
                 }}
               >
@@ -456,7 +474,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 <p style={{ fontWeight: 700, marginBottom: "2px" }}>
                   Remarks
                 </p>
-                <p style={{ fontWeight: 400, color: "#333" }}>
+                <p style={{ fontWeight: 400, color: "#000" }}>
                   {finalRemarks}
                 </p>
               </div>
@@ -512,7 +530,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
         padding: "1.5px 0",
       }}
     >
-      <span style={{ color: "#555", fontWeight: 500 }}>{label}</span>
+      <span style={{ color: "#000", fontWeight: 700 }}>{label}</span>
       <span style={{ fontWeight: 700 }}>{value}</span>
     </div>
   );
