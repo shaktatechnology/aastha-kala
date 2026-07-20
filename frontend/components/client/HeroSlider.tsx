@@ -89,7 +89,7 @@ const HeroSlider: React.FC<HeroSliderProps> = ({ heroMedia, fill = false }) => {
                 {media.title || "Aastha Kala Kendra"}
               </h1>
               <p className="text-base sm:text-lg md:text-xl font-medium tracking-wide !text-white max-w-2xl mx-auto animate-slide-up [animation-delay:200ms] [text-shadow:_0_1px_8px_rgba(0,0,0,0.8)]">
-                {media.description || "Preserving Heritage, Inspiring Passion in Performing Arts, Dance & Music."}
+                {media.description || "कला र संस्कृति देशको सम्पत्ति हो, यसको संरक्षण गरौं"}
               </p>
               
               <div className="mt-10 animate-slide-up [animation-delay:400ms]">
