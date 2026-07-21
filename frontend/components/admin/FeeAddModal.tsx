@@ -32,6 +32,7 @@ import {
   toNepaliDigits,
   getBsDateParts,
   bsToAd,
+  bsMonthYearToAdPeriod,
 } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
@@ -120,18 +121,6 @@ function getCurrentPeriod() {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
 }
 
-function bsMonthYearToAdPeriod(by: number, bm: number) {
-  let adY: number;
-  let adM: number;
-  if (bm >= 1 && bm <= 8) {
-    adM = bm + 4;
-    adY = by - 57;
-  } else {
-    adM = bm - 8;
-    adY = by - 56;
-  }
-  return `${adY}-${String(adM).padStart(2, "0")}`;
-}
 
 function formatPeriodToReadable(val: string) {
   if (!val || !val.includes("-")) return val;
@@ -314,7 +303,13 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
   const [isOverwriteMode, setIsOverwriteMode] = useState(false);
 
   const [progEntries, setProgEntries] = useState<ProgramFeeEntry[]>([]);
-  const [progPeriod, setProgPeriod] = useState(getCurrentPeriod());
+  const [progPeriod, setProgPeriod] = useState(() => {
+    const currentBs = getBsDateParts(new Date());
+    if (currentBs) {
+      return bsMonthYearToAdPeriod(currentBs.year, currentBs.month);
+    }
+    return getCurrentPeriod();
+  });
   const [paymentMethods, setPaymentMethods] = useState<string[]>(["Cash"]);
   const [shift, setShift] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -367,8 +362,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
     return getBsDateParts(progPeriod || getCurrentPeriod());
   }, [progPeriod]);
 
-  const selectedBsYear = bsParts?.year || 2083;
-  const selectedBsMonth = bsParts?.month || 3;
+  const selectedBsYear = bsParts?.year || getBsDateParts(new Date())?.year || 2083;
+  const selectedBsMonth = bsParts?.month || getBsDateParts(new Date())?.month || 3;
 
   const handleBsYearChange = (year: number) => {
     const newPeriod = bsMonthYearToAdPeriod(year, selectedBsMonth);
@@ -552,6 +547,12 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
       setPaymentMethods(methods.length > 0 ? methods : ["Cash"]);
       setRemarks(fee.remarks ?? "");
       setShift(fee.shift ?? "");
+    } else {
+      const currentBs = getBsDateParts(new Date());
+      const initialPeriod = currentBs
+        ? bsMonthYearToAdPeriod(currentBs.year, currentBs.month)
+        : getCurrentPeriod();
+      setProgPeriod(initialPeriod);
     }
   }, [isOpen, fee, BASE_URL]);
 

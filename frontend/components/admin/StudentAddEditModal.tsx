@@ -6,6 +6,7 @@ import { X, User, Phone, MapPin, Mail, Calendar, Clock, BookOpen, Star, Search, 
 import toast from "react-hot-toast";
 import { to12h } from "@/lib/timeFormat";
 import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
+import { getBsDateParts, bsMonthYearToAdPeriod } from "@/lib/utils";
 
 interface StudentData {
   id?: number;
@@ -408,6 +409,13 @@ const StudentAddEditModal: React.FC<Props> = ({
           formData.append(key, (form as any)[key] !== undefined && (form as any)[key] !== null ? String((form as any)[key]) : "");
         }
       });
+
+      // Calculate fee_month_year from enrollment_date
+      const currentBs = getBsDateParts(form.enrollment_date || new Date());
+      const feeMonthYear = currentBs
+        ? bsMonthYearToAdPeriod(currentBs.year, currentBs.month)
+        : new Date().toISOString().substring(0, 7);
+      formData.append("fee_month_year", feeMonthYear);
 
       if (student) {
         formData.append("_method", "PUT");

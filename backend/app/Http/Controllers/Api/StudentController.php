@@ -106,7 +106,7 @@ class StudentController extends Controller
                 'pending_amount' => $admissionFee,
                 'status' => 'pending',
                 'admission_fee' => $admissionFee,
-                'month_year' => date('Y-m'),
+                'month_year' => request()->input('fee_month_year') ?: date('Y-m'),
                 'payment_method' => 'Cash',
                 'remarks' => '',
             ]);
@@ -213,7 +213,7 @@ class StudentController extends Controller
                         'pending_amount' => $admissionFee,
                         'status' => 'pending',
                         'admission_fee' => $admissionFee,
-                        'month_year' => date('Y-m'),
+                        'month_year' => request()->input('fee_month_year') ?: date('Y-m'),
                         'payment_method' => 'Cash',
                         'remarks' => '',
                     ]);
@@ -238,7 +238,7 @@ class StudentController extends Controller
     private function syncProgramsAndFees($student, array $enrollmentData = [])
     
     {
-        $currentMonth = date('Y-m');
+        $currentMonth = request()->input('fee_month_year') ?: date('Y-m');
         $studentStatus = $student->status;
 
         // 1. Determine which programs we are dealing with

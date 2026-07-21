@@ -190,3 +190,16 @@ export function formatLargeNumber(value: number) {
     maximumFractionDigits: 1,
   }).format(value);
 }
+
+export function bsMonthYearToAdPeriod(by: number, bm: number) {
+  let adY: number;
+  let adM: number;
+  if (bm >= 1 && bm <= 8) {
+    adM = bm + 4;
+    adY = by - 57;
+  } else {
+    adM = bm - 8;
+    adY = by - 56;
+  }
+  return `${adY}-${String(adM).padStart(2, "0")}`;
+}
