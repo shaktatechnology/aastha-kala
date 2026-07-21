@@ -283,6 +283,14 @@ class StudentFeeController extends Controller
         $admissionExists     = $admissionRecord ? true : false;
         $admissionPaidAmount = $globalAdmTotals ? (float) $globalAdmTotals->total_paid : 0;
 
+        if ($student->admission_fee_not_required) {
+            $globalAdmissionFee = 0.0;
+            $admissionAmount = 0.0;
+            $admissionPaid = true;
+            $admissionExists = false;
+            $admissionPaidAmount = 0.0;
+        }
+
         if ($request->filled('instructor_id')) {
             $admissionAmount = 0;
             $admissionPaidAmount = 0;

@@ -60,6 +60,7 @@ class StudentController extends Controller
             'classes' => 'nullable|string',
             'status' => 'nullable|in:active,inactive,graduated',
             'enrollment_date' => 'nullable|date',
+            'admission_fee_not_required' => 'nullable|boolean',
             'duration_value' => 'nullable|numeric|min:0',
             'duration_unit' => 'nullable|string',
             'enrollments' => 'nullable|array',
@@ -96,7 +97,7 @@ class StudentController extends Controller
         $setting = \App\Models\Setting::first();
         $admissionFee = $setting ? (float) ($setting->admission_fee ?? 0) : 0;
 
-        if ($admissionFee > 0) {
+        if ($admissionFee > 0 && !$student->admission_fee_not_required) {
             \App\Models\StudentFee::create([
                 'student_id' => $student->id,
                 'fee_type' => 'admission',
@@ -154,6 +155,7 @@ class StudentController extends Controller
             'classes' => 'nullable|string',
             'status' => 'nullable|in:active,inactive,graduated',
             'enrollment_date' => 'nullable|date',
+            'admission_fee_not_required' => 'nullable|boolean',
             'duration_value' => 'nullable|numeric|min:0',
             'duration_unit' => 'nullable|string',
             'enrollments' => 'nullable|array',
@@ -188,6 +190,36 @@ class StudentController extends Controller
         }
 
         $student->update($data);
+
+        // Handle transitioning admission fee exemption status
+        if ($student->admission_fee_not_required) {
+            \App\Models\StudentFee::where('student_id', $student->id)
+                ->where('fee_type', 'admission')
+                ->where('status', 'pending')
+                ->delete();
+        } else {
+            $setting = \App\Models\Setting::first();
+            $admissionFee = $setting ? (float) ($setting->admission_fee ?? 0) : 0;
+            if ($admissionFee > 0) {
+                $exists = \App\Models\StudentFee::where('student_id', $student->id)
+                    ->where('fee_type', 'admission')
+                    ->exists();
+                if (!$exists) {
+                    \App\Models\StudentFee::create([
+                        'student_id' => $student->id,
+                        'fee_type' => 'admission',
+                        'total_amount' => $admissionFee,
+                        'paid_amount' => 0,
+                        'pending_amount' => $admissionFee,
+                        'status' => 'pending',
+                        'admission_fee' => $admissionFee,
+                        'month_year' => date('Y-m'),
+                        'payment_method' => 'Cash',
+                        'remarks' => '',
+                    ]);
+                }
+            }
+        }
 
         // If classes or enrollments were updated, sync enrollments and generate missing fees
         if (isset($data['classes']) || isset($data['enrollments'])) {

@@ -33,11 +33,18 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
                 )}
             </div>
             <h2 className="text-3xl font-black text-gray-900 mb-1">{student.name}</h2>
-            <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                student.status === 'active' ? 'bg-green-100 text-green-700' : 
-                student.status === 'inactive' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-            }`}>
-                {student.status}
+            <div className="flex gap-2 items-center">
+                <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                    student.status === 'active' ? 'bg-green-100 text-green-700' : 
+                    student.status === 'inactive' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                    {student.status}
+                </div>
+                {!!student.admission_fee_not_required && (
+                    <div className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800 border border-amber-200/50">
+                        No Admission Fee
+                    </div>
+                )}
             </div>
         </div>
 

@@ -25,11 +25,13 @@ class Student extends Model
         'duration_value',
         'duration_unit',
         'status',
+        'admission_fee_not_required',
     ];
 
     protected $casts = [
         'dob' => 'date',
         'enrollment_date' => 'date',
+        'admission_fee_not_required' => 'boolean',
     ];
 
     protected $appends = ['image_url', 'shift'];

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import {
-    Search, Plus, TrendingUp, Eye, Edit2, Trash2, Wallet, Calendar, List
+    Search, Plus, TrendingUp, Eye, Edit2, Trash2, Wallet, Calendar, List, Printer
 } from "lucide-react";
 import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits } from "@/lib/utils";
 import {
@@ -57,6 +57,7 @@ const CompanyIncomePage = () => {
     const [formModalOpen, setFormModalOpen] = useState(false);
     const [editingIncome, setEditingIncome] = useState<CompanyIncome | null>(null);
     const [isViewMode, setIsViewMode] = useState(false);
+    const [isManualBilling, setIsManualBilling] = useState(false);
 
     // Category management modal
     const [categoryMgmtOpen, setCategoryMgmtOpen] = useState(false);
@@ -151,9 +152,32 @@ const CompanyIncomePage = () => {
         categoryFilter !== "" ||
         searchTerm !== "";
 
-    const handleAdd = () => { setEditingIncome(null); setIsViewMode(false); setFormModalOpen(true); };
-    const handleEdit = (income: CompanyIncome) => { setEditingIncome(income); setIsViewMode(false); setFormModalOpen(true); };
-    const handleView = (income: CompanyIncome) => { setEditingIncome(income); setIsViewMode(true); setFormModalOpen(true); };
+    const handleAdd = () => { 
+        setEditingIncome(null); 
+        setIsViewMode(false); 
+        setIsManualBilling(false); 
+        setFormModalOpen(true); 
+    };
+    const handleAddManual = () => { 
+        setEditingIncome(null); 
+        setIsViewMode(false); 
+        setIsManualBilling(true); 
+        setFormModalOpen(true); 
+    };
+    const handleEdit = (income: CompanyIncome) => { 
+        setEditingIncome(income); 
+        setIsViewMode(false); 
+        const hasManual = income.items?.some((it: any) => !it.income_category_id && it.topic_name);
+        setIsManualBilling(!!hasManual);
+        setFormModalOpen(true); 
+    };
+    const handleView = (income: CompanyIncome) => { 
+        setEditingIncome(income); 
+        setIsViewMode(true); 
+        const hasManual = income.items?.some((it: any) => !it.income_category_id && it.topic_name);
+        setIsManualBilling(!!hasManual);
+        setFormModalOpen(true); 
+    };
 
     const handleDeleteClick = (income: CompanyIncome) => {
         setSelectedIncome(income); setDeleteModalOpen(true);
@@ -179,11 +203,19 @@ const CompanyIncomePage = () => {
         }
     };
 
-    const onFormSuccess = () => {
+    const onFormSuccess = (savedIncome?: CompanyIncome) => {
         setFormModalOpen(false);
         fetchYears();
         fetchCategories();
         fetchIncomes(1);
+
+        if (savedIncome) {
+            setTimeout(() => {
+                setEditingIncome(savedIncome);
+                setIsViewMode(true);
+                setFormModalOpen(true);
+            }, 300);
+        }
     };
 
     const yearOptions =
@@ -204,17 +236,24 @@ const CompanyIncomePage = () => {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setCategoryMgmtOpen(true)}
-                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all shadow-sm cursor-pointer font-medium"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all shadow-sm cursor-pointer font-medium"
                         >
                             <List className="w-4 h-4 text-emerald-600" />
                             <span className="text-sm">Manage Categories</span>
                         </button>
-                        <button
+                        {/* <button
                             onClick={handleAdd}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-emerald-200 hover:border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50/30 transition-all shadow-sm cursor-pointer font-medium"
+                        >
+                            <Plus className="w-4 h-4 text-emerald-600" />
+                            <span className="text-sm">Record Income</span>
+                        </button> */}
+                        <button
+                            onClick={handleAddManual}
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all shadow-sm hover:shadow-md cursor-pointer font-medium"
                         >
                             <Plus className="w-4 h-4" />
-                            <span className="text-sm">Record Income</span>
+                            <span className="text-sm">Create General Bill</span>
                         </button>
                     </div>
                 </div>
@@ -349,8 +388,13 @@ const CompanyIncomePage = () => {
                                             <TableRow key={income.id} className="hover:bg-gray-50 transition-colors">
                                                 <TableCell className="font-medium text-gray-500">{sn}</TableCell>
                                                 <TableCell>
-                                                    <div className="font-bold text-gray-900">{income.category?.name || "—"}</div>
+                                                    <div className="font-bold text-gray-900">
+                                                        {income.items && income.items.length > 0 
+                                                            ? income.items.map((it: any) => it.category?.name).filter(Boolean).join(", ") 
+                                                            : (income.category?.name || "—")}
+                                                    </div>
                                                     {income.payer_name && <div className="text-xs text-gray-400 mt-0.5 truncate max-w-[180px]">From: {income.payer_name}</div>}
+                                                    {income.bill_number && <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">{income.bill_number}</div>}
                                                 </TableCell>
                                                 <TableCell><div className="text-sm font-black text-emerald-600">Rs. {Number(income.amount).toLocaleString()}</div></TableCell>
                                                 <TableCell><div className="text-sm font-medium text-gray-700">{getMonthName(income.month)}, {toNepaliDigits(income.year)}</div></TableCell>
@@ -362,7 +406,8 @@ const CompanyIncomePage = () => {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <button onClick={() => handleView(income)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="View & Print"><Eye className="w-4 h-4" /></button>
+                                                        <button onClick={() => handleView(income)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="View Details"><Eye className="w-4 h-4" /></button>
+                                                        <button onClick={() => handleView(income)} className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer" title="Print Receipt"><Printer className="w-4 h-4" /></button>
                                                         <button onClick={() => handleEdit(income)} className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer" title="Edit"><Edit2 className="w-4 h-4" /></button>
                                                         <button onClick={() => handleDeleteClick(income)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-4 h-4" /></button>
                                                     </div>
@@ -385,7 +430,7 @@ const CompanyIncomePage = () => {
             <AnimatePresence>
                 {formModalOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50">
-                        <CompanyIncomeModal isOpen={formModalOpen} onClose={() => setFormModalOpen(false)} onSuccess={onFormSuccess} income={editingIncome} isViewMode={isViewMode} />
+                        <CompanyIncomeModal isOpen={formModalOpen} onClose={() => setFormModalOpen(false)} onSuccess={onFormSuccess} income={editingIncome} isViewMode={isViewMode} isManualBilling={isManualBilling} />
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -25,6 +25,7 @@ interface StudentData {
   status: "active" | "inactive" | "graduated";
   image?: File | string | null;
   enrollments?: any[];
+  admission_fee_not_required?: boolean;
 }
 
 interface Props {
@@ -60,6 +61,7 @@ const StudentAddEditModal: React.FC<Props> = ({
     status: "active",
     image: null,
     enrollments: [],
+    admission_fee_not_required: false,
   });
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -231,6 +233,7 @@ const StudentAddEditModal: React.FC<Props> = ({
           duration_value: e.duration_value !== null && e.duration_value !== undefined ? String(e.duration_value) : "",
           duration_unit: e.duration_unit || "months",
         })) || [],
+        admission_fee_not_required: student.admission_fee_not_required !== undefined ? !!student.admission_fee_not_required : false,
       });
 
       setPreviewImage(student.image_url || null);
@@ -259,6 +262,7 @@ const StudentAddEditModal: React.FC<Props> = ({
         status: "active",
         image: null,
         enrollments: [],
+        admission_fee_not_required: false,
       });
       setPreviewImage(null);
     }
@@ -398,8 +402,10 @@ const StudentAddEditModal: React.FC<Props> = ({
           });
         } else if (key === 'duration_value' || key === 'duration_unit') {
           formData.append(key, "");
+        } else if (key === 'admission_fee_not_required') {
+          formData.append(key, form.admission_fee_not_required ? "1" : "0");
         } else {
-          formData.append(key, (form as any)[key] || "");
+          formData.append(key, (form as any)[key] !== undefined && (form as any)[key] !== null ? String((form as any)[key]) : "");
         }
       });
 
@@ -644,6 +650,26 @@ const StudentAddEditModal: React.FC<Props> = ({
                 ]}
                 disabled={loading}
               />
+
+              <div className="w-full flex flex-col gap-1.5 animate-fade-in justify-end pb-3 pl-1">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={form.admission_fee_not_required || false}
+                      onChange={(e) => handleChange("admission_fee_not_required", e.target.checked)}
+                      disabled={loading}
+                      className="sr-only"
+                    />
+                    <div className={`block w-10 h-6 rounded-full transition-colors duration-300 ${form.admission_fee_not_required ? 'bg-amber-500' : 'bg-slate-300'}`}></div>
+                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ${form.admission_fee_not_required ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">No Admission Fee</span>
+                    <span className="text-[9px] text-gray-400 font-medium">Exempt from admission fee</span>
+                  </div>
+                </label>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -11,7 +11,7 @@ interface IncomeA4BillProps {
 const getLogoUrl = (logoPath: string | null | undefined) => {
     if (!logoPath) return "/images/logo.png";
     if (logoPath.startsWith("http")) return logoPath;
-    const base = process.env.NEXT_PUBLIC_IMAGE_URL || "http://localhost:8000/storage/";
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/storage/";
     const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
     const cleanPath = logoPath.startsWith("/") ? logoPath.slice(1) : logoPath;
     return `${cleanBase}/${cleanPath}`;
@@ -24,11 +24,19 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
         const fmt = (n: number) => "Rs. " + Math.round(n).toLocaleString("en-IN");
         const companyName = settings?.company_name || "Aastha Kala Kendra";
         const logoUrl = getLogoUrl(settings?.logo);
-        const amount = Number(income.amount || 0);
-        const billNo = `#INC-${String(income.id).padStart(4, "0")}`;
+        
+        const items = income.items || [];
+        const discount = Number(income.discount || 0);
+        const returnAmount = Number(income.return_amount || 0);
+        const netAmount = Number(income.amount || 0);
+        const receivedAmount = Number(income.received_amount ?? netAmount) || netAmount;
+        const subtotal = items.length > 0 
+            ? items.reduce((sum: number, it: any) => sum + Number(it.amount || 0), 0) 
+            : netAmount;
+
+        const billNo = income.bill_number || `#INC-${String(income.id).padStart(4, "0")}`;
         const billDate = formatDate(income.income_date || income.created_at || new Date());
         const period = formatBsMonthYear(Number(income.year), Number(income.month));
-        const category = typeof income.category === 'object' ? income.category?.name : (income.category || "Income");
 
         return (
             <>
@@ -38,10 +46,13 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
 
           .income-a4-bill {
             font-family: 'Inter', sans-serif;
-            color: #1a1a1a;
+            color: #000 !important;
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
+          }
+          .income-a4-bill * {
+            color: #000 !important;
           }
           @media print {
             body * { visibility: hidden !important; }
@@ -55,26 +66,23 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
             .no-print { display: none !important; }
           }
           .bg-beige { background-color: #F5F1EE; }
-          .text-beige-dark { color: #8B7E74; }
+          .text-beige-dark { color: #000; }
         `}} />
 
                 <div ref={ref} className="income-a4-container income-a4-bill bg-white p-[15mm] max-w-[210mm] min-h-[297mm] mx-auto shadow-lg">
 
                     {/* Header */}
-                    <div className="relative mb-12">
-                        <div className="absolute left-0 top-0 w-32">
-                            <img src={logoUrl} alt="Logo" className="w-full h-auto object-contain" />
-                        </div>
-                        <div className="text-center pt-2">
+                    <div className="text-center mb-12">
+                        <div className="pt-2">
                             <h1 className="text-3xl font-extrabold tracking-tight mb-1">{companyName}</h1>
                             {settings?.about_short && (
-                                <p className="text-[10px] font-bold uppercase tracking-[0.4em] mt-1 mb-2 text-beige-dark">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.4em] mt-1 mb-2">
                                     {settings.about_short}
                                 </p>
                             )}
-                            {settings?.address && <p className="text-[13px] font-medium text-gray-700">{settings.address}</p>}
-                            {settings?.phone && <p className="text-[13px] font-medium text-gray-700">Phone: {settings.phone}</p>}
-                            {settings?.email && <p className="text-[13px] font-medium text-gray-700">Email: {settings.email}</p>}
+                            {settings?.address && <p className="text-[13px] font-medium">{settings.address}</p>}
+                            {settings?.phone && <p className="text-[13px] font-medium">Phone: {settings.phone}</p>}
+                            {settings?.email && <p className="text-[13px] font-medium">Email: {settings.email}</p>}
                         </div>
                     </div>
 
@@ -98,6 +106,9 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
                             {income.payer_name && (
                                 <p><span className="font-bold">Received From:</span> {income.payer_name}</p>
                             )}
+                            {income.payer_phone && (
+                                <p><span className="font-bold">Phone:</span> {income.payer_phone}</p>
+                            )}
                         </div>
                     </div>
 
@@ -105,29 +116,78 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
                     <table className="w-full mb-6 border-collapse">
                         <thead>
                             <tr className="bg-beige">
+                                <th className="px-5 py-3 text-left font-bold text-sm border-r border-white/50 w-14">S.N.</th>
+                                <th className="px-5 py-3 text-left font-bold text-sm border-r border-white/50">Billing Topic / Item</th>
                                 <th className="px-5 py-3 text-left font-bold text-sm border-r border-white/50">Description</th>
                                 <th className="px-5 py-3 text-right font-bold text-sm w-48">Amount</th>
                             </tr>
                         </thead>
                         <tbody className="border-b border-gray-200">
-                            <tr className="border-b border-gray-100">
-                                <td className="px-5 py-5 text-sm border-r border-gray-100">
-                                    <p className="font-bold text-gray-900 text-base">{category}</p>
-                                    {income.remarks && (
-                                        <p className="text-xs text-gray-500 mt-1 italic">{income.remarks}</p>
-                                    )}
-                                </td>
-                                <td className="px-5 py-5 text-right text-sm font-semibold">{fmt(amount)}</td>
-                            </tr>
+                            {items.length > 0 ? (
+                                items.map((it: any, index: number) => (
+                                    <tr key={index} className="border-b border-gray-100">
+                                        <td className="px-5 py-4 text-sm border-r border-gray-100 text-gray-500 font-semibold">{index + 1}</td>
+                                        <td className="px-5 py-4 text-sm border-r border-gray-100 font-bold text-gray-900">
+                                            {it.category?.name || it.topic_name || "Income"}
+                                        </td>
+                                        <td className="px-5 py-4 text-sm border-r border-gray-100 text-gray-500 italic">
+                                            {it.remarks || "—"}
+                                        </td>
+                                        <td className="px-5 py-4 text-right text-sm font-semibold">{fmt(Number(it.amount))}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr className="border-b border-gray-100">
+                                    <td className="px-5 py-5 text-sm border-r border-gray-100" colSpan={3}>
+                                        <p className="font-bold text-gray-900 text-base">
+                                            {typeof income.category === 'object' ? income.category?.name : (income.category || "Income")}
+                                        </p>
+                                        {income.remarks && (
+                                            <p className="text-xs text-gray-500 mt-1 italic">{income.remarks}</p>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-5 text-right text-sm font-semibold">{fmt(netAmount)}</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
 
                     {/* Totals */}
                     <div className="flex justify-end">
-                        <div className="w-full max-w-[320px]">
-                            <div className="flex justify-between py-4 px-5 bg-beige">
-                                <span className="font-black text-lg">TOTAL RECEIVED:</span>
-                                <span className="font-black text-lg">{fmt(amount)}</span>
+                        <div className="w-full max-w-[320px] space-y-1.5 text-sm font-semibold text-gray-700">
+                            <div className="flex justify-between px-5">
+                                <span>Subtotal:</span>
+                                <span>{fmt(subtotal)}</span>
+                            </div>
+                            {discount > 0 && (
+                                <div className="flex justify-between px-5 text-amber-700 font-bold">
+                                    <span>Discount:</span>
+                                    <span>-{fmt(discount)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between px-5 font-bold text-gray-900 border-t border-gray-100 pt-1.5 mt-1.5">
+                                <span>Net Total:</span>
+                                <span>{fmt(netAmount)}</span>
+                            </div>
+                            <div className="flex justify-between px-5 text-gray-900">
+                                <span>Cash Paid:</span>
+                                <span>{fmt(receivedAmount)}</span>
+                            </div>
+                            {receivedAmount < netAmount && (
+                                <div className="flex justify-between px-5 text-red-600 font-bold animate-pulse">
+                                    <span>Due Amount:</span>
+                                    <span>{fmt(netAmount - receivedAmount)}</span>
+                                </div>
+                            )}
+                            {returnAmount > 0 && (
+                                <div className="flex justify-between px-5 text-gray-500 font-medium">
+                                    <span>Change Returned:</span>
+                                    <span>{fmt(returnAmount)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between py-4 px-5 bg-beige font-black text-lg text-gray-900 border-t border-gray-200 mt-2">
+                                <span>TOTAL RECEIVED:</span>
+                                <span>{fmt(receivedAmount)}</span>
                             </div>
                         </div>
                     </div>
@@ -143,7 +203,6 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
                     {/* Footer */}
                     <div className="mt-6 text-center">
                         <p className="text-2xl font-medium mb-4">Thank You!</p>
-                        
                     </div>
                 </div>
             </>

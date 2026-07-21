@@ -22,6 +22,14 @@ import { cn, formatDate, formatBsMonthYear, getBsDateParts, nepaliMonthNames, to
 import { IncomeA4Bill } from "@/components/admin/IncomeA4Bill";
 import { IncomeThermalBill } from "@/components/admin/IncomeThermalBill";
 
+export interface CompanyIncomeItemData {
+    id?: number;
+    income_category_id: string;
+    topic_name?: string;
+    amount: string;
+    remarks?: string;
+}
+
 export interface CompanyIncome {
     id?: number;
     income_category_id: string;
@@ -32,7 +40,13 @@ export interface CompanyIncome {
     year: number;
     payment_method?: string; // Will be stored as comma separated string
     payer_name?: string;
+    payer_phone?: string;
     remarks?: string;
+    discount?: string;
+    received_amount?: string;
+    return_amount?: string;
+    bill_number?: string;
+    items?: CompanyIncomeItemData[];
 }
 
 interface IncomeCategory {
@@ -43,9 +57,10 @@ interface IncomeCategory {
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess?: () => void;
+    onSuccess?: (savedIncome?: CompanyIncome) => void;
     income?: CompanyIncome | null;
     isViewMode?: boolean;
+    isManualBilling?: boolean;
 }
 
 const METHODS = [
@@ -154,7 +169,13 @@ function getDefaultForm(): CompanyIncome {
         year: bs.year,
         payment_method: "Cash",
         payer_name: "",
+        payer_phone: "",
         remarks: "",
+        discount: "0",
+        received_amount: "",
+        return_amount: "0",
+        bill_number: "",
+        items: [{ income_category_id: "", topic_name: "", amount: "", remarks: "" }],
     };
 }
 
@@ -164,6 +185,7 @@ const CompanyIncomeModal: React.FC<Props> = ({
     onSuccess,
     income,
     isViewMode = false,
+    isManualBilling = false,
 }) => {
     const isEdit = !!income?.id;
     const currentBs = getBsDateParts(new Date()) || { month: 1, year: 2081 };
@@ -180,6 +202,19 @@ const CompanyIncomeModal: React.FC<Props> = ({
 
     // Multi-select payment methods
     const [paymentMethods, setPaymentMethods] = useState<string[]>(["Cash"]);
+    const [cashReceived, setCashReceived] = useState("");
+    const [isManualMode, setIsManualMode] = useState(isManualBilling);
+
+    useEffect(() => {
+        if (isOpen) {
+            if (income) {
+                const hasManual = income.items?.some((it: any) => !it.income_category_id && it.topic_name) || !income.income_category_id;
+                setIsManualMode(!!hasManual);
+            } else {
+                setIsManualMode(isManualBilling);
+            }
+        }
+    }, [income, isOpen, isManualBilling]);
 
     // Print refs
     const printRefA4 = useRef<HTMLDivElement>(null);
@@ -216,7 +251,21 @@ const CompanyIncomeModal: React.FC<Props> = ({
             setForm({
                 ...income,
                 amount: String(income.amount),
-                income_category_id: String(income.income_category_id)
+                income_category_id: income.income_category_id ? String(income.income_category_id) : "",
+                discount: String(income.discount ?? 0),
+                received_amount: String(income.received_amount ?? income.amount),
+                return_amount: String(income.return_amount ?? 0),
+                bill_number: income.bill_number || "",
+                payer_phone: income.payer_phone || "",
+                items: income.items && income.items.length > 0
+                    ? income.items.map((item: any) => ({
+                          id: item.id,
+                          income_category_id: String(item.income_category_id || ""),
+                          topic_name: item.topic_name || "",
+                          amount: String(item.amount),
+                          remarks: item.remarks || "",
+                      }))
+                    : [{ income_category_id: String(income.income_category_id || ""), topic_name: "", amount: String(income.amount), remarks: income.remarks || "" }],
             });
             const methods = (income.payment_method || "Cash")
                 .split(",")
@@ -231,6 +280,20 @@ const CompanyIncomeModal: React.FC<Props> = ({
         fetchSettings();
         fetchCategories();
     }, [income, isOpen, fetchSettings, fetchCategories]);
+
+    // Handle automatically calculating change return
+    const subtotal = form.items?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0;
+    const discount = Number(form.discount || 0);
+    const netTotal = Math.max(0, subtotal - discount);
+
+    useEffect(() => {
+        const rec = Number(form.received_amount || 0);
+        if (!isNaN(rec) && rec > netTotal) {
+            handleChange("return_amount", String(rec - netTotal));
+        } else {
+            handleChange("return_amount", "0");
+        }
+    }, [form.received_amount, form.items, form.discount]);
 
     const handleCreateCategory = async () => {
         if (!newCategoryName.trim()) return;
@@ -248,7 +311,6 @@ const CompanyIncomeModal: React.FC<Props> = ({
             if (data.success) {
                 toast.success("Category added");
                 setCategories((prev) => [...prev, data.data]);
-                setForm((prev) => ({ ...prev, income_category_id: String(data.data.id) }));
                 setNewCategoryName("");
                 setIsAddingCategory(false);
             } else {
@@ -304,15 +366,13 @@ const CompanyIncomeModal: React.FC<Props> = ({
     };
 
     const handleSubmit = async () => {
-        const parsedAmount = Number(form.amount);
-        if (!form.income_category_id) {
-            setErrors((prev) => ({ ...prev, income_category_id: ["Income category is required"] }));
-            toast.error("Please select an income category");
-            return;
-        }
-        if (isNaN(parsedAmount) || parsedAmount <= 0) {
-            setErrors((prev) => ({ ...prev, amount: ["Amount must be greater than zero"] }));
-            toast.error("Please enter a valid positive amount");
+        const invalidItem = form.items?.find(item => 
+            (isManualMode ? !item.topic_name : !item.income_category_id) || 
+            isNaN(Number(item.amount)) || 
+            Number(item.amount) <= 0
+        );
+        if (invalidItem) {
+            toast.error(isManualMode ? "Please fill in valid billing topics and amounts for all items" : "Please fill in valid categories and amounts for all items");
             return;
         }
 
@@ -330,14 +390,23 @@ const CompanyIncomeModal: React.FC<Props> = ({
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
                 body: JSON.stringify({
-                    income_category_id: form.income_category_id,
-                    amount: form.amount,
                     income_date: form.income_date,
                     month: form.month,
                     year: form.year,
                     payment_method: paymentMethods.join(", "),
                     payer_name: form.payer_name || null,
+                    payer_phone: form.payer_phone || null,
                     remarks: form.remarks || null,
+                    discount: Number(form.discount || 0),
+                    received_amount: Number(form.received_amount || 0),
+                    return_amount: Number(form.return_amount || 0),
+                    bill_number: form.bill_number || null,
+                    items: form.items?.map(item => ({
+                        income_category_id: isManualMode ? null : item.income_category_id,
+                        topic_name: isManualMode ? item.topic_name : null,
+                        amount: Number(item.amount),
+                        remarks: item.remarks || null,
+                    })),
                 }),
             });
 
@@ -350,7 +419,7 @@ const CompanyIncomeModal: React.FC<Props> = ({
 
             setErrors({});
             toast.success(isEdit ? "Income updated successfully" : "Income recorded successfully");
-            onSuccess?.();
+            onSuccess?.(result.data);
             onClose();
         } catch (err: any) {
             toast.error(err.message);
@@ -360,7 +429,6 @@ const CompanyIncomeModal: React.FC<Props> = ({
     };
 
     const period = formatBsMonthYear(form.month, form.year);
-    const selectedCategoryName = categories.find(c => String(c.id) === String(form.income_category_id))?.name || income?.category?.name || "—";
     const displayMethods = paymentMethods.join(", ");
 
     return (
@@ -383,7 +451,7 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                 {isViewMode ? "Income Receipt" : isEdit ? "Edit Income Record" : "Record New Income"}
                             </h2>
                             <p className="text-sm text-gray-500 mt-0.5">
-                                {isViewMode ? `Receipt #INC-${String(income?.id).padStart(4, "0")} · ${period}` : "Enter company income details below"}
+                                {isViewMode ? `Receipt ${income?.bill_number || `#INC-${String(income?.id).padStart(4, "0")}`} · ${period}` : isEdit ? `Editing Receipt ${form.bill_number || `#INC-${String(income?.id).padStart(4, "0")}`} · ${period}` : "Enter company income details below"}
                             </p>
                         </div>
                     </div>
@@ -394,20 +462,54 @@ const CompanyIncomeModal: React.FC<Props> = ({
 
                 {/* View-mode summary */}
                 {isViewMode && income && (
-                    <div className="px-8 py-6 bg-gray-50 border-b border-gray-200">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                    <div className="px-8 py-6 bg-gray-50 border-b border-gray-200 space-y-6">
+                        {/* Table of Items */}
+                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase text-gray-500 tracking-wider">S.N.</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase text-gray-500 tracking-wider">Billing Topic</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase text-gray-500 tracking-wider">Description</th>
+                                        <th className="px-4 py-3 text-right text-[10px] font-black uppercase text-gray-500 tracking-wider">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-150">
+                                    {form.items?.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50/50">
+                                            <td className="px-4 py-3 text-xs text-gray-500 font-bold">{idx + 1}</td>
+                                            <td className="px-4 py-3 text-xs text-gray-900 font-black">
+                                                {categories.find(c => String(c.id) === String(item.income_category_id))?.name || item.topic_name || "—"}
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-gray-600 italic">{item.remarks || "—"}</td>
+                                            <td className="px-4 py-3 text-xs text-gray-900 font-black text-right">Rs. {Number(item.amount).toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Summary details */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Category</p>
-                                <p className="text-sm font-black text-gray-900">{selectedCategoryName}</p>
+                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Bill Number</p>
+                                <p className="text-sm font-black text-gray-900">{income.bill_number || `INC-${String(income.id).padStart(4, "0")}`}</p>
                             </div>
                             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Amount</p>
+                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Subtotal</p>
+                                <p className="text-sm font-black text-gray-900">Rs. {subtotal.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Discount</p>
+                                <p className="text-sm font-black text-amber-600">Rs. {Number(income.discount || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm bg-gradient-to-br from-emerald-50/20 to-teal-50/20 border-emerald-100">
+                                <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-widest mb-1">Net Bill Amount</p>
                                 <p className="text-sm font-black text-emerald-600">Rs. {Number(income.amount).toLocaleString()}</p>
                             </div>
-                            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Period</p>
-                                <p className="text-sm font-black text-gray-900">{period}</p>
-                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                                 <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Date</p>
                                 <p className="text-sm font-black text-gray-900">{formatDate(income.income_date)}</p>
@@ -416,13 +518,27 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                 <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Method(s)</p>
                                 <p className="text-sm font-black text-gray-900">{displayMethods || "—"}</p>
                             </div>
-                            {income.payer_name && (
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Amount Received</p>
+                                <p className="text-sm font-black text-blue-600">Rs. {Number(income.received_amount || income.amount).toLocaleString()}</p>
+                            </div>
+                            {Number(income.return_amount) > 0 && (
                                 <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Payer</p>
-                                    <p className="text-sm font-black text-gray-900">{income.payer_name}</p>
+                                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Returned Change</p>
+                                    <p className="text-sm font-black text-gray-900">Rs. {Number(income.return_amount).toLocaleString()}</p>
                                 </div>
                             )}
                         </div>
+
+                        {(income.payer_name || income.payer_phone) && (
+                            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Payer Details</p>
+                                <p className="text-sm font-black text-gray-900">
+                                    {income.payer_name || "—"}
+                                    {income.payer_phone && <span className="text-xs text-gray-500 font-semibold ml-2">({income.payer_phone})</span>}
+                                </p>
+                            </div>
+                        )}
                         {income.remarks && (
                             <div className="bg-white p-4 rounded-xl border border-gray-200 mb-0">
                                 <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-1">Remarks</p>
@@ -434,79 +550,9 @@ const CompanyIncomeModal: React.FC<Props> = ({
 
                 {/* Edit/Create Form */}
                 {!isViewMode && (
-                    <div className="p-8 space-y-6">
+                    <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-                            {/* Category Dropdown */}
-                            <div className="md:col-span-2">
-                                <div className="flex items-center justify-between mb-1">
-                                    <FieldLabel label="Income Category" required />
-                                    {!isAddingCategory && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsAddingCategory(true)}
-                                            className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
-                                        >
-                                            <Plus className="size-3" /> New Category
-                                        </button>
-                                    )}
-                                </div>
-
-                                {isAddingCategory ? (
-                                    <div className="flex gap-2 animate-in slide-in-from-top-1 duration-200">
-                                        <Input
-                                            autoFocus
-                                            placeholder="Enter new category name..."
-                                            value={newCategoryName}
-                                            onChange={(e) => setNewCategoryName(e.target.value)}
-                                            className="h-11"
-                                        />
-                                        <Button
-                                            type="button"
-                                            onClick={handleCreateCategory}
-                                            disabled={categoryLoading}
-                                            className="bg-emerald-600 hover:bg-emerald-700 h-11 px-6 shadow-sm"
-                                        >
-                                            {categoryLoading ? <Spinner size="sm" /> : "Add"}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => { setIsAddingCategory(false); setNewCategoryName(""); }}
-                                            className="h-11 border-gray-300 shadow-sm"
-                                        >
-                                            <X className="size-4" />
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <CustomSelect
-                                        value={form.income_category_id}
-                                        onChange={(val) => handleChange("income_category_id", val)}
-                                        options={categories.map(c => ({ value: String(c.id), label: c.name }))}
-                                        placeholder="Select an income category"
-                                        className="h-11"
-                                    />
-                                )}
-                                <ErrorMessage message={errors.income_category_id?.[0]} />
-                            </div>
-
-                            {/* Amount */}
-                            <div>
-                                <FieldLabel label="Amount Received" required />
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
-                                    <Input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={form.amount}
-                                        onChange={(e) => handleChange("amount", e.target.value)}
-                                        className="pl-10 h-11"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <ErrorMessage message={errors.amount?.[0]} />
-                            </div>
-
+                            
                             {/* Date */}
                             <div>
                                 <FieldLabel label="Billing Date" required />
@@ -518,6 +564,170 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                 <ErrorMessage message={errors.income_date?.[0]} />
                             </div>
 
+                            {/* Dynamic Items Section */}
+                            <div className="md:col-span-2 border-t border-gray-150 pt-4 mt-2">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-xs font-black uppercase tracking-wider text-gray-500">Billing Items / Topics</p>
+                                    <div className="flex gap-2">
+                                        {!isAddingCategory && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAddingCategory(true)}
+                                                className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm"
+                                            >
+                                                <Plus className="size-3" /> Add Category
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setForm(prev => ({
+                                                    ...prev,
+                                                    items: [...(prev.items || []), { income_category_id: "", amount: "", remarks: "" }]
+                                                }));
+                                            }}
+                                            className="text-[10px] font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1 cursor-pointer px-3 py-1.5 rounded-lg shadow-sm font-bold"
+                                        >
+                                            <Plus className="size-3" /> Add Item/Topic
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {isAddingCategory && (
+                                    <div className="flex gap-2 mb-4 p-3 bg-gray-50 border border-gray-200 rounded-xl animate-in slide-in-from-top-1 duration-200">
+                                        <Input
+                                            autoFocus
+                                            placeholder="Enter new category name..."
+                                            value={newCategoryName}
+                                            onChange={(e) => setNewCategoryName(e.target.value)}
+                                            className="h-10"
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={handleCreateCategory}
+                                            disabled={categoryLoading}
+                                            className="bg-emerald-600 hover:bg-emerald-700 h-10 px-6 shadow-sm"
+                                        >
+                                            {categoryLoading ? <Spinner size="sm" /> : "Add"}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => { setIsAddingCategory(false); setNewCategoryName(""); }}
+                                            className="h-10 border-gray-300 shadow-sm"
+                                        >
+                                            <X className="size-4" />
+                                        </Button>
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    {form.items?.map((item, idx) => (
+                                        <div key={idx} className="flex flex-col sm:flex-row gap-3 p-3 bg-gray-50/50 border border-gray-150 rounded-xl items-start sm:items-center relative group">
+                                            {/* Category dropdown or topic text input */}
+                                            <div className="flex-1 w-full">
+                                                {isManualMode ? (
+                                                    <>
+                                                        <Input
+                                                            type="text"
+                                                            list="billing-categories-datalist"
+                                                            value={item.topic_name || ""}
+                                                            placeholder="Enter Billing Topic (e.g. Hall Charges)"
+                                                            onChange={(e) => {
+                                                                const nextItems = [...(form.items || [])];
+                                                                nextItems[idx].topic_name = e.target.value;
+                                                                setForm(prev => ({ ...prev, items: nextItems }));
+                                                            }}
+                                                            className="h-10 text-sm font-semibold"
+                                                        />
+                                                        <datalist id="billing-categories-datalist">
+                                                            {categories.map((c) => (
+                                                                <option key={c.id} value={c.name} />
+                                                            ))}
+                                                        </datalist>
+                                                    </>
+                                                ) : (
+                                                    <CustomSelect
+                                                        value={item.income_category_id}
+                                                        onChange={(val) => {
+                                                            const nextItems = [...(form.items || [])];
+                                                            nextItems[idx].income_category_id = val;
+                                                            setForm(prev => ({ ...prev, items: nextItems }));
+                                                        }}
+                                                        options={categories.map(c => ({ value: String(c.id), label: c.name }))}
+                                                        placeholder="Select Topic / Topic category"
+                                                        className="h-10"
+                                                    />
+                                                )}
+                                            </div>
+
+                                            {/* Item Amount */}
+                                            <div className="relative w-full sm:w-36">
+                                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">Rs.</span>
+                                                <Input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    value={item.amount}
+                                                    placeholder="Amount"
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                                                        const nextItems = [...(form.items || [])];
+                                                        nextItems[idx].amount = val;
+                                                        setForm(prev => ({ ...prev, items: nextItems }));
+                                                    }}
+                                                    className="pl-8 h-10 text-sm font-semibold"
+                                                />
+                                            </div>
+
+                                            {/* Item Remarks / Description */}
+                                            <div className="flex-1 w-full">
+                                                <Input
+                                                    type="text"
+                                                    value={item.remarks || ""}
+                                                    placeholder="Remarks/notes for this item"
+                                                    onChange={(e) => {
+                                                        const nextItems = [...(form.items || [])];
+                                                        nextItems[idx].remarks = e.target.value;
+                                                        setForm(prev => ({ ...prev, items: nextItems }));
+                                                    }}
+                                                    className="h-10 text-sm"
+                                                />
+                                            </div>
+
+                                            {/* Remove button */}
+                                            {form.items && form.items.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const nextItems = form.items?.filter((_, i) => i !== idx) || [];
+                                                        setForm(prev => ({ ...prev, items: nextItems }));
+                                                    }}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg shrink-0 mt-1 sm:mt-0 transition-colors"
+                                                >
+                                                    <X className="size-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Discount */}
+                            <div>
+                                <FieldLabel label="Discount (Rs.)" />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
+                                    <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={form.discount || "0"}
+                                        onChange={(e) => handleChange("discount", e.target.value.replace(/[^0-9.]/g, ""))}
+                                        className="pl-10 h-11"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
                             {/* Multi-Select Payment Methods */}
                             <div>
                                 <FieldLabel label="Payment Method(s)" />
@@ -525,6 +735,36 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                     value={paymentMethods}
                                     onChange={setPaymentMethods}
                                 />
+                            </div>
+
+                            {/* Cash Received */}
+                            <div>
+                                <FieldLabel label="Amount Received (Cash)" />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
+                                    <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={form.received_amount || ""}
+                                        onChange={(e) => handleChange("received_amount", e.target.value.replace(/[^0-9.]/g, ""))}
+                                        className="pl-10 h-11"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Return amount */}
+                            <div>
+                                <FieldLabel label="Return Amount (Change)" />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
+                                    <Input
+                                        type="text"
+                                        disabled
+                                        value={form.return_amount || "0"}
+                                        className="pl-10 h-11 bg-gray-50 border-gray-200 text-gray-500 font-bold"
+                                    />
+                                </div>
                             </div>
 
                             {/* Period */}
@@ -544,15 +784,43 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                 </div>
                             </div>
 
-                            {/* Payer */}
-                            <div className="md:col-span-2">
+                            {/* Payer Name */}
+                            <div>
                                 <FieldLabel label="Received From (Payer Name)" />
                                 <Input
                                     value={form.payer_name || ""}
                                     onChange={(e) => handleChange("payer_name", e.target.value)}
-                                    placeholder="Name of person or organization who paid"
+                                    placeholder="Payer name"
                                     className="h-11"
                                 />
+                            </div>
+
+                            {/* Payer Phone */}
+                            <div>
+                                <FieldLabel label="Payer Phone Number" />
+                                <Input
+                                    value={form.payer_phone || ""}
+                                    onChange={(e) => handleChange("payer_phone", e.target.value)}
+                                    placeholder="Payer phone number"
+                                    className="h-11"
+                                />
+                            </div>
+
+                            {/* Summary Totals Box */}
+                            <div className="md:col-span-2 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 border border-emerald-100 p-5 rounded-2xl flex flex-col gap-2">
+                                <div className="flex justify-between text-xs font-semibold text-gray-600">
+                                    <span>Subtotal Amount:</span>
+                                    <span>Rs. {subtotal.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-semibold text-gray-600">
+                                    <span>Discount Applied:</span>
+                                    <span>Rs. {discount.toLocaleString()}</span>
+                                </div>
+                                <div className="border-t border-emerald-100/50 my-1"></div>
+                                <div className="flex justify-between text-base font-black text-emerald-800">
+                                    <span>NET BILL TOTAL:</span>
+                                    <span>Rs. {netTotal.toLocaleString()}</span>
+                                </div>
                             </div>
 
                             {/* Remarks */}
@@ -562,7 +830,7 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                     value={form.remarks || ""}
                                     onChange={(e) => handleChange("remarks", e.target.value)}
                                     placeholder="Add any additional details..."
-                                    rows={3}
+                                    rows={2}
                                 />
                             </div>
                         </div>
@@ -605,15 +873,27 @@ const CompanyIncomeModal: React.FC<Props> = ({
             </div>
 
             {/* Hidden Print Area */}
-            {isViewMode && income && (
-                <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-                    <div ref={printRefThermal} className="income-thermal-wrapper">
-                        <IncomeThermalBill income={{ ...income, category: { name: selectedCategoryName }, payment_method: displayMethods }} settings={settings} />
-                        <IncomeThermalBill income={{ ...income, category: { name: selectedCategoryName }, payment_method: displayMethods }} settings={settings} />
+            {isViewMode && income && (() => {
+                const printableItems = (income.items && income.items.length > 0)
+                    ? income.items
+                    : form.items?.map(it => {
+                        const cat = categories.find(c => String(c.id) === String(it.income_category_id));
+                        return {
+                            ...it,
+                            category: cat ? { id: cat.id, name: cat.name } : null
+                        };
+                    }) || [];
+                
+                return (
+                    <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+                        <div ref={printRefThermal} className="income-thermal-wrapper">
+                            <IncomeThermalBill income={{ ...income, items: printableItems, payment_method: displayMethods }} settings={settings} />
+                            <IncomeThermalBill income={{ ...income, items: printableItems, payment_method: displayMethods }} settings={settings} />
+                        </div>
+                        <IncomeA4Bill ref={printRefA4} income={{ ...income, items: printableItems, payment_method: displayMethods }} settings={settings} />
                     </div>
-                    <IncomeA4Bill ref={printRefA4} income={{ ...income, category: { name: selectedCategoryName }, payment_method: displayMethods }} settings={settings} />
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 };

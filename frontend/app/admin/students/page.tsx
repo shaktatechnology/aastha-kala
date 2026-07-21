@@ -24,6 +24,7 @@ interface Student {
   image_url?: string;
   gender?: string;
   classes?: string;
+  admission_fee_not_required?: boolean | number;
 }
 
 const StudentPage = () => {
@@ -121,6 +122,16 @@ const StudentPage = () => {
       ...student,
       sn: (pagination.currentPage - 1) * pagination.itemsPerPage + index + 1,
       roll_no: student.roll_no || "-",
+      name: (
+        <div className="flex flex-col">
+          <span className="font-bold text-text-primary">{student.name}</span>
+          {!!student.admission_fee_not_required && (
+            <span className="text-[8px] font-black text-amber-600 bg-amber-50 border border-amber-200/50 rounded px-1.5 py-0.5 w-fit mt-0.5 uppercase tracking-wider leading-none">
+              No Admission Fee
+            </span>
+          )}
+        </div>
+      ),
       image: student.image_url ? (
         <div className="relative group/img">
           <img src={student.image_url} alt={student.name} className="w-12 h-12 object-cover rounded-xl ring-2 ring-border group-hover/img:ring-primary transition-all duration-300 shadow-sm" />
