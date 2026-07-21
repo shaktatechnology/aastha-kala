@@ -442,28 +442,26 @@ class StudentController extends Controller
                         'remarks'       => '',
                     ]);
                 } elseif (abs($feeAmount - $existingBase) > 0.01) {
-                    // Base fee changed (e.g. settings or duration edited), create adjustment record
-                    $diff = $feeAmount - $existingBase;
-
-                    $existingNet = \App\Models\StudentFee::where('student_id', $student->id)
+                    // Fee changed — update the existing pending record for this month
+                    // (never INSERT a second row; the unique index only allows one per
+                    //  student+program+fee_type+month_year combination)
+                    $pendingRecord = \App\Models\StudentFee::where('student_id', $student->id)
                         ->where('program_id', $pId)
                         ->where('month_year', $currentMonth)
-                        ->sum('total_amount');
-                    $diffNet = $netAmount - $existingNet;
+                        ->where('fee_type', 'program')
+                        ->where('status', 'pending')
+                        ->first();
 
-                    \App\Models\StudentFee::create([
-                        'student_id'    => $student->id,
-                        'program_id'    => $pId,
-                        'fee_type'      => 'program',
-                        'total_amount'  => $diffNet,
-                        'paid_amount'   => 0,
-                        'pending_amount'=> $diffNet,
-                        'status'        => $diffNet > 0 ? 'pending' : 'paid',
-                        'program_fee'   => $diff,
-                        'month_year'    => $currentMonth,
-                        'payment_method'=> 'Cash',
-                        'remarks'       => 'Auto-adjustment due to change in fee/billing settings',
-                    ]);
+                    if ($pendingRecord) {
+                        $pendingRecord->update([
+                            'program_fee'    => $feeAmount,
+                            'total_amount'   => $netAmount,
+                            'pending_amount' => max(0, $netAmount - (float) $pendingRecord->paid_amount),
+                        ]);
+                        $pendingRecord->status = $pendingRecord->pending_amount <= 0.01 ? 'paid' : 'pending';
+                        $pendingRecord->save();
+                    }
+                    // If the record is already paid, leave it unchanged to preserve payment history
                 }
             }
         }

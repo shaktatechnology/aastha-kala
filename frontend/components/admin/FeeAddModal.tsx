@@ -121,7 +121,6 @@ function getCurrentPeriod() {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
 }
 
-
 function formatPeriodToReadable(val: string) {
   if (!val || !val.includes("-")) return val;
   const [y, m] = val.split("-");
@@ -282,7 +281,13 @@ const MethodDropdown: React.FC<{
 };
 
 /* ─── Main Modal ──────────────────────────────────────────── */
-const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instructorId }) => {
+const FeeAddModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  fee,
+  instructorId,
+}) => {
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -324,19 +329,19 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
         setAdmPayingNow(
           feeInfo.admission_paid_amount
             ? feeInfo.admission_paid_amount.toString()
-            : ""
+            : "",
         );
         setProgEntries((prev) =>
           prev.map((pe) => {
             const pb = feeInfo.program_fees?.programs_breakdown?.find(
-              (x) => x.id === pe.id
+              (x) => x.id === pe.id,
             );
             return {
               ...pe,
               initialPaid: 0,
               payingNow: pb?.paid_amount ? pb.paid_amount.toString() : "",
             };
-          })
+          }),
         );
       } else {
         // Add Payment Mode: set initialPaid to db values, clear payingNow
@@ -345,14 +350,14 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
         setProgEntries((prev) =>
           prev.map((pe) => {
             const pb = feeInfo.program_fees?.programs_breakdown?.find(
-              (x) => x.id === pe.id
+              (x) => x.id === pe.id,
             );
             return {
               ...pe,
               initialPaid: pb?.paid_amount || 0,
               payingNow: "",
             };
-          })
+          }),
         );
       }
     }
@@ -362,8 +367,10 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
     return getBsDateParts(progPeriod || getCurrentPeriod());
   }, [progPeriod]);
 
-  const selectedBsYear = bsParts?.year || getBsDateParts(new Date())?.year || 2083;
-  const selectedBsMonth = bsParts?.month || getBsDateParts(new Date())?.month || 3;
+  const selectedBsYear =
+    bsParts?.year || getBsDateParts(new Date())?.year || 2083;
+  const selectedBsMonth =
+    bsParts?.month || getBsDateParts(new Date())?.month || 3;
 
   const handleBsYearChange = (year: number) => {
     const newPeriod = bsMonthYearToAdPeriod(year, selectedBsMonth);
@@ -471,21 +478,35 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
             });
           }
           if (d.program_fees?.programs_breakdown) {
+            const breakdown = d.program_fees.programs_breakdown;
+            const firstDue = breakdown.find((pb) => pb.due_month)?.due_month;
+            const hasCurrentMonthEntry = breakdown.some((pb) => !pb.due_month);
+
+            if (
+              !hasCurrentMonthEntry &&
+              firstDue &&
+              !hasAutoSwitchedRef.current
+            ) {
+              hasAutoSwitchedRef.current = true;
+              setProgPeriod(firstDue);
+              return;
+            }
+
             setProgEntries(
-              d.program_fees.programs_breakdown.map((pb) => ({
+              breakdown.map((pb) => ({
                 id: pb.id,
                 title: pb.title,
-                base: pb.program_fee,
+                base: Number(pb.program_fee) || 0,
                 // For carry-forward rows (due_month set): no discount; for monthly: use monthly_discount as default
-                discount: pb.due_month ? 0 : (pb.discount ?? 0),
+                discount: pb.due_month ? 0 : Number(pb.discount ?? 0) || 0,
                 discountType: pb.due_month
                   ? "cash"
                   : ((pb.discount_type as "cash" | "percentage") ?? "cash"),
                 payingNow: "",
-                initialPaid: pb.paid_amount || 0,
+                initialPaid: Number(pb.paid_amount) || 0,
                 billingMode: pb.billing_mode,
                 dueMonth: pb.due_month ?? undefined,
-                monthlyDiscount: pb.monthly_discount ?? 0,
+                monthlyDiscount: Number(pb.monthly_discount) || 0,
                 monthlyDiscountType:
                   (pb.monthly_discount_type as "cash" | "percentage") ?? "cash",
               })),
@@ -500,6 +521,12 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
     },
     [BASE_URL, instructorId],
   );
+
+  const hasAutoSwitchedRef = useRef(false);
+
+  useEffect(() => {
+    hasAutoSwitchedRef.current = false;
+  }, [selectedStudentId]);
 
   useEffect(() => {
     if (selectedStudentId && isOpen) {
@@ -520,6 +547,7 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
 
   useEffect(() => {
     if (!isOpen) return;
+    hasAutoSwitchedRef.current = false;
     (async () => {
       try {
         setLoadingStudents(true);
@@ -570,17 +598,26 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
       !(admissionPaidGlobally && admDue <= 0 && !fee);
 
     const progData = progEntries.map((pe) => {
-      const net = calcNet(pe.base, pe.discount, pe.discountType);
+      const baseNum = Number(pe.base) || 0;
+      const net = calcNet(baseNum, pe.discount, pe.discountType);
       const currentPaying = Math.max(0, Number(pe.payingNow) || 0);
       const due = net - (pe.initialPaid || 0); // owed before this session (can be negative = credit)
       const remaining = due - currentPaying; // after this payment
       const totalPaid = (pe.initialPaid || 0) + currentPaying;
-      return { ...pe, net, currentPaying, totalPaid, due, remaining };
+      return {
+        ...pe,
+        base: baseNum,
+        net,
+        currentPaying,
+        totalPaid,
+        due,
+        remaining,
+      };
     });
 
     const progBaseSum = progData.reduce((a, c) => a + c.base, 0);
     const progNetSum = progData.reduce((a, c) => a + c.net, 0);
-    const hasProg = progBaseSum > 0;
+    const hasProg = progEntries.length > 0;
 
     const grandTotal = (hasAdm ? admNet : 0) + (hasProg ? progNetSum : 0);
     const totalCollected =
@@ -810,7 +847,9 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
           base_amount: calculations.admBaseNum,
           discount: admDisc,
           discount_type: admDiscType,
-          paying_now: fee ? calculations.totalAdmPaid : calculations.admCurrentPaying,
+          paying_now: fee
+            ? calculations.totalAdmPaid
+            : calculations.admCurrentPaying,
         });
       }
 
@@ -864,7 +903,9 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
         admission_discount: admDisc,
         admission_discount_type: admDiscType,
         admission_paid_amount: calculations.totalAdmPaid,
-        admission_last_payment: calculations.hasAdm ? calculations.admCurrentPaying : 0,
+        admission_last_payment: calculations.hasAdm
+          ? calculations.admCurrentPaying
+          : 0,
         programs_breakdown: calculations.progData
           .filter((p) => checkedIds.has(String(p.id)))
           .map((p) => ({
@@ -1274,7 +1315,11 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
 
                             {calculations.progData.map((p) => (
                               <tr
-                                key={p.dueMonth ? `${p.id}-${p.dueMonth}` : `${p.id}-current`}
+                                key={
+                                  p.dueMonth
+                                    ? `${p.id}-${p.dueMonth}`
+                                    : `${p.id}-current`
+                                }
                                 className="group hover:bg-gray-50/50 transition-colors"
                               >
                                 <td className="px-3 py-3">
@@ -1296,16 +1341,15 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
                                       <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[160px]">
                                         {p.title}
                                       </p>
-                                      {p.dueMonth ? (
+                                      {p.dueMonth && p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                                          DUE:{" "}
-                                          {formatMonthYear(p.dueMonth)}
+                                          DUE: {formatMonthYear(p.dueMonth)}
                                         </span>
-                                      ) : p.billingMode === "monthly" ? (
+                                      ) : !p.dueMonth && p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">
                                           Monthly
                                         </span>
-                                      ) : p.billingMode === "fixed" ? (
+                                      ) : !p.dueMonth && p.billingMode === "fixed" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full">
                                           Fixed
                                         </span>
@@ -1327,7 +1371,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                            o.id === p.id &&
+                                            o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   base:
@@ -1353,7 +1398,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                            o.id === p.id &&
+                                            o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   discount: Math.max(
@@ -1379,7 +1425,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
                                       onChange={(v) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                            o.id === p.id &&
+                                            o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   discountType: v as
@@ -1417,7 +1464,8 @@ const FeeAddModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, fee, instruc
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id && o.dueMonth === p.dueMonth
+                                            o.id === p.id &&
+                                            o.dueMonth === p.dueMonth
                                               ? {
                                                   ...o,
                                                   payingNow: clamp(
