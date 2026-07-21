@@ -57,9 +57,28 @@ class StudentFeeController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('student', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
+            
+            $billId = null;
+            if (preg_match('/^(?:#)?FEE-(\d+)$/i', trim($search), $matches)) {
+                $billId = (int)$matches[1];
+            } elseif (is_numeric(trim($search))) {
+                $billId = (int)trim($search);
+            }
+
+            $query->where(function ($q) use ($search, $billId) {
+                $q->whereHas('student', function ($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%")
+                       ->orWhere('phone', 'like', "%{$search}%");
+                });
+                if ($billId) {
+                    $q->orWhereExists(function ($sub) use ($billId) {
+                        $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('student_fees as sf_sub')
+                            ->whereColumn('sf_sub.student_id', 'student_fees.student_id')
+                            ->whereColumn('sf_sub.month_year', 'student_fees.month_year')
+                            ->where('sf_sub.id', $billId);
+                    });
+                }
             });
         }
 
@@ -152,9 +171,28 @@ class StudentFeeController extends Controller
         if ($request->filled('fee_type')) $baseStatsQuery->where('fee_type', $request->fee_type);
         if ($request->filled('search')) {
             $search = $request->search;
-            $baseStatsQuery->whereHas('student', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
+            
+            $billId = null;
+            if (preg_match('/^(?:#)?FEE-(\d+)$/i', trim($search), $matches)) {
+                $billId = (int)$matches[1];
+            } elseif (is_numeric(trim($search))) {
+                $billId = (int)trim($search);
+            }
+
+            $baseStatsQuery->where(function ($q) use ($search, $billId) {
+                $q->whereHas('student', function ($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%")
+                       ->orWhere('phone', 'like', "%{$search}%");
+                });
+                if ($billId) {
+                    $q->orWhereExists(function ($sub) use ($billId) {
+                        $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('student_fees as sf_sub')
+                            ->whereColumn('sf_sub.student_id', 'student_fees.student_id')
+                            ->whereColumn('sf_sub.month_year', 'student_fees.month_year')
+                            ->where('sf_sub.id', $billId);
+                    });
+                }
             });
         }
 
