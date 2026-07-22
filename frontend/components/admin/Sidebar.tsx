@@ -33,7 +33,7 @@ const menuItems = [
 
   // Daily Operations
   { name: "Booking", icon: Calendar, href: "/admin/booking" },
-  { name: "Attendance", icon: Calendar, href: "/admin/attendance" },
+  // { name: "Attendance", icon: Calendar, href: "/admin/attendance" },
   { name: "Instructor Schedule", icon: Calendar, href: "/admin/instructor/schedule" },
 
   // People Management

@@ -308,18 +308,35 @@ class StudentFeeController extends Controller
                 ->first();
         }
 
-        // Global admission totals
-        $globalAdmTotals = StudentFee::where('student_id', $studentId)
-            ->where(function ($q) {
-                $q->where('fee_type', 'admission')->orWhere('fee_type', 'billing');
-            })
-            ->selectRaw('SUM(paid_amount) as total_paid, SUM(total_amount) as net_amount')
-            ->first();
+        // Global admission totals (only counting admission fee portions).
+        // Cap at the admission base amount to prevent duplicate per-month records
+        // (created by a past bug) from inflating the paid total.
+        $admissionBaseAmount = $admissionRecord
+            ? ($admissionRecord->admission_fee > 0 ? (float)$admissionRecord->admission_fee : (float)$admissionRecord->total_amount)
+            : (float)($globalAdmissionFee ?? 0);
 
-        $admissionPaid       = $globalAdmTotals && $globalAdmTotals->net_amount > 0 && ($globalAdmTotals->total_paid >= $globalAdmTotals->net_amount);
-        $admissionAmount     = $admissionRecord ? ($admissionRecord->admission_fee ?? $admissionRecord->total_amount) : $globalAdmissionFee;
+        // Sum only pure 'admission' fee_type records (ignore billing/program rows)
+        $allAdmRecords = StudentFee::where('student_id', $studentId)
+            ->where('fee_type', 'admission')
+            ->get();
+
+        $totalAdmNet  = 0;
+        $totalAdmPaid = 0;
+        foreach ($allAdmRecords as $rec) {
+            $totalAdmNet  += (float) $rec->total_amount;
+            $totalAdmPaid += (float) $rec->paid_amount;
+        }
+
+        // Cap paid/net at the base admission amount to absorb any duplicate records
+        if ($admissionBaseAmount > 0) {
+            $totalAdmNet  = min($totalAdmNet,  $admissionBaseAmount);
+            $totalAdmPaid = min($totalAdmPaid, $admissionBaseAmount);
+        }
+
+        $admissionPaid       = $admissionBaseAmount > 0 && ($totalAdmPaid >= $admissionBaseAmount - 0.01);
+        $admissionAmount     = $admissionBaseAmount > 0 ? $admissionBaseAmount : $globalAdmissionFee;
         $admissionExists     = $admissionRecord ? true : false;
-        $admissionPaidAmount = $globalAdmTotals ? (float) $globalAdmTotals->total_paid : 0;
+        $admissionPaidAmount = $totalAdmPaid;
 
         if ($student->admission_fee_not_required) {
             $globalAdmissionFee = 0.0;
@@ -489,7 +506,7 @@ class StudentFeeController extends Controller
                 $breakdown[] = [
                     'id'                   => $p->id,
                     'title'                => $p->title,
-                    'program_fee'          => $fee,
+                    'program_fee'          => ($existing && (float)$existing->program_fee > 0) ? (float) $existing->program_fee : $fee,
                     'paid_amount'          => $existing ? (float) $existing->paid_amount : 0,
                     'last_payment_amount'  => $existing ? (float) $existing->last_payment_amount : 0,
                     'discount'             => $existing ? (float) $existing->program_discount : ($billingMode === 'monthly' ? $monthlyDiscount : 0),

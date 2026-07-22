@@ -1015,7 +1015,39 @@ const StudentAddEditModal: React.FC<Props> = ({
                           </div>
                         </div>
 
-                        {/* Row 3: Duration Settings (only for Duration mode) */}
+                        {/* Row 3: Monthly Discount Settings (only for Monthly mode) */}
+                        {e.billing_mode === "monthly" && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                Default Monthly Discount (Recurring)
+                              </p>
+                              <span className="text-[9px] text-gray-400 font-medium">Applied automatically each month</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={e.monthly_discount || ""}
+                                  onChange={(ev) => updateEnrollment(e.program_id, { monthly_discount: ev.target.value })}
+                                  className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-3 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <select
+                                value={e.monthly_discount_type || "cash"}
+                                onChange={(ev) => updateEnrollment(e.program_id, { monthly_discount_type: ev.target.value })}
+                                className="text-xs font-bold bg-slate-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                              >
+                                <option value="cash">Rs.</option>
+                                <option value="percentage">%</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Row 4: Duration Settings (only for Duration mode) */}
                         {(e.billing_mode === "duration" || !e.billing_mode) && (
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
@@ -1039,42 +1071,6 @@ const StudentAddEditModal: React.FC<Props> = ({
                                 <option value="months">Months</option>
                                 <option value="years">Years</option>
                               </select>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Row 4: Monthly Discount (only for Monthly mode) */}
-                        {e.billing_mode === "monthly" && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Monthly Discount (auto-applies each session)</p>
-                            <div className="flex gap-2 items-center">
-                              <div className="relative flex items-center flex-1">
-                                <span className="absolute left-3 text-xs font-bold text-gray-400">Rs.</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  value={e.monthly_discount || ""}
-                                  onChange={(ev) => updateEnrollment(e.program_id, { monthly_discount: ev.target.value })}
-                                  className="w-full text-xs font-bold bg-slate-50 border-none rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                              <div className="flex gap-1">
-                                {(["cash", "percentage"] as const).map((type) => (
-                                  <button
-                                    key={type}
-                                    type="button"
-                                    onClick={() => updateEnrollment(e.program_id, { monthly_discount_type: type })}
-                                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${
-                                      (e.monthly_discount_type || "cash") === type
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-slate-100 text-slate-500"
-                                    }`}
-                                  >
-                                    {type === "cash" ? "Rs." : "%"}
-                                  </button>
-                                ))}
-                              </div>
                             </div>
                           </div>
                         )}

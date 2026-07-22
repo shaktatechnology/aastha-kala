@@ -428,10 +428,11 @@ const FeeAddModal: React.FC<Props> = ({
   }, []);
 
   const fetchFeeInfo = useCallback(
-    async (studentId: string, month?: string) => {
+    async (studentId: string, month?: string, isEditing?: boolean) => {
       if (!studentId) return;
       try {
         setLoadingFeeInfo(true);
+        // Set to false for both edit and new scenarios
         setIsOverwriteMode(false);
         const token = localStorage.getItem("token");
         let url = `${BASE_URL}/admin/students/${studentId}/fee-info`;
@@ -448,12 +449,24 @@ const FeeAddModal: React.FC<Props> = ({
           const d = data.data as FeeInfo;
           setFeeInfo(d);
           setShift(d.student?.shift || "");
+          const editingExisting = Boolean(isEditing);
+
+          // NOT overwrite mode. So we should NOT pre-populate payingNow.
+          // Instead, set initialPaid to the existing paid amount and leave payingNow empty.
+
           if (d.admission_exists) {
             setAdmBase((d.admission_amount ?? 0).toString());
             setAdmDisc(d.admission_discount ?? 0);
             setAdmDiscType(d.admission_discount_type ?? "cash");
-            setInitialAdmPaid(d.admission_paid_amount ?? 0);
-            setAdmPayingNow("");
+            // For editing: initialPaid = existing paid amount, payingNow = empty
+            setInitialAdmPaid(
+              editingExisting
+                ? (d.admission_paid_amount ?? 0)
+                : (d.admission_paid_amount ?? 0),
+            );
+            setAdmPayingNow(
+              editingExisting ? "" : "", // Always empty for new payments
+            );
           } else {
             setAdmBase((d.global_admission_fee ?? 0).toString());
             setAdmDisc(0);
@@ -497,13 +510,13 @@ const FeeAddModal: React.FC<Props> = ({
                 id: pb.id,
                 title: pb.title,
                 base: Number(pb.program_fee) || 0,
-                // For carry-forward rows (due_month set): no discount; for monthly: use monthly_discount as default
                 discount: pb.due_month ? 0 : Number(pb.discount ?? 0) || 0,
                 discountType: pb.due_month
                   ? "cash"
                   : ((pb.discount_type as "cash" | "percentage") ?? "cash"),
-                payingNow: "",
-                initialPaid: Number(pb.paid_amount) || 0,
+                // For editing: initialPaid = existing paid, payingNow = empty
+                payingNow: "", // Always start empty for new payments
+                initialPaid: Number(pb.paid_amount) || 0, // Always show previous paid
                 billingMode: pb.billing_mode,
                 dueMonth: pb.due_month ?? undefined,
                 monthlyDiscount: Number(pb.monthly_discount) || 0,
@@ -530,9 +543,9 @@ const FeeAddModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (selectedStudentId && isOpen) {
-      fetchFeeInfo(selectedStudentId, progPeriod);
+      fetchFeeInfo(selectedStudentId, progPeriod, Boolean(fee));
     }
-  }, [selectedStudentId, progPeriod, isOpen, fetchFeeInfo]);
+  }, [selectedStudentId, progPeriod, isOpen, fetchFeeInfo, fee]);
 
   useEffect(() => {
     if (!feeInfo) return;
@@ -548,6 +561,7 @@ const FeeAddModal: React.FC<Props> = ({
   useEffect(() => {
     if (!isOpen) return;
     hasAutoSwitchedRef.current = false;
+    setIsOverwriteMode(false);
     (async () => {
       try {
         setLoadingStudents(true);
@@ -840,7 +854,15 @@ const FeeAddModal: React.FC<Props> = ({
       const feeItems: any[] = [];
 
       // 1. Admission item if checked and exists
-      if (checkedIds.has("admission") && calculations.hasAdm) {
+      // Skip if admission is globally fully paid AND we're editing an existing monthly record.
+      // Admission is a one-time charge - re-submitting it creates duplicate records per month.
+      const admissionAlreadyFullyPaid =
+        calculations.admissionPaidGlobally && fee;
+      if (
+        checkedIds.has("admission") &&
+        calculations.hasAdm &&
+        !admissionAlreadyFullyPaid
+      ) {
         feeItems.push({
           type: "admission",
           month_year: progPeriod,
@@ -1341,15 +1363,18 @@ const FeeAddModal: React.FC<Props> = ({
                                       <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[160px]">
                                         {p.title}
                                       </p>
-                                      {p.dueMonth && p.billingMode === "monthly" ? (
+                                      {p.dueMonth &&
+                                      p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
                                           DUE: {formatMonthYear(p.dueMonth)}
                                         </span>
-                                      ) : !p.dueMonth && p.billingMode === "monthly" ? (
+                                      ) : !p.dueMonth &&
+                                        p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">
                                           Monthly
                                         </span>
-                                      ) : !p.dueMonth && p.billingMode === "fixed" ? (
+                                      ) : !p.dueMonth &&
+                                        p.billingMode === "fixed" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full">
                                           Fixed
                                         </span>
