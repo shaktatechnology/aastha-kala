@@ -457,7 +457,9 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                 }}
               >
                 <span>✓ FULLY PAID</span>
-                <span className="thermal-amount">Rs. {fmt(balanceDue)}</span>
+                <span className="thermal-amount">
+                  {balanceDue > 0.01 ? `Rs. ${fmt(balanceDue)}` : ""}
+                </span>
               </div>
             )}
 

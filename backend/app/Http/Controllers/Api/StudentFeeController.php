@@ -467,6 +467,12 @@ class StudentFeeController extends Controller
                 }
             }
 
+            // If enrollment is completed (graduated) or inactive, do NOT generate new current/future month charges
+            // (Unless a fee record was already explicitly saved for this month)
+            if ($item instanceof \App\Models\StudentProgram && in_array($item->status, ['graduated', 'inactive']) && !$existing) {
+                $skipCurrentRow = true;
+            }
+
             $matchedTitles[] = strtolower($p->title);
 
             // --- CARRY-FORWARD: fetch all prior unpaid months for monthly, fixed, & duration ---

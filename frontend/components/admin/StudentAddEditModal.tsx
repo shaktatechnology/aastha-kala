@@ -400,6 +400,7 @@ const StudentAddEditModal: React.FC<Props> = ({
             if (e.monthly_discount_type) {
               formData.append(`enrollments[${index}][monthly_discount_type]`, e.monthly_discount_type);
             }
+            formData.append(`enrollments[${index}][status]`, e.status || "active");
           });
         } else if (key === 'duration_value' || key === 'duration_unit') {
           formData.append(key, "");
@@ -794,18 +795,21 @@ const StudentAddEditModal: React.FC<Props> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-black text-gray-900">{prog.title}</span>
                         <div className="flex items-center gap-3">
-                          {/* <select
+                          <select
                             value={e.status || "active"}
                             onChange={(ev) => updateEnrollment(e.program_id, { status: ev.target.value })}
-                            className={`text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded-lg border-none focus:ring-2 focus:ring-blue-500/20 transition-all ${e.status === 'graduated' ? 'bg-green-100 text-green-700' :
-                              e.status === 'inactive' ? 'bg-gray-100 text-gray-500' :
-                                'bg-blue-50 text-blue-600'
-                              }`}
+                            className={`text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-xl border-none outline-none cursor-pointer focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                              e.status === "graduated"
+                                ? "bg-purple-100 text-purple-700 font-black"
+                                : e.status === "inactive"
+                                ? "bg-amber-100 text-amber-700 font-black"
+                                : "bg-emerald-100 text-emerald-700 font-black"
+                            }`}
                           >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                            <option value="graduated">Graduate</option>
-                          </select> */}
+                            <option value="active" className="bg-white text-emerald-700 font-bold">Active</option>
+                            <option value="graduated" className="bg-white text-purple-700 font-bold">Completed</option>
+                            <option value="inactive" className="bg-white text-amber-700 font-bold">Inactive</option>
+                          </select>
 
                           <div className="flex bg-gray-100 p-1 rounded-xl">
                             <button
@@ -947,6 +951,7 @@ const StudentAddEditModal: React.FC<Props> = ({
 
                       {/* Billing Mode + Fee + Discount + Commission */}
                       <div className="pt-2 border-t border-slate-100 space-y-3">
+
                         {/* Row 1: Billing Mode */}
                         <div className="space-y-1">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Billing Mode</p>
