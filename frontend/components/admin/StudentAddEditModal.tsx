@@ -1021,7 +1021,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                         </div>
 
                         {/* Row 3: Monthly Discount Settings (only for Monthly mode) */}
-                        {e.billing_mode === "monthly" && (
+                        {/* {e.billing_mode === "monthly" && (
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
@@ -1050,7 +1050,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                               </select>
                             </div>
                           </div>
-                        )}
+                        )} */}
 
                         {/* Row 4: Duration Settings (only for Duration mode) */}
                         {(e.billing_mode === "duration" || !e.billing_mode) && (
