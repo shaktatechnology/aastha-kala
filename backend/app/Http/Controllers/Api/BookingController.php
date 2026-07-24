@@ -209,12 +209,18 @@ class BookingController extends Controller
             $booking->schedules()->sync($request->schedule_ids);
         }
 
-        $booking->load(['program', 'schedules', 'instructor']);
+        $booking->load(['program', 'schedules', 'schedule', 'instructor']);
+
+        // Soft-warn conflict check — booking is saved, but we alert if instructor is double-booked
+        $conflict = Booking::hasInstructorConflict($booking);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Booking created successfully',
-            'data'    => $booking
+            'success'          => true,
+            'booking_conflict' => $conflict,
+            'message'          => $conflict
+                ? 'Booking created, but the instructor already has an accepted booking at this time slot. Please verify the schedule.'
+                : 'Booking created successfully',
+            'data'             => $booking
         ], 201);
     }
 
@@ -287,10 +293,17 @@ class BookingController extends Controller
 
         $booking->load(['program', 'schedules.instructor', 'schedule.instructor', 'instructor']);
 
+        // Soft-warn conflict check — booking is saved, but we alert if instructor is double-booked
+        // Exclude self so we don't flag the booking's own time slot as a conflict
+        $conflict = Booking::hasInstructorConflict($booking, $booking->id);
+
         return response()->json([
-            'success' => true,
-            'message' => 'Booking updated successfully',
-            'data'    => $booking
+            'success'          => true,
+            'booking_conflict' => $conflict,
+            'message'          => $conflict
+                ? 'Booking updated, but the instructor already has an accepted booking at this time slot. Please verify the schedule.'
+                : 'Booking updated successfully',
+            'data'             => $booking
         ]);
     }
 

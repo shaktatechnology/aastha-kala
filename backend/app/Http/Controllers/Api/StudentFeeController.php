@@ -473,10 +473,105 @@ class StudentFeeController extends Controller
                 $skipCurrentRow = true;
             }
 
+            // If requestedMonth is BEFORE the program's enrolled_at month (and no fee was explicitly saved), skip current row
+            if ($item instanceof \App\Models\StudentProgram && $item->enrolled_at && $requestedMonth && !$existing) {
+                $enrolledMonth = is_string($item->enrolled_at)
+                    ? substr($item->enrolled_at, 0, 7)
+                    : $item->enrolled_at->format('Y-m');
+
+                if ($requestedMonth < $enrolledMonth) {
+                    $skipCurrentRow = true;
+                }
+            }
+
             $matchedTitles[] = strtolower($p->title);
 
             // --- CARRY-FORWARD: fetch all prior unpaid months for monthly, fixed, & duration ---
-            if ($requestedMonth && in_array($billingMode, ['monthly', 'fixed', 'duration'])) {
+            if ($requestedMonth && $billingMode === 'monthly') {
+                $enrolledDate = null;
+                if ($item instanceof \App\Models\StudentProgram && $item->enrolled_at) {
+                    $enrolledDate = is_string($item->enrolled_at) ? $item->enrolled_at : $item->enrolled_at->format('Y-m-d');
+                }
+                if (!$enrolledDate && $student->enrollment_date) {
+                    $enrolledDate = is_string($student->enrollment_date) ? $student->enrollment_date : $student->enrollment_date->format('Y-m-d');
+                }
+
+                $earliestRecordMonth = StudentFee::where('student_id', $studentId)
+                    ->where('program_id', $p->id)
+                    ->where('fee_type', 'program')
+                    ->min('month_year');
+
+                $startMonth = $earliestRecordMonth ?: ($enrolledDate ? substr($enrolledDate, 0, 7) : null);
+
+                if ($startMonth && $startMonth < $requestedMonth) {
+                    $existingPriorRecords = StudentFee::where('student_id', $studentId)
+                        ->where('program_id', $p->id)
+                        ->where('fee_type', 'program')
+                        ->where('month_year', '<', $requestedMonth)
+                        ->get()
+                        ->groupBy('month_year');
+
+                    try {
+                        $currentPointer = \Carbon\Carbon::parse($startMonth . '-01');
+                        $endPointer     = \Carbon\Carbon::parse($requestedMonth . '-01');
+
+                        while ($currentPointer->lt($endPointer)) {
+                            $mStr = $currentPointer->format('Y-m');
+
+                            if (isset($existingPriorRecords[$mStr])) {
+                                $dueRows = $existingPriorRecords[$mStr];
+                                $netTotal  = $dueRows->sum(fn($r) => (float)$r->total_amount);
+                                $paidTotal = $dueRows->sum(fn($r) => (float)$r->paid_amount);
+                                $outstanding = max(0, $netTotal - $paidTotal);
+
+                                if ($outstanding > 0.01) {
+                                    $breakdown[] = [
+                                        'id'                   => $p->id,
+                                        'title'                => $p->title,
+                                        'program_fee'          => round($outstanding, 2),
+                                        'paid_amount'          => 0,
+                                        'last_payment_amount'  => 0,
+                                        'discount'             => 0,
+                                        'discount_type'        => 'cash',
+                                        'status'               => 'pending',
+                                        'billing_mode'         => $billingMode,
+                                        'monthly_discount'     => 0,
+                                        'monthly_discount_type'=> 'cash',
+                                        'due_month'            => $mStr,
+                                    ];
+                                }
+                            } else {
+                                // Unrecorded past month between startMonth and requestedMonth
+                                $netForMonth = $fee;
+                                if ($monthlyDiscount > 0) {
+                                    $netForMonth = $monthlyDiscountType === 'percentage'
+                                        ? max(0, $fee - ($fee * $monthlyDiscount / 100))
+                                        : max(0, $fee - $monthlyDiscount);
+                                }
+
+                                $breakdown[] = [
+                                    'id'                   => $p->id,
+                                    'title'                => $p->title,
+                                    'program_fee'          => round($netForMonth, 2),
+                                    'paid_amount'          => 0,
+                                    'last_payment_amount'  => 0,
+                                    'discount'             => $monthlyDiscount,
+                                    'discount_type'        => $monthlyDiscountType,
+                                    'status'               => 'pending',
+                                    'billing_mode'         => $billingMode,
+                                    'monthly_discount'     => $monthlyDiscount,
+                                    'monthly_discount_type'=> $monthlyDiscountType,
+                                    'due_month'            => $mStr,
+                                ];
+                            }
+
+                            $currentPointer->addMonth();
+                        }
+                    } catch (\Exception $e) {
+                        // Fallback to basic DB query if date parsing fails
+                    }
+                }
+            } elseif ($requestedMonth && in_array($billingMode, ['fixed', 'duration'])) {
                 $priorDues = StudentFee::where('student_id', $studentId)
                     ->where('program_id', $p->id)
                     ->where('fee_type', 'program')
@@ -484,7 +579,7 @@ class StudentFeeController extends Controller
                     ->whereRaw('(total_amount - paid_amount) > 0.01')
                     ->orderBy('month_year')
                     ->get()
-                    ->groupBy('month_year'); // aggregate per month
+                    ->groupBy('month_year');
 
                 foreach ($priorDues as $priorMonth => $dueRows) {
                     $outstanding = $dueRows->sum(fn($r) => (float)$r->total_amount - (float)$r->paid_amount);
@@ -499,9 +594,9 @@ class StudentFeeController extends Controller
                             'discount_type'        => 'cash',
                             'status'               => 'pending',
                             'billing_mode'         => $billingMode,
-                            'monthly_discount'     => 0, // no extra discount on carry-forward
+                            'monthly_discount'     => 0,
                             'monthly_discount_type'=> 'cash',
-                            'due_month'            => $priorMonth, // marks this as carry-forward
+                            'due_month'            => $priorMonth,
                         ];
                     }
                 }

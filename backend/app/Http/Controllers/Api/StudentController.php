@@ -106,18 +106,20 @@ class StudentController extends Controller
                 'pending_amount' => $admissionFee,
                 'status' => 'pending',
                 'admission_fee' => $admissionFee,
-                'month_year' => request()->input('fee_month_year') ?: date('Y-m'),
+                'month_year' => request()->input('admission_month_year') ?: request()->input('fee_month_year') ?: date('Y-m'),
                 'payment_method' => 'Cash',
                 'remarks' => '',
             ]);
         }
 
         // 2. Handle Program Enrollments & Fees
-        $this->syncProgramsAndFees($student, $request->enrollments ?? []);
+        $bookingConflicts = $this->syncProgramsAndFees($student, $request->enrollments ?? []);
 
         return response()->json([
-            'message' => 'Student created successfully',
-            'data' => $student
+            'message'          => 'Student created successfully',
+            'booking_conflict' => !empty($bookingConflicts),
+            'conflict_details' => $bookingConflicts,
+            'data'             => $student
         ], 201);
     }
 
@@ -213,7 +215,7 @@ class StudentController extends Controller
                         'pending_amount' => $admissionFee,
                         'status' => 'pending',
                         'admission_fee' => $admissionFee,
-                        'month_year' => request()->input('fee_month_year') ?: date('Y-m'),
+                        'month_year' => request()->input('admission_month_year') ?: request()->input('fee_month_year') ?: date('Y-m'),
                         'payment_method' => 'Cash',
                         'remarks' => '',
                     ]);
@@ -222,22 +224,27 @@ class StudentController extends Controller
         }
 
         // If classes or enrollments were updated, sync enrollments and generate missing fees
+        $bookingConflicts = [];
         if (isset($data['classes']) || isset($data['enrollments'])) {
-            $this->syncProgramsAndFees($student, $request->enrollments ?? []);
+            $bookingConflicts = $this->syncProgramsAndFees($student, $request->enrollments ?? []);
         }
 
         return response()->json([
-            'message' => 'Student updated successfully',
-            'data' => $student
+            'message'          => 'Student updated successfully',
+            'booking_conflict' => !empty($bookingConflicts),
+            'conflict_details' => $bookingConflicts,
+            'data'             => $student
         ]);
     }
 
     /**
      * Syncs student_programs table, links to bookings, and auto-generates student_fees records.
+     *
+     * @return array  List of conflict warning messages for any instructor double-bookings detected.
      */
-    private function syncProgramsAndFees($student, array $enrollmentData = [])
-    
+    private function syncProgramsAndFees($student, array $enrollmentData = []): array
     {
+        $conflictWarnings = [];
         $currentMonth = request()->input('fee_month_year') ?: date('Y-m');
         $studentStatus = $student->status;
 
@@ -287,10 +294,16 @@ class StudentController extends Controller
             $customFee = (isset($enrollInfo['custom_fee']) && $enrollInfo['custom_fee'] !== '') ? (float)$enrollInfo['custom_fee'] : null;
             $commPct = (isset($enrollInfo['commission_percentage']) && $enrollInfo['commission_percentage'] !== '') ? (float)$enrollInfo['commission_percentage'] : null;
 
+            $spEnrolledAt = $enrollInfo['enrolled_at']
+                ?? request()->input('billing_start_date')
+                ?? $student->enrollment_date
+                ?: date('Y-m-d');
+
             $sp = \App\Models\StudentProgram::updateOrCreate(
                 ['student_id' => $student->id, 'program_id' => $pId],
                 [
                     'status'               => $spStatus,
+                    'enrolled_at'          => $spEnrolledAt,
                     'custom_fee'           => $customFee,
                     'commission_percentage'=> $commPct,
                     'billing_mode'         => $enrollInfo['billing_mode'] ?? 'duration',
@@ -347,6 +360,14 @@ class StudentController extends Controller
             // Sync schedule_ids if provided (for programs with multiple slots)
             if ($booking && isset($enrollInfo['schedule_ids']) && is_array($enrollInfo['schedule_ids'])) {
                 $booking->schedules()->sync($enrollInfo['schedule_ids']);
+            }
+
+            // Soft-warn conflict check for instructor double-booking
+            if ($booking && $booking->status === 'accepted') {
+                $booking->loadMissing(['schedules', 'schedule']);
+                if (\App\Models\Booking::hasInstructorConflict($booking)) {
+                    $conflictWarnings[] = "Instructor conflict detected for program: {$prog->title}. Please verify the instructor's schedule.";
+                }
             }
 
             // 4. Handle Fees (auto-generate for all billing modes: duration, monthly, and fixed)
@@ -465,6 +486,8 @@ class StudentController extends Controller
                 }
             }
         }
+
+        return $conflictWarnings;
     }
 
     public function destroy($id)

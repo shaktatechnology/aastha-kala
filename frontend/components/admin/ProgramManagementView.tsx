@@ -105,7 +105,11 @@ const ProgramManagementView: React.FC<Props> = ({ searchTerm, statusFilter, onRe
       const result = await res.json();
       if (!res.ok) throw new Error(result.message);
 
-      toast.success(result.message || "Status updated");
+      if (result.booking_conflict) {
+        toast.error(result.message || "Enrollment reactivated but instructor conflict detected. Please reassign an instructor.");
+      } else {
+        toast.success(result.message || "Status updated");
+      }
 
       if (onRefresh) onRefresh();
 

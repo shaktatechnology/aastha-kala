@@ -21,6 +21,7 @@ interface StudentData {
   gender?: string;
   classes?: string;
   enrollment_date?: string;
+  billing_start_date?: string;
   duration_value?: string | number;
   duration_unit?: string;
   status: "active" | "inactive" | "graduated";
@@ -57,6 +58,7 @@ const StudentAddEditModal: React.FC<Props> = ({
     gender: "",
     classes: "",
     enrollment_date: new Date().toISOString().split('T')[0],
+    billing_start_date: new Date().toISOString().split('T')[0],
     duration_value: "",
     duration_unit: "",
     status: "active",
@@ -212,6 +214,7 @@ const StudentAddEditModal: React.FC<Props> = ({
         gender: student.gender || "",
         classes: student.classes || "",
         enrollment_date: student.enrollment_date ? student.enrollment_date.split('T')[0] : "",
+        billing_start_date: student.billing_start_date ? student.billing_start_date.split('T')[0] : (student.enrollment_date ? student.enrollment_date.split('T')[0] : ""),
         duration_value: student.duration_value || "",
         duration_unit: student.duration_unit || "",
         status: student.status || "active",
@@ -258,6 +261,7 @@ const StudentAddEditModal: React.FC<Props> = ({
         gender: "",
         classes: "",
         enrollment_date: new Date().toISOString().split('T')[0],
+        billing_start_date: new Date().toISOString().split('T')[0],
         duration_value: "",
         duration_unit: "",
         status: "active",
@@ -401,6 +405,7 @@ const StudentAddEditModal: React.FC<Props> = ({
               formData.append(`enrollments[${index}][monthly_discount_type]`, e.monthly_discount_type);
             }
             formData.append(`enrollments[${index}][status]`, e.status || "active");
+            formData.append(`enrollments[${index}][enrolled_at]`, form.billing_start_date || form.enrollment_date || new Date().toISOString().split('T')[0]);
           });
         } else if (key === 'duration_value' || key === 'duration_unit') {
           formData.append(key, "");
@@ -411,12 +416,21 @@ const StudentAddEditModal: React.FC<Props> = ({
         }
       });
 
-      // Calculate fee_month_year from enrollment_date
-      const currentBs = getBsDateParts(form.enrollment_date || new Date());
-      const feeMonthYear = currentBs
-        ? bsMonthYearToAdPeriod(currentBs.year, currentBs.month)
+      // Calculate admission_month_year from enrollment_date
+      const admissionBs = getBsDateParts(form.enrollment_date || new Date());
+      const admissionMonthYear = admissionBs
+        ? bsMonthYearToAdPeriod(admissionBs.year, admissionBs.month)
+        : new Date().toISOString().substring(0, 7);
+      formData.append("admission_month_year", admissionMonthYear);
+
+      // Calculate fee_month_year (program billing start month) from billing_start_date
+      const billingStartDate = form.billing_start_date || form.enrollment_date || new Date();
+      const billingBs = getBsDateParts(billingStartDate);
+      const feeMonthYear = billingBs
+        ? bsMonthYearToAdPeriod(billingBs.year, billingBs.month)
         : new Date().toISOString().substring(0, 7);
       formData.append("fee_month_year", feeMonthYear);
+      formData.append("billing_start_date", typeof billingStartDate === 'string' ? billingStartDate : new Date(billingStartDate).toISOString().split('T')[0]);
 
       if (student) {
         formData.append("_method", "PUT");
@@ -681,16 +695,33 @@ const StudentAddEditModal: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div id="enrollment_date" className="w-full flex flex-col gap-1.5 animate-fade-in relative z-[40]">
                 <label className="flex items-center text-[11px] font-black uppercase tracking-[0.15em] text-text-muted gap-2 ml-1">
-                  Enrollment Date
+                  Admissino Date
                 </label>
                 <NepaliDateInput
                   value={form.enrollment_date || ""}
-                  onChange={(val) => handleChange("enrollment_date", val)}
+                  onChange={(val) => {
+                    setForm(prev => ({
+                      ...prev,
+                      enrollment_date: val,
+                      billing_start_date: prev.billing_start_date || val
+                    }));
+                  }}
                 />
                 {errors.enrollment_date && <p className="text-red-500 text-[10px] font-bold mt-1">{errors.enrollment_date[0]}</p>}
+              </div>
+
+              <div id="billing_start_date" className="w-full flex flex-col gap-1.5 animate-fade-in relative z-[40]">
+                <label className="flex items-center text-[11px] font-black uppercase tracking-[0.15em] text-text-muted gap-2 ml-1">
+                  Class / Billing Start Date
+                </label>
+                {/* <p className="text-[9px] font-semibold text-blue-600 mt-0.5 ml-1">Program fees start from this month</p> */}
+                <NepaliDateInput
+                  value={form.billing_start_date || form.enrollment_date || ""}
+                  onChange={(val) => handleChange("billing_start_date", val)}
+                />
               </div>
 
               <InputField

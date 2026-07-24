@@ -49,6 +49,11 @@ class StudentEnrollmentController extends Controller
 
     /**
      * Update the status of a specific enrollment.
+     *
+     * When reactivating (status -> active), checks for instructor booking conflicts
+     * before setting the booking back to 'accepted'. If a conflict is detected,
+     * the enrollment is still activated but the booking remains 'completed' and a
+     * warning is returned so the admin can reassign an instructor manually.
      */
     public function updateStatus(Request $request, $id)
     {
@@ -63,24 +68,41 @@ class StudentEnrollmentController extends Controller
             $enrollment->status = $request->status;
             $enrollment->save();
 
+            $bookingConflict = false;
+            $conflictMessage = null;
+
             // Sync with Shadow Booking to manage instructor availability
             if ($enrollment->booking_id) {
                 $booking = Booking::find($enrollment->booking_id);
                 if ($booking) {
-                    // Map enrollment status to booking status
-                    // active -> accepted (blocks time)
-                    // inactive/graduated -> completed (frees time)
-                    $booking->status = ($request->status === 'active' ? 'accepted' : 'completed');
-                    $booking->save();
+                    if ($request->status === 'active') {
+                        // --- CONFLICT CHECK before re-accepting the booking ---
+                        $bookingConflict = Booking::hasInstructorConflict($booking);
+
+                        if ($bookingConflict) {
+                            // Enrollment is active, but DO NOT re-accept the conflicting booking.
+                            // Leave it as 'completed' so the instructor is not double-booked.
+                            // Admin must reassign the instructor manually.
+                            $conflictMessage = 'Enrollment reactivated, but the instructor already has a conflicting booking at this time slot. Please reassign an instructor for this student.';
+                        } else {
+                            $booking->status = 'accepted';
+                            $booking->save();
+                        }
+                    } else {
+                        // inactive/graduated -> free up the instructor time slot
+                        $booking->status = 'completed';
+                        $booking->save();
+                    }
                 }
             }
 
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Status updated and instructor availability synced',
-                'data' => $enrollment->load(['student', 'booking.instructor'])
+                'success'          => true,
+                'booking_conflict' => $bookingConflict,
+                'message'          => $conflictMessage ?? 'Status updated and instructor availability synced',
+                'data'             => $enrollment->load(['student', 'booking.instructor'])
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

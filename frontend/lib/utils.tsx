@@ -41,6 +41,14 @@ function parseDate(date: string | number | Date) {
   if (typeof date === "number") {
     return new Date(date);
   }
+  if (typeof date === "string") {
+    if (/^\d{4}-\d{2}$/.test(date)) {
+      return new Date(`${date}-15T12:00:00`);
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return new Date(`${date}T12:00:00`);
+    }
+  }
   return new Date(date);
 }
 
@@ -192,6 +200,18 @@ export function formatLargeNumber(value: number) {
 }
 
 export function bsMonthYearToAdPeriod(by: number, bm: number) {
+  try {
+    const adDate = bsToAd(`${by}-${String(bm).padStart(2, "0")}-15`);
+    if (adDate) {
+      const parts = adDate.split("-");
+      if (parts.length >= 2) {
+        return `${parts[0]}-${parts[1]}`;
+      }
+    }
+  } catch {
+    // Fallback if calendar conversion encounters an unmapped year
+  }
+
   let adY: number;
   let adM: number;
   if (bm >= 1 && bm <= 8) {
