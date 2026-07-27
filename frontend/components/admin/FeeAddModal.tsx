@@ -54,6 +54,7 @@ interface ProgramFeeEntry {
   initialPaid?: number;
   billingMode?: "duration" | "monthly" | "fixed";
   dueMonth?: string; // set = carry-forward row, null/undefined = current month
+  isAdvance?: boolean;
   monthlyDiscount?: number;
   monthlyDiscountType?: "cash" | "percentage";
 }
@@ -527,6 +528,7 @@ const FeeAddModal: React.FC<Props> = ({
                 initialPaid: Number(pb.paid_amount) || 0, // Always show previous paid
                 billingMode: pb.billing_mode,
                 dueMonth: pb.due_month ?? undefined,
+                isAdvance: (pb as any).is_advance ?? false,
                 monthlyDiscount: Number(pb.monthly_discount) || 0,
                 monthlyDiscountType:
                   (pb.monthly_discount_type as "cash" | "percentage") ?? "cash",
@@ -1406,7 +1408,7 @@ const FeeAddModal: React.FC<Props> = ({
                                       <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[160px]">
                                         {p.title}
                                       </p>
-                                      {(p.isAdvance || (p.dueMonth && p.dueMonth > progPeriod)) ? (
+                                      {(p.dueMonth && (p.isAdvance || p.dueMonth > progPeriod)) ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full">
                                           {formatMonthYear(p.dueMonth)}
                                         </span>
