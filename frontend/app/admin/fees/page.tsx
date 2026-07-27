@@ -484,8 +484,8 @@ const FeesPage = () => {
         ),
         return_amount: (
           <span className="text-sm font-bold text-amber-700">
-            {Number(fee.return_amount || 0) > 0
-              ? `Rs. ${Number(fee.return_amount).toLocaleString()}`
+            {Number(fee.return_amount || 0) > 1.01
+              ? `Rs. ${Math.round(Number(fee.return_amount)).toLocaleString()}`
               : "—"}
           </span>
         ),

@@ -615,8 +615,9 @@ const FeeAddModal: React.FC<Props> = ({
     const admNet = calcNet(admBaseNum, admDisc, admDiscType);
     const admCurrentPaying = Math.max(0, Number(admPayingNow) || 0);
     const totalAdmPaid = initialAdmPaid + admCurrentPaying;
-    const admDue = admNet - initialAdmPaid; // "still owed before this session"
-    const admRemaining = admDue - admCurrentPaying; // after entering paying now
+    const admDue = Math.round((admNet - initialAdmPaid) * 100) / 100;
+    const rawAdmRem = admDue - admCurrentPaying;
+    const admRemaining = Math.abs(rawAdmRem) < 0.01 ? 0 : Math.round(rawAdmRem * 100) / 100;
     const hasAdm =
       (admBaseNum > 0 || admCurrentPaying > 0 || initialAdmPaid > 0) &&
       !(admissionPaidGlobally && admDue <= 0 && !fee);
@@ -625,8 +626,9 @@ const FeeAddModal: React.FC<Props> = ({
       const baseNum = Number(pe.base) || 0;
       const net = calcNet(baseNum, pe.discount, pe.discountType);
       const currentPaying = Math.max(0, Number(pe.payingNow) || 0);
-      const due = net - (pe.initialPaid || 0); // owed before this session (can be negative = credit)
-      const remaining = due - currentPaying; // after this payment
+      const due = Math.round((net - (pe.initialPaid || 0)) * 100) / 100;
+      const rawRem = due - currentPaying;
+      const remaining = Math.abs(rawRem) < 0.01 ? 0 : Math.round(rawRem * 100) / 100;
       const totalPaid = (pe.initialPaid || 0) + currentPaying;
       return {
         ...pe,
@@ -1357,18 +1359,23 @@ const FeeAddModal: React.FC<Props> = ({
                                   </div>
                                 </td>
                                 <td className="px-3 py-3 text-right">
-                                  <span
-                                    className={`text-[13px] font-bold ${calculations.admRemaining > 0 ? "text-amber-600" : calculations.admRemaining < 0 ? "text-emerald-600" : "text-gray-300"}`}
-                                  >
-                                    {calculations.admRemaining !== 0
-                                      ? calculations.admRemaining < 0
-                                        ? `+${fmtS(Math.abs(calculations.admRemaining))} CR`
-                                        : fmtS(calculations.admRemaining)
-                                      : "—"}
-                                  </span>
+                                  {(() => {
+                                    const roundedAdmRem = Math.round(calculations.admRemaining);
+                                    return (
+                                      <span
+                                        className={`text-[13px] font-bold ${roundedAdmRem > 0 ? "text-amber-600" : roundedAdmRem < 0 ? "text-emerald-600" : "text-gray-300"}`}
+                                      >
+                                        {roundedAdmRem < 0
+                                          ? `+${fmtS(Math.abs(roundedAdmRem))} CR`
+                                          : roundedAdmRem > 0
+                                          ? fmtS(roundedAdmRem)
+                                          : "—"}
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="px-3 py-3 text-center">
-                                  {calculations.admRemaining <= 0 &&
+                                  {Math.round(calculations.admRemaining) <= 0 &&
                                   calculations.admNet > 0 ? (
                                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
                                       PAID
@@ -1546,18 +1553,23 @@ const FeeAddModal: React.FC<Props> = ({
                                   </div>
                                 </td>
                                 <td className="px-3 py-3 text-right">
-                                  <span
-                                    className={`text-[13px] font-bold ${p.remaining > 0 ? "text-amber-600" : p.remaining < 0 ? "text-emerald-600" : "text-gray-300"}`}
-                                  >
-                                    {p.remaining !== 0
-                                      ? p.remaining < 0
-                                        ? `+${fmtS(Math.abs(p.remaining))} CR`
-                                        : fmtS(p.remaining)
-                                      : "—"}
-                                  </span>
+                                  {(() => {
+                                    const roundedRem = Math.round(p.remaining);
+                                    return (
+                                      <span
+                                        className={`text-[13px] font-bold ${roundedRem > 0 ? "text-amber-600" : roundedRem < 0 ? "text-emerald-600" : "text-gray-300"}`}
+                                      >
+                                        {roundedRem < 0
+                                          ? `+${fmtS(Math.abs(roundedRem))} CR`
+                                          : roundedRem > 0
+                                          ? fmtS(roundedRem)
+                                          : "—"}
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="px-3 py-3 text-center">
-                                  {p.remaining <= 0 && p.net > 0 ? (
+                                  {Math.round(p.remaining) <= 0 && p.net > 0 ? (
                                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
                                       PAID
                                     </span>

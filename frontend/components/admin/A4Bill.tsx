@@ -26,8 +26,9 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
       : 0;
     const admissionPaid = showAdmission ? Number(fee.admission_paid_amount || 0) : 0;
     const admissionPaidToday = showAdmission ? Number(fee.admission_last_payment || 0) : 0;
-    const admissionOutstanding = showAdmission ? Math.max(0, admissionNet - (admissionPaid - admissionPaidToday)) : 0;
-    const renderAdmission = showAdmission && (admissionOutstanding > 0.01);
+    const admissionPriorPaid = Math.max(0, admissionPaid - admissionPaidToday);
+    const admissionOutstanding = showAdmission ? Math.max(0, admissionNet - admissionPriorPaid) : 0;
+    const renderAdmission = showAdmission && (admissionOutstanding > 0.01 || admissionPaidToday > 0.01);
 
     const activePrograms = fee.programs_breakdown
       ? fee.programs_breakdown.filter((pb: any) => {
@@ -38,16 +39,23 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
             : Math.max(0, base - disc);
           const paid = Number(pb.paid_amount || 0);
           const lastPayment = Number(pb.last_payment_amount || 0);
-          const outstandingBeforeToday = net - (paid - lastPayment);
+          const priorPaid = Math.max(0, paid - lastPayment);
+          const outstandingBeforeToday = Math.max(0, net - priorPaid);
           
           return (outstandingBeforeToday > 0.01 || lastPayment > 0.01);
         })
       : [];
 
-    let totalBaseSum = renderAdmission ? admissionBase : 0;
-    let totalDiscountSum = renderAdmission ? (admissionBase - admissionNet) : 0;
+    let totalBaseSum = 0;
+    let totalDiscountSum = 0;
     let programOutstandingTotal = 0;
     let programPaidToday = 0;
+
+    if (renderAdmission) {
+      const isSecondSession = admissionPriorPaid > 0.01;
+      totalBaseSum += isSecondSession ? admissionOutstanding : admissionBase;
+      totalDiscountSum += isSecondSession ? 0 : (admissionBase - admissionNet);
+    }
 
     activePrograms.forEach((pb: any) => {
       const base = Number(pb.program_fee || 0);
@@ -57,23 +65,21 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
         : Math.max(0, base - disc);
       const paid = Number(pb.paid_amount || 0);
       const lastPayment = Number(pb.last_payment_amount || 0);
-      const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
+      const priorPaid = Math.max(0, paid - lastPayment);
+      const outstandingBeforeToday = Math.max(0, net - priorPaid);
 
-      totalBaseSum += base > 0 ? base : outstandingBeforeToday;
-      totalDiscountSum += (base - net);
+      const isSecondSession = priorPaid > 0.01;
+      const itemAmt = isSecondSession ? outstandingBeforeToday : (base > 0 ? base : net);
+      const itemDisc = isSecondSession ? 0 : (base - net);
+
+      totalBaseSum += itemAmt;
+      totalDiscountSum += itemDisc;
       programOutstandingTotal += outstandingBeforeToday;
       programPaidToday += lastPayment;
     });
 
-    if (fee.discount_amount !== undefined && Number(fee.discount_amount) > totalDiscountSum) {
-      totalDiscountSum = Number(fee.discount_amount);
-    }
-
-    const totalGross = admissionOutstanding + programOutstandingTotal; // Outstanding sum before today
-    const totalDiscount = 0;
-    const netBill = totalGross;
     const paidToday = admissionPaidToday + programPaidToday;
-    const balanceDue = Math.max(0, netBill - paidToday);
+    const balanceDue = Math.max(0, (totalBaseSum - totalDiscountSum) - paidToday);
 
     // Derived data
     const billDate = formatDate(fee.created_at || new Date());
@@ -251,7 +257,7 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                     Admission Fee
                   </td>
                   <td className="px-5 py-4 text-right text-sm">
-                    {fmt(admissionBase > 0 ? admissionBase : admissionOutstanding)}
+                    {fmt(admissionPriorPaid > 0.01 ? admissionOutstanding : (admissionBase > 0 ? admissionBase : admissionOutstanding))}
                   </td>
                 </tr>
               )}
@@ -266,10 +272,11 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                     : Math.max(0, base - disc);
                   const paid = Number(pb.paid_amount || 0);
                   const lastPayment = Number(pb.last_payment_amount || 0);
-                  const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
+                  const priorPaid = Math.max(0, paid - lastPayment);
+                  const outstandingBeforeToday = Math.max(0, net - priorPaid);
 
-                  const displayAmt = lastPayment > 0 ? lastPayment : (outstandingBeforeToday > 0 ? outstandingBeforeToday : net);
-                  const itemBase = base > 0 ? base : (displayAmt + (pb.discount_type === 'percentage' ? (base * disc / 100) : disc));
+                  const isSecondSession = priorPaid > 0.01;
+                  const itemAmt = isSecondSession ? outstandingBeforeToday : (base > 0 ? base : net);
                   const periodSuffix = pb.due_month ? ` (${formatMonthYear(pb.due_month)})` : "";
 
                   return (
@@ -281,7 +288,7 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                         {pb.title}{periodSuffix}
                       </td>
                       <td className="px-5 py-4 text-right text-sm">
-                        {fmt(itemBase > 0 ? itemBase : displayAmt)}
+                        {fmt(itemAmt)}
                       </td>
                     </tr>
                   );
@@ -295,7 +302,7 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                       : fee.fee_type + " Fee"}
                   </td>
                   <td className="px-5 py-4 text-right text-sm">
-                    {fmt(totalGross)}
+                    {fmt(totalBaseSum - totalDiscountSum)}
                   </td>
                 </tr>
               )}
@@ -307,7 +314,7 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
             <div className="w-full max-w-[320px]">
               <div className="flex justify-between py-2 px-5">
                 <span className="font-bold text-sm">Subtotal:</span>
-                <span className="text-sm">{fmt(totalBaseSum > 0 ? totalBaseSum : totalGross)}</span>
+                <span className="text-sm">{fmt(totalBaseSum)}</span>
               </div>
 
               {totalDiscountSum > 0.01 && (

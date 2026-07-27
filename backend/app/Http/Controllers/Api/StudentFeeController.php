@@ -788,7 +788,8 @@ class StudentFeeController extends Controller
                     // If isUpdate is true, we overwrite the paid amount, otherwise we incrementally add it
                     $existingPaid = (float) $feeRecord->paid_amount;
                     $newPaid = $isUpdate ? $payingNow : $existingPaid + $payingNow;
-                    $returnAmount = max(0, $newPaid - $netAmount);
+                    $rawReturn = $newPaid - $netAmount;
+                    $returnAmount = $rawReturn > 1.01 ? round($rawReturn, 2) : 0;
 
                     // Populate type-specific billing fields
                     if ($type === 'admission') {

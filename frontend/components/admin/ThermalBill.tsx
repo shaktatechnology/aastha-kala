@@ -50,10 +50,11 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
     const admissionPaidToday = showAdmission
       ? Number(fee.admission_last_payment || 0)
       : 0;
+    const admissionPriorPaid = Math.max(0, admissionPaid - admissionPaidToday);
     const admissionOutstanding = showAdmission
-      ? Math.max(0, admissionNet - (admissionPaid - admissionPaidToday))
+      ? Math.max(0, admissionNet - admissionPriorPaid)
       : 0;
-    const renderAdmission = showAdmission && admissionOutstanding > 0.01;
+    const renderAdmission = showAdmission && (admissionOutstanding > 0.01 || admissionPaidToday > 0.01);
 
     const activePrograms = fee.programs_breakdown
       ? fee.programs_breakdown.filter((pb: any) => {
@@ -65,15 +66,22 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               : Math.max(0, base - disc);
           const paid = Number(pb.paid_amount || 0);
           const lastPayment = Number(pb.last_payment_amount || 0);
-          const outstandingBeforeToday = net - (paid - lastPayment);
-          return outstandingBeforeToday > 0.01;
+          const priorPaid = Math.max(0, paid - lastPayment);
+          const outstandingBeforeToday = Math.max(0, net - priorPaid);
+          return (outstandingBeforeToday > 0.01 || lastPayment > 0.01);
         })
       : [];
 
-    let totalBaseSum = renderAdmission ? admissionBase : 0;
-    let totalDiscountSum = renderAdmission ? (admissionBase - admissionNet) : 0;
+    let totalBaseSum = 0;
+    let totalDiscountSum = 0;
     let programOutstandingTotal = 0;
     let programPaidToday = 0;
+
+    if (renderAdmission) {
+      const isSecondSession = admissionPriorPaid > 0.01;
+      totalBaseSum += isSecondSession ? admissionOutstanding : admissionBase;
+      totalDiscountSum += isSecondSession ? 0 : (admissionBase - admissionNet);
+    }
 
     activePrograms.forEach((pb: any) => {
       const base = Number(pb.program_fee || 0);
@@ -84,22 +92,21 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
           : Math.max(0, base - disc);
       const paid = Number(pb.paid_amount || 0);
       const lastPayment = Number(pb.last_payment_amount || 0);
-      const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
+      const priorPaid = Math.max(0, paid - lastPayment);
+      const outstandingBeforeToday = Math.max(0, net - priorPaid);
 
-      totalBaseSum += base > 0 ? base : outstandingBeforeToday;
-      totalDiscountSum += (base - net);
+      const isSecondSession = priorPaid > 0.01;
+      const itemAmt = isSecondSession ? outstandingBeforeToday : (base > 0 ? base : net);
+      const itemDisc = isSecondSession ? 0 : (base - net);
+
+      totalBaseSum += itemAmt;
+      totalDiscountSum += itemDisc;
       programOutstandingTotal += outstandingBeforeToday;
       programPaidToday += lastPayment;
     });
 
-    if (fee.discount_amount !== undefined && Number(fee.discount_amount) > totalDiscountSum) {
-      totalDiscountSum = Number(fee.discount_amount);
-    }
-
-    const totalGross = admissionOutstanding + programOutstandingTotal;
-    const netBill = totalGross;
     const paidToday = admissionPaidToday + programPaidToday;
-    const balanceDue = Math.max(0, netBill - paidToday);
+    const balanceDue = Math.max(0, (totalBaseSum - totalDiscountSum) - paidToday);
 
     const billDate = formatDate(fee.created_at || new Date());
 
@@ -350,7 +357,10 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             </thead>
             <tbody>
               {renderAdmission && (
-                <LineItem label="Admission Fee" amount={fmt(admissionBase > 0 ? admissionBase : admissionOutstanding)} />
+                <LineItem
+                  label="Admission Fee"
+                  amount={fmt(admissionPriorPaid > 0.01 ? admissionOutstanding : (admissionBase > 0 ? admissionBase : admissionOutstanding))}
+                />
               )}
 
               {activePrograms && activePrograms.length > 0 ? (
@@ -363,20 +373,18 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                       : Math.max(0, base - disc);
                   const paid = Number(pb.paid_amount || 0);
                   const lastPayment = Number(pb.last_payment_amount || 0);
-                  const outstandingBeforeToday = Math.max(
-                    0,
-                    net - (paid - lastPayment),
-                  );
+                  const priorPaid = Math.max(0, paid - lastPayment);
+                  const outstandingBeforeToday = Math.max(0, net - priorPaid);
 
-                  const displayAmt = lastPayment > 0 ? lastPayment : (outstandingBeforeToday > 0 ? outstandingBeforeToday : net);
-                  const itemBase = base > 0 ? base : (displayAmt + (pb.discount_type === "percentage" ? (base * disc / 100) : disc));
+                  const isSecondSession = priorPaid > 0.01;
+                  const itemAmt = isSecondSession ? outstandingBeforeToday : (base > 0 ? base : net);
                   const periodSuffix = pb.due_month ? ` (${formatMonthYear(pb.due_month)})` : "";
 
                   return (
                     <LineItem
                       key={idx}
                       label={`${pb.title}${periodSuffix}`}
-                      amount={fmt(itemBase > 0 ? itemBase : displayAmt)}
+                      amount={fmt(itemAmt)}
                     />
                   );
                 })
@@ -387,7 +395,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                       ? "Tuition Fees"
                       : fee.fee_type || "Fee"
                   }
-                  amount={fmt(totalGross)}
+                  amount={fmt(totalBaseSum - totalDiscountSum)}
                   capitalize
                 />
               )}
@@ -406,7 +414,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               }}
             >
               <span>Subtotal</span>
-              <span className="thermal-amount">Rs. {fmt(totalBaseSum > 0 ? totalBaseSum : totalGross)}</span>
+              <span className="thermal-amount">{fmt(totalBaseSum)}</span>
             </div>
 
             {totalDiscountSum > 0.01 && (
