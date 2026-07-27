@@ -82,6 +82,21 @@ function getBsParts(date: string | number | Date) {
 }
 
 export function getBsDateParts(date: string | number | Date) {
+  if (typeof date === "string") {
+    const match = date.match(/^(\d{4})-(\d{2})$/);
+    if (match) {
+      const y = Number(match[1]);
+      const m = Number(match[2]);
+      if (y > 2050 && m >= 1 && m <= 12) {
+        return {
+          year: y,
+          month: m,
+          day: 1,
+        };
+      }
+    }
+  }
+
   const parsed = parseDate(date);
   if (!isValidDate(parsed)) {
     return null;
@@ -172,12 +187,24 @@ export function formatDateTime(date: string | number | Date) {
 }
 
 export function formatMonthYear(date: string | number | Date) {
-  const bs = getBsParts(date);
+  if (typeof date === "string") {
+    const match = date.match(/^(\d{4})-(\d{2})$/);
+    if (match) {
+      const y = Number(match[1]);
+      const m = Number(match[2]);
+      if (y > 2050 && m >= 1 && m <= 12) {
+        return `${nepaliMonthNames[m - 1]} ${toNepaliDigits(y)}`;
+      }
+    }
+  }
+
+  const bs = getBsDateParts(date);
   if (!bs) {
     return "";
   }
 
-  return `${bs.monthName} ${toNepaliDigits(bs.year)}`;
+  const monthName = nepaliMonthNames[bs.month - 1] ?? "";
+  return `${monthName} ${toNepaliDigits(bs.year)}`;
 }
 
 export function bsMonthYearToAdMonthYear(year: number, month: number) {
@@ -200,26 +227,5 @@ export function formatLargeNumber(value: number) {
 }
 
 export function bsMonthYearToAdPeriod(by: number, bm: number) {
-  try {
-    const adDate = bsToAd(`${by}-${String(bm).padStart(2, "0")}-15`);
-    if (adDate) {
-      const parts = adDate.split("-");
-      if (parts.length >= 2) {
-        return `${parts[0]}-${parts[1]}`;
-      }
-    }
-  } catch {
-    // Fallback if calendar conversion encounters an unmapped year
-  }
-
-  let adY: number;
-  let adM: number;
-  if (bm >= 1 && bm <= 8) {
-    adM = bm + 4;
-    adY = by - 57;
-  } else {
-    adM = bm - 8;
-    adY = by - 56;
-  }
-  return `${adY}-${String(adM).padStart(2, "0")}`;
+  return `${by}-${String(bm).padStart(2, "0")}`;
 }

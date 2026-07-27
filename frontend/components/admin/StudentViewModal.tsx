@@ -138,7 +138,8 @@ const StudentViewModal: React.FC<Props> = ({ isOpen, onClose, student }) => {
                 <DetailItem icon={Mail} label="Email" value={student.email || "N/A"} />
                 <DetailItem icon={MapPin} label="Address" value={student.address || "N/A"} />
                 <DetailItem icon={Calendar} label="D.O.B" value={student.dob ? formatDate(student.dob) : "N/A"} />
-                <DetailItem icon={Calendar} label="Enrollment Date" value={student.enrollment_date ? formatDate(student.enrollment_date) : "N/A"} />
+                <DetailItem icon={Calendar} label="Admission Date" value={student.enrollment_date ? formatDate(student.enrollment_date) : "N/A"} />
+                <DetailItem icon={Calendar} label="Billing Start Date" value={student.billing_start_date ? formatDate(student.billing_start_date) : (student.enrollments?.[0]?.enrolled_at ? formatDate(student.enrollments[0].enrolled_at) : "N/A")} />
             </div>
             <div className="space-y-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Other Info</p>

@@ -163,6 +163,10 @@ function distributePayment(
   return result;
 }
 
+function getRowKey(item: { id: number | string; dueMonth?: string | null }): string {
+  return item.dueMonth ? `${item.id}-${item.dueMonth}` : `${item.id}-current`;
+}
+
 function blockNeg(e: React.KeyboardEvent<HTMLInputElement>) {
   if ("eE+-".includes(e.key)) e.preventDefault();
 }
@@ -384,6 +388,9 @@ const FeeAddModal: React.FC<Props> = ({
 
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
+  // Advance Payment State
+  const [advanceMonthsCount, setAdvanceMonthsCount] = useState<number>(0);
+
   // Single "total to pay" input that drives auto-distribution across checked items
   const [totalPayInput, setTotalPayInput] = useState("");
 
@@ -428,7 +435,7 @@ const FeeAddModal: React.FC<Props> = ({
   }, []);
 
   const fetchFeeInfo = useCallback(
-    async (studentId: string, month?: string, isEditing?: boolean) => {
+    async (studentId: string, month?: string, isEditing?: boolean, advanceMonths?: number) => {
       if (!studentId) return;
       try {
         setLoadingFeeInfo(true);
@@ -439,6 +446,8 @@ const FeeAddModal: React.FC<Props> = ({
         const params = new URLSearchParams();
         if (month) params.append("month_year", month);
         if (instructorId) params.append("instructor_id", instructorId);
+        const adv = advanceMonths !== undefined ? advanceMonths : advanceMonthsCount;
+        if (adv > 0) params.append("advance_months", String(adv));
         const qStr = params.toString();
         if (qStr) url += `?${qStr}`;
         const res = await fetch(url, {
@@ -553,7 +562,7 @@ const FeeAddModal: React.FC<Props> = ({
     if (feeInfo.admission_exists || (feeInfo.global_admission_fee ?? 0) > 0)
       ids.add("admission");
     feeInfo.program_fees?.programs_breakdown?.forEach((pb) =>
-      ids.add(String(pb.id)),
+      ids.add(getRowKey(pb)),
     );
     setCheckedIds(ids);
   }, [feeInfo]);
@@ -677,7 +686,7 @@ const FeeAddModal: React.FC<Props> = ({
     if (checkedIds.has("admission") && calculations.hasAdm)
       t += calculations.admBaseNum;
     calculations.progData.forEach((p) => {
-      if (checkedIds.has(String(p.id))) t += p.base;
+      if (checkedIds.has(getRowKey(p))) t += p.base;
     });
     return t;
   }, [checkedIds, calculations]);
@@ -688,7 +697,7 @@ const FeeAddModal: React.FC<Props> = ({
     if (checkedIds.has("admission") && calculations.hasAdm)
       t += calculations.admDue;
     calculations.progData.forEach((p) => {
-      if (checkedIds.has(String(p.id))) t += p.due;
+      if (checkedIds.has(getRowKey(p))) t += p.due;
     });
     return t;
   }, [checkedIds, calculations]);
@@ -699,7 +708,7 @@ const FeeAddModal: React.FC<Props> = ({
     if (checkedIds.has("admission") && calculations.hasAdm)
       t += calculations.admCurrentPaying;
     calculations.progData.forEach((p) => {
-      if (checkedIds.has(String(p.id))) t += p.currentPaying;
+      if (checkedIds.has(getRowKey(p))) t += p.currentPaying;
     });
     return t;
   }, [checkedIds, calculations]);
@@ -711,7 +720,7 @@ const FeeAddModal: React.FC<Props> = ({
     let c = 0;
     if (checkedIds.has("admission") && calculations.hasAdm) c++;
     calculations.progData.forEach((p) => {
-      if (checkedIds.has(String(p.id))) c++;
+      if (checkedIds.has(getRowKey(p))) c++;
     });
     return c;
   }, [checkedIds, calculations]);
@@ -739,7 +748,7 @@ const FeeAddModal: React.FC<Props> = ({
     }
     const ids = new Set<string>();
     if (calculations.hasAdm) ids.add("admission");
-    calculations.progData.forEach((p) => ids.add(String(p.id)));
+    calculations.progData.forEach((p) => ids.add(getRowKey(p)));
     setCheckedIds(ids);
   };
 
@@ -754,8 +763,9 @@ const FeeAddModal: React.FC<Props> = ({
       )
         items.push({ id: "admission", due: calculations.admDue });
       calculations.progData.forEach((p) => {
-        if (checkedIds.has(String(p.id)) && p.due > 0)
-          items.push({ id: String(p.id), due: p.due });
+        const k = getRowKey(p);
+        if (checkedIds.has(k) && p.due > 0)
+          items.push({ id: k, due: p.due });
       });
 
       if (items.length === 0) return;
@@ -766,15 +776,18 @@ const FeeAddModal: React.FC<Props> = ({
           dist["admission"] > 0 ? dist["admission"].toString() : "",
         );
       setProgEntries((prev) =>
-        prev.map((pe) => ({
-          ...pe,
-          payingNow:
-            dist[String(pe.id)] !== undefined
-              ? dist[String(pe.id)] > 0
-                ? dist[String(pe.id)].toString()
-                : ""
-              : pe.payingNow,
-        })),
+        prev.map((pe) => {
+          const k = getRowKey(pe);
+          return {
+            ...pe,
+            payingNow:
+              dist[k] !== undefined
+                ? dist[k] > 0
+                  ? dist[k].toString()
+                  : ""
+                : pe.payingNow,
+          };
+        }),
       );
     },
     [checkedIds, calculations],
@@ -877,7 +890,8 @@ const FeeAddModal: React.FC<Props> = ({
 
       // 2. Program items
       calculations.progData.forEach((p) => {
-        if (checkedIds.has(String(p.id))) {
+        const k = getRowKey(p);
+        if (checkedIds.has(k)) {
           feeItems.push({
             type: "program",
             program_id: p.id,
@@ -1142,6 +1156,29 @@ const FeeAddModal: React.FC<Props> = ({
                       </select>
                       <ChevronDown className="w-3.5 h-3.5 text-text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
+
+                    {/* Advance Months Selector */}
+                    {/* <div className="flex items-center gap-1.5 ml-2 bg-slate-100/70 p-1 rounded-xl border border-slate-200/60">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Pay Advance:</span>
+                      <TogglePill
+                        size="xs"
+                        options={[
+                          { label: "None", value: "0" },
+                          { label: "+1 Mo", value: "1" },
+                          { label: "+2 Mo", value: "2" },
+                          { label: "+3 Mo", value: "3" },
+                          { label: "+6 Mo", value: "6" },
+                        ]}
+                        value={String(advanceMonthsCount)}
+                        onChange={(val) => {
+                          const count = Number(val) || 0;
+                          setAdvanceMonthsCount(count);
+                          if (selectedStudent?.id) {
+                            fetchFeeInfo(String(selectedStudent.id), progPeriod, false, count);
+                          }
+                        }}
+                      />
+                    </div> */}
                   </div>
                 </div>
 
@@ -1337,17 +1374,13 @@ const FeeAddModal: React.FC<Props> = ({
 
                             {calculations.progData.map((p) => (
                               <tr
-                                key={
-                                  p.dueMonth
-                                    ? `${p.id}-${p.dueMonth}`
-                                    : `${p.id}-current`
-                                }
+                                key={getRowKey(p)}
                                 className="group hover:bg-gray-50/50 transition-colors"
                               >
                                 <td className="px-3 py-3">
                                   <Checkbox
-                                    checked={checkedIds.has(String(p.id))}
-                                    onChange={() => toggleCheck(String(p.id))}
+                                    checked={checkedIds.has(getRowKey(p))}
+                                    onChange={() => toggleCheck(getRowKey(p))}
                                   />
                                 </td>
                                 <td className="px-3 py-3">
@@ -1363,15 +1396,19 @@ const FeeAddModal: React.FC<Props> = ({
                                       <p className="text-[13px] font-semibold text-gray-800 truncate max-w-[160px]">
                                         {p.title}
                                       </p>
-                                      {p.dueMonth &&
-                                      p.billingMode === "monthly" ? (
+                                      {(p.isAdvance || (p.dueMonth && p.dueMonth > progPeriod)) ? (
+                                        <span className="text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full">
+                                          {formatMonthYear(p.dueMonth)}
+                                        </span>
+                                      ) : p.dueMonth &&
+                                        p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                                          DUE: {formatMonthYear(p.dueMonth)}
+                                          {formatMonthYear(p.dueMonth)}
                                         </span>
                                       ) : !p.dueMonth &&
                                         p.billingMode === "monthly" ? (
                                         <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">
-                                          Monthly
+                                          {formatMonthYear(progPeriod)}
                                         </span>
                                       ) : !p.dueMonth &&
                                         p.billingMode === "fixed" ? (
@@ -1383,7 +1420,6 @@ const FeeAddModal: React.FC<Props> = ({
                                   </div>
                                 </td>
                                 <td className="px-3 py-3">
-                                  {/* Carry-forward rows: base is read-only (historical amount) */}
                                   {p.dueMonth ? (
                                     <div className="text-right text-[12px] font-bold text-gray-700 px-2">
                                       {fmtS(p.base)}
@@ -1396,8 +1432,7 @@ const FeeAddModal: React.FC<Props> = ({
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id &&
-                                            o.dueMonth === p.dueMonth
+                                            getRowKey(o) === getRowKey(p)
                                               ? {
                                                   ...o,
                                                   base:
@@ -1423,8 +1458,7 @@ const FeeAddModal: React.FC<Props> = ({
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id &&
-                                            o.dueMonth === p.dueMonth
+                                            getRowKey(o) === getRowKey(p)
                                               ? {
                                                   ...o,
                                                   discount: Math.max(
@@ -1450,8 +1484,7 @@ const FeeAddModal: React.FC<Props> = ({
                                       onChange={(v) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id &&
-                                            o.dueMonth === p.dueMonth
+                                            getRowKey(o) === getRowKey(p)
                                               ? {
                                                   ...o,
                                                   discountType: v as
@@ -1489,8 +1522,7 @@ const FeeAddModal: React.FC<Props> = ({
                                       onChange={(e) =>
                                         setProgEntries((prev) =>
                                           prev.map((o) =>
-                                            o.id === p.id &&
-                                            o.dueMonth === p.dueMonth
+                                            getRowKey(o) === getRowKey(p)
                                               ? {
                                                   ...o,
                                                   payingNow: clamp(

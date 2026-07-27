@@ -22,6 +22,7 @@ class Student extends Model
         'gender',
         'classes',
         'enrollment_date',
+        'billing_start_date',
         'duration_value',
         'duration_unit',
         'status',
@@ -31,6 +32,7 @@ class Student extends Model
     protected $casts = [
         'dob' => 'date',
         'enrollment_date' => 'date',
+        'billing_start_date' => 'date',
         'admission_fee_not_required' => 'boolean',
     ];
 

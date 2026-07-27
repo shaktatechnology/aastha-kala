@@ -214,7 +214,7 @@ const StudentAddEditModal: React.FC<Props> = ({
         gender: student.gender || "",
         classes: student.classes || "",
         enrollment_date: student.enrollment_date ? student.enrollment_date.split('T')[0] : "",
-        billing_start_date: student.billing_start_date ? student.billing_start_date.split('T')[0] : (student.enrollment_date ? student.enrollment_date.split('T')[0] : ""),
+        billing_start_date: student.billing_start_date ? student.billing_start_date.split('T')[0] : (student.enrollments?.[0]?.enrolled_at ? student.enrollments[0].enrolled_at.split('T')[0] : (student.enrollment_date ? student.enrollment_date.split('T')[0] : "")),
         duration_value: student.duration_value || "",
         duration_unit: student.duration_unit || "",
         status: student.status || "active",
@@ -416,19 +416,13 @@ const StudentAddEditModal: React.FC<Props> = ({
         }
       });
 
-      // Calculate admission_month_year from enrollment_date
-      const admissionBs = getBsDateParts(form.enrollment_date || new Date());
-      const admissionMonthYear = admissionBs
-        ? bsMonthYearToAdPeriod(admissionBs.year, admissionBs.month)
-        : new Date().toISOString().substring(0, 7);
-      formData.append("admission_month_year", admissionMonthYear);
-
-      // Calculate fee_month_year (program billing start month) from billing_start_date
+      // Calculate fee_month_year & admission_month_year (billing start month) from billing_start_date
       const billingStartDate = form.billing_start_date || form.enrollment_date || new Date();
       const billingBs = getBsDateParts(billingStartDate);
       const feeMonthYear = billingBs
         ? bsMonthYearToAdPeriod(billingBs.year, billingBs.month)
         : new Date().toISOString().substring(0, 7);
+      formData.append("admission_month_year", feeMonthYear);
       formData.append("fee_month_year", feeMonthYear);
       formData.append("billing_start_date", typeof billingStartDate === 'string' ? billingStartDate : new Date(billingStartDate).toISOString().split('T')[0]);
 
@@ -698,7 +692,7 @@ const StudentAddEditModal: React.FC<Props> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div id="enrollment_date" className="w-full flex flex-col gap-1.5 animate-fade-in relative z-[40]">
                 <label className="flex items-center text-[11px] font-black uppercase tracking-[0.15em] text-text-muted gap-2 ml-1">
-                  Admissino Date
+                  Admission Date
                 </label>
                 <NepaliDateInput
                   value={form.enrollment_date || ""}
@@ -706,7 +700,7 @@ const StudentAddEditModal: React.FC<Props> = ({
                     setForm(prev => ({
                       ...prev,
                       enrollment_date: val,
-                      billing_start_date: prev.billing_start_date || val
+                      billing_start_date: (!prev.billing_start_date || prev.billing_start_date === prev.enrollment_date) ? val : prev.billing_start_date
                     }));
                   }}
                 />

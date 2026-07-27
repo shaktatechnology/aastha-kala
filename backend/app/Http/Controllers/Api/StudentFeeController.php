@@ -274,13 +274,19 @@ class StudentFeeController extends Controller
             return response()->json(['message' => 'Student not found'], 404);
         }
 
-        $requestedMonth = $request->query('month_year');
+        $requestedMonthRaw = $request->query('month_year');
+        $requestedMonth = $this->formatToBsMonthString($requestedMonthRaw);
 
         // Fetch all payment records for this student in this month
         $monthRecords = collect();
         if ($requestedMonth) {
             $monthRecords = StudentFee::where('student_id', $studentId)
-                ->where('month_year', $requestedMonth)
+                ->where(function ($q) use ($requestedMonth, $requestedMonthRaw) {
+                    $q->where('month_year', $requestedMonth);
+                    if ($requestedMonthRaw && $requestedMonthRaw !== $requestedMonth) {
+                        $q->orWhere('month_year', $requestedMonthRaw);
+                    }
+                })
                 ->get();
         }
 
@@ -292,7 +298,12 @@ class StudentFeeController extends Controller
         $admissionRecord = null;
         if ($requestedMonth) {
             $admissionRecord = StudentFee::where('student_id', $studentId)
-                ->where('month_year', $requestedMonth)
+                ->where(function ($q) use ($requestedMonth, $requestedMonthRaw) {
+                    $q->where('month_year', $requestedMonth);
+                    if ($requestedMonthRaw && $requestedMonthRaw !== $requestedMonth) {
+                        $q->orWhere('month_year', $requestedMonthRaw);
+                    }
+                })
                 ->where(function ($q) {
                     $q->where('fee_type', 'admission')->orWhere('fee_type', 'billing');
                 })
@@ -473,13 +484,21 @@ class StudentFeeController extends Controller
                 $skipCurrentRow = true;
             }
 
-            // If requestedMonth is BEFORE the program's enrolled_at month (and no fee was explicitly saved), skip current row
-            if ($item instanceof \App\Models\StudentProgram && $item->enrolled_at && $requestedMonth && !$existing) {
-                $enrolledMonth = is_string($item->enrolled_at)
-                    ? substr($item->enrolled_at, 0, 7)
-                    : $item->enrolled_at->format('Y-m');
+            // If requestedMonth is BEFORE the program's enrolled_at or enrollment date (and no fee was explicitly saved), skip current row
+            $enrolledRaw = null;
+            if ($item instanceof \App\Models\StudentProgram && $item->enrolled_at) {
+                $enrolledRaw = is_string($item->enrolled_at) ? $item->enrolled_at : $item->enrolled_at->format('Y-m-d');
+            }
+            if (!$enrolledRaw && $student->billing_start_date) {
+                $enrolledRaw = is_string($student->billing_start_date) ? $student->billing_start_date : $student->billing_start_date->format('Y-m-d');
+            }
+            if (!$enrolledRaw && $student->enrollment_date) {
+                $enrolledRaw = is_string($student->enrollment_date) ? $student->enrollment_date : $student->enrollment_date->format('Y-m-d');
+            }
 
-                if ($requestedMonth < $enrolledMonth) {
+            if ($enrolledRaw && $requestedMonth && !$existing) {
+                $enrolledMonthBs = $this->formatToBsMonthString(substr($enrolledRaw, 0, 7));
+                if ($enrolledMonthBs && $requestedMonth < $enrolledMonthBs) {
                     $skipCurrentRow = true;
                 }
             }
@@ -492,6 +511,9 @@ class StudentFeeController extends Controller
                 if ($item instanceof \App\Models\StudentProgram && $item->enrolled_at) {
                     $enrolledDate = is_string($item->enrolled_at) ? $item->enrolled_at : $item->enrolled_at->format('Y-m-d');
                 }
+                if (!$enrolledDate && $student->billing_start_date) {
+                    $enrolledDate = is_string($student->billing_start_date) ? $student->billing_start_date : $student->billing_start_date->format('Y-m-d');
+                }
                 if (!$enrolledDate && $student->enrollment_date) {
                     $enrolledDate = is_string($student->enrollment_date) ? $student->enrollment_date : $student->enrollment_date->format('Y-m-d');
                 }
@@ -501,7 +523,8 @@ class StudentFeeController extends Controller
                     ->where('fee_type', 'program')
                     ->min('month_year');
 
-                $startMonth = $earliestRecordMonth ?: ($enrolledDate ? substr($enrolledDate, 0, 7) : null);
+                $startMonthRaw = $earliestRecordMonth ?: ($enrolledDate ? substr($enrolledDate, 0, 7) : null);
+                $startMonth = $this->formatToBsMonthString($startMonthRaw);
 
                 if ($startMonth && $startMonth < $requestedMonth) {
                     $existingPriorRecords = StudentFee::where('student_id', $studentId)
@@ -511,64 +534,58 @@ class StudentFeeController extends Controller
                         ->get()
                         ->groupBy('month_year');
 
-                    try {
-                        $currentPointer = \Carbon\Carbon::parse($startMonth . '-01');
-                        $endPointer     = \Carbon\Carbon::parse($requestedMonth . '-01');
+                    $currentPointer = $startMonth;
+                    while ($currentPointer < $requestedMonth) {
+                        $mStr = $currentPointer;
 
-                        while ($currentPointer->lt($endPointer)) {
-                            $mStr = $currentPointer->format('Y-m');
+                        if (isset($existingPriorRecords[$mStr])) {
+                            $dueRows = $existingPriorRecords[$mStr];
+                            $netTotal  = $dueRows->sum(fn($r) => (float)$r->total_amount);
+                            $paidTotal = $dueRows->sum(fn($r) => (float)$r->paid_amount);
+                            $outstanding = max(0, $netTotal - $paidTotal);
 
-                            if (isset($existingPriorRecords[$mStr])) {
-                                $dueRows = $existingPriorRecords[$mStr];
-                                $netTotal  = $dueRows->sum(fn($r) => (float)$r->total_amount);
-                                $paidTotal = $dueRows->sum(fn($r) => (float)$r->paid_amount);
-                                $outstanding = max(0, $netTotal - $paidTotal);
-
-                                if ($outstanding > 0.01) {
-                                    $breakdown[] = [
-                                        'id'                   => $p->id,
-                                        'title'                => $p->title,
-                                        'program_fee'          => round($outstanding, 2),
-                                        'paid_amount'          => 0,
-                                        'last_payment_amount'  => 0,
-                                        'discount'             => 0,
-                                        'discount_type'        => 'cash',
-                                        'status'               => 'pending',
-                                        'billing_mode'         => $billingMode,
-                                        'monthly_discount'     => 0,
-                                        'monthly_discount_type'=> 'cash',
-                                        'due_month'            => $mStr,
-                                    ];
-                                }
-                            } else {
-                                // Unrecorded past month between startMonth and requestedMonth
-                                $netForMonth = $fee;
-                                if ($monthlyDiscount > 0) {
-                                    $netForMonth = $monthlyDiscountType === 'percentage'
-                                        ? max(0, $fee - ($fee * $monthlyDiscount / 100))
-                                        : max(0, $fee - $monthlyDiscount);
-                                }
-
+                            if ($outstanding > 0.01) {
                                 $breakdown[] = [
                                     'id'                   => $p->id,
                                     'title'                => $p->title,
-                                    'program_fee'          => round($netForMonth, 2),
+                                    'program_fee'          => round($outstanding, 2),
                                     'paid_amount'          => 0,
                                     'last_payment_amount'  => 0,
-                                    'discount'             => $monthlyDiscount,
-                                    'discount_type'        => $monthlyDiscountType,
+                                    'discount'             => 0,
+                                    'discount_type'        => 'cash',
                                     'status'               => 'pending',
                                     'billing_mode'         => $billingMode,
-                                    'monthly_discount'     => $monthlyDiscount,
-                                    'monthly_discount_type'=> $monthlyDiscountType,
+                                    'monthly_discount'     => 0,
+                                    'monthly_discount_type'=> 'cash',
                                     'due_month'            => $mStr,
                                 ];
                             }
+                        } else {
+                            // Unrecorded past month between startMonth and requestedMonth
+                            $netForMonth = $fee;
+                            if ($monthlyDiscount > 0) {
+                                $netForMonth = $monthlyDiscountType === 'percentage'
+                                    ? max(0, $fee - ($fee * $monthlyDiscount / 100))
+                                    : max(0, $fee - $monthlyDiscount);
+                            }
 
-                            $currentPointer->addMonth();
+                            $breakdown[] = [
+                                'id'                   => $p->id,
+                                'title'                => $p->title,
+                                'program_fee'          => round($netForMonth, 2),
+                                'paid_amount'          => 0,
+                                'last_payment_amount'  => 0,
+                                'discount'             => $monthlyDiscount,
+                                'discount_type'        => $monthlyDiscountType,
+                                'status'               => 'pending',
+                                'billing_mode'         => $billingMode,
+                                'monthly_discount'     => $monthlyDiscount,
+                                'monthly_discount_type'=> $monthlyDiscountType,
+                                'due_month'            => $mStr,
+                            ];
                         }
-                    } catch (\Exception $e) {
-                        // Fallback to basic DB query if date parsing fails
+
+                        $currentPointer = $this->getNextMonthString($currentPointer);
                     }
                 }
             } elseif ($requestedMonth && in_array($billingMode, ['fixed', 'duration'])) {
@@ -618,6 +635,46 @@ class StudentFeeController extends Controller
                     'monthly_discount_type'=> $monthlyDiscountType,
                     'due_month'            => null, // null = current month
                 ];
+
+                // Project future advance months if requested
+                $advanceCount = (int) $request->query('advance_months', 0);
+                if ($advanceCount > 0 && $requestedMonth && $billingMode === 'monthly') {
+                    $advPointer = $this->getNextMonthString($requestedMonth);
+                    for ($i = 0; $i < $advanceCount; $i++) {
+                        $advMonthStr = $advPointer;
+
+                        $advExisting = StudentFee::where('student_id', $studentId)
+                            ->where('program_id', $p->id)
+                            ->where('fee_type', 'program')
+                            ->where('month_year', $advMonthStr)
+                            ->first();
+
+                        $netForAdv = $fee;
+                        if ($monthlyDiscount > 0) {
+                            $netForAdv = $monthlyDiscountType === 'percentage'
+                                ? max(0, $fee - ($fee * $monthlyDiscount / 100))
+                                : max(0, $fee - $monthlyDiscount);
+                        }
+
+                        $breakdown[] = [
+                            'id'                   => $p->id,
+                            'title'                => $p->title,
+                            'program_fee'          => ($advExisting && (float)$advExisting->program_fee > 0) ? (float) $advExisting->program_fee : round($netForAdv, 2),
+                            'paid_amount'          => $advExisting ? (float) $advExisting->paid_amount : 0,
+                            'last_payment_amount'  => $advExisting ? (float) $advExisting->last_payment_amount : 0,
+                            'discount'             => $advExisting ? (float) $advExisting->program_discount : $monthlyDiscount,
+                            'discount_type'        => $advExisting ? ($advExisting->program_discount_type ?? 'cash') : $monthlyDiscountType,
+                            'status'               => $advExisting ? $advExisting->status : 'pending',
+                            'billing_mode'         => $billingMode,
+                            'monthly_discount'     => $monthlyDiscount,
+                            'monthly_discount_type'=> $monthlyDiscountType,
+                            'due_month'            => $advMonthStr,
+                            'is_advance'           => true,
+                        ];
+
+                        $advPointer = $this->getNextMonthString($advPointer);
+                    }
+                }
             }
         }
 
@@ -824,6 +881,48 @@ class StudentFeeController extends Controller
             'success' => true,
             'data' => $schedules
         ]);
+    }
+
+    private function formatToBsMonthString(?string $dateStr): ?string
+    {
+        if (!$dateStr) return null;
+        $parts = explode('-', $dateStr);
+        if (count($parts) < 2) return $dateStr;
+        $y = (int)$parts[0];
+        if ($y >= 2050) {
+            return sprintf('%04d-%02d', $y, (int)$parts[1]);
+        }
+
+        try {
+            $fullDate = count($parts) >= 3 ? $dateStr : $dateStr . '-15';
+            $carbon = \Carbon\Carbon::parse($fullDate);
+            $adM = $carbon->month;
+            $adY = $carbon->year;
+            if ($adM >= 4) {
+                $bsY = $adY + 57;
+                $bsM = $adM - 3;
+            } else {
+                $bsY = $adY + 56;
+                $bsM = $adM + 9;
+            }
+            return sprintf('%04d-%02d', $bsY, $bsM);
+        } catch (\Exception $e) {
+            return $dateStr;
+        }
+    }
+
+    private function getNextMonthString(string $mStr): string
+    {
+        $parts = explode('-', $mStr);
+        if (count($parts) < 2) return $mStr;
+        $y = (int) $parts[0];
+        $m = (int) $parts[1];
+        $m++;
+        if ($m > 12) {
+            $m = 1;
+            $y++;
+        }
+        return sprintf('%04d-%02d', $y, $m);
     }
 }
 

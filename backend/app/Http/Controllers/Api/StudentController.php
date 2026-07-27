@@ -60,6 +60,7 @@ class StudentController extends Controller
             'classes' => 'nullable|string',
             'status' => 'nullable|in:active,inactive,graduated',
             'enrollment_date' => 'nullable|date',
+            'billing_start_date' => 'nullable|date',
             'admission_fee_not_required' => 'nullable|boolean',
             'duration_value' => 'nullable|numeric|min:0',
             'duration_unit' => 'nullable|string',
@@ -97,6 +98,8 @@ class StudentController extends Controller
         $setting = \App\Models\Setting::first();
         $admissionFee = $setting ? (float) ($setting->admission_fee ?? 0) : 0;
 
+        $targetFeeMonth = request()->input('fee_month_year') ?: request()->input('admission_month_year') ?: date('Y-m');
+
         if ($admissionFee > 0 && !$student->admission_fee_not_required) {
             \App\Models\StudentFee::create([
                 'student_id' => $student->id,
@@ -106,7 +109,7 @@ class StudentController extends Controller
                 'pending_amount' => $admissionFee,
                 'status' => 'pending',
                 'admission_fee' => $admissionFee,
-                'month_year' => request()->input('admission_month_year') ?: request()->input('fee_month_year') ?: date('Y-m'),
+                'month_year' => $targetFeeMonth,
                 'payment_method' => 'Cash',
                 'remarks' => '',
             ]);
@@ -157,6 +160,7 @@ class StudentController extends Controller
             'classes' => 'nullable|string',
             'status' => 'nullable|in:active,inactive,graduated',
             'enrollment_date' => 'nullable|date',
+            'billing_start_date' => 'nullable|date',
             'admission_fee_not_required' => 'nullable|boolean',
             'duration_value' => 'nullable|numeric|min:0',
             'duration_unit' => 'nullable|string',
@@ -202,11 +206,12 @@ class StudentController extends Controller
         } else {
             $setting = \App\Models\Setting::first();
             $admissionFee = $setting ? (float) ($setting->admission_fee ?? 0) : 0;
+            $targetFeeMonth = request()->input('fee_month_year') ?: request()->input('admission_month_year') ?: date('Y-m');
             if ($admissionFee > 0) {
-                $exists = \App\Models\StudentFee::where('student_id', $student->id)
+                $existingAdmissionFee = \App\Models\StudentFee::where('student_id', $student->id)
                     ->where('fee_type', 'admission')
-                    ->exists();
-                if (!$exists) {
+                    ->first();
+                if (!$existingAdmissionFee) {
                     \App\Models\StudentFee::create([
                         'student_id' => $student->id,
                         'fee_type' => 'admission',
@@ -215,10 +220,12 @@ class StudentController extends Controller
                         'pending_amount' => $admissionFee,
                         'status' => 'pending',
                         'admission_fee' => $admissionFee,
-                        'month_year' => request()->input('admission_month_year') ?: request()->input('fee_month_year') ?: date('Y-m'),
+                        'month_year' => $targetFeeMonth,
                         'payment_method' => 'Cash',
                         'remarks' => '',
                     ]);
+                } else if ($existingAdmissionFee->paid_amount <= 0 && $existingAdmissionFee->month_year !== $targetFeeMonth) {
+                    $existingAdmissionFee->update(['month_year' => $targetFeeMonth]);
                 }
             }
         }
@@ -296,6 +303,7 @@ class StudentController extends Controller
 
             $spEnrolledAt = $enrollInfo['enrolled_at']
                 ?? request()->input('billing_start_date')
+                ?? $student->billing_start_date
                 ?? $student->enrollment_date
                 ?: date('Y-m-d');
 
@@ -322,7 +330,7 @@ class StudentController extends Controller
                 'student_id' => $student->id,
                 'program_id' => $pId,
                 'status' => $bookingStatus,
-                'booking_date' => $student->enrollment_date ?: date('Y-m-d'),
+                'booking_date' => $student->billing_start_date ?? $student->enrollment_date ?: date('Y-m-d'),
                 'name' => $student->name,
                 'phone' => $student->phone,
                 'email' => $student->email,
