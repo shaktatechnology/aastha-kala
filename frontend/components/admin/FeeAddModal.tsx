@@ -163,8 +163,9 @@ function distributePayment(
   return result;
 }
 
-function getRowKey(item: { id: number | string; dueMonth?: string | null }): string {
-  return item.dueMonth ? `${item.id}-${item.dueMonth}` : `${item.id}-current`;
+function getRowKey(item: { id: number | string; dueMonth?: string | null; due_month?: string | null }): string {
+  const m = item.dueMonth ?? item.due_month;
+  return m ? `${item.id}-${m}` : `${item.id}-current`;
 }
 
 function blockNeg(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -519,10 +520,8 @@ const FeeAddModal: React.FC<Props> = ({
                 id: pb.id,
                 title: pb.title,
                 base: Number(pb.program_fee) || 0,
-                discount: pb.due_month ? 0 : Number(pb.discount ?? 0) || 0,
-                discountType: pb.due_month
-                  ? "cash"
-                  : ((pb.discount_type as "cash" | "percentage") ?? "cash"),
+                discount: Number(pb.discount ?? 0) || 0,
+                discountType: ((pb.discount_type as "cash" | "percentage") ?? "cash"),
                 // For editing: initialPaid = existing paid, payingNow = empty
                 payingNow: "", // Always start empty for new payments
                 initialPaid: Number(pb.paid_amount) || 0, // Always show previous paid
@@ -915,10 +914,22 @@ const FeeAddModal: React.FC<Props> = ({
         body: JSON.stringify(payload),
       });
 
-      const result = await res.json();
+      let result: any = {};
+      try {
+        const text = await res.text();
+        result = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error("Server returned an invalid response. Please try again.");
+      }
       if (!res.ok) throw new Error(result.message || "Failed to save payment");
 
       toast.success("Payment processed successfully!");
+
+      const checkedProgData = calculations.progData.filter((p) => checkedIds.has(getRowKey(p)));
+      const checkedProgGross = checkedProgData.reduce((sum, p) => sum + p.base, 0);
+      const checkedProgDiscount = checkedProgData.reduce((sum, p) => sum + (p.base - p.net), 0);
+      const checkedProgPaid = checkedProgData.reduce((sum, p) => sum + p.totalPaid, 0);
+      const checkedProgPayingNow = checkedProgData.reduce((sum, p) => sum + p.currentPaying, 0);
 
       const printFee = {
         id: result.id || fee?.id || "N/A",
@@ -928,35 +939,34 @@ const FeeAddModal: React.FC<Props> = ({
         shift: shift || undefined,
         remarks: remarks || undefined,
         fee_type: activeFeeType,
-        total_amount: calculations.grandTotal,
-        gross_amount:
-          calculations.progBaseSum +
-          (calculations.hasAdm ? calculations.admBaseNum : 0),
-        discount_amount: calculations.totalDiscount,
-        paid_amount: calculations.totalCollected,
+        total_amount: (checkedIds.has("admission") && calculations.hasAdm ? calculations.admNet : 0) + checkedProgData.reduce((sum, p) => sum + p.net, 0),
+        gross_amount: (checkedIds.has("admission") && calculations.hasAdm ? calculations.admBaseNum : 0) + checkedProgGross,
+        discount_amount: (checkedIds.has("admission") && calculations.hasAdm ? calculations.admBaseNum - calculations.admNet : 0) + checkedProgDiscount,
+        paid_amount: (checkedIds.has("admission") && calculations.hasAdm ? calculations.totalAdmPaid : 0) + checkedProgPaid,
         return_amount: excessAmount,
-        admission_fee: calculations.hasAdm ? calculations.admBaseNum : 0,
+        admission_fee: (checkedIds.has("admission") && calculations.hasAdm) ? calculations.admBaseNum : 0,
         admission_discount: admDisc,
         admission_discount_type: admDiscType,
         admission_paid_amount: calculations.totalAdmPaid,
-        admission_last_payment: calculations.hasAdm
+        admission_last_payment: (checkedIds.has("admission") && calculations.hasAdm)
           ? calculations.admCurrentPaying
           : 0,
-        programs_breakdown: calculations.progData
-          .filter((p) => checkedIds.has(String(p.id)))
-          .map((p) => ({
-            title: p.title,
-            program_fee: p.base,
-            discount: p.discount,
-            discount_type: p.discountType,
-            paid_amount: p.totalPaid,
-            last_payment_amount: p.currentPaying,
-          })),
+        programs_breakdown: checkedProgData.map((p) => ({
+          id: p.id,
+          title: p.title,
+          program_fee: p.base,
+          discount: p.discount,
+          discount_type: p.discountType,
+          paid_amount: p.totalPaid,
+          last_payment_amount: p.currentPaying,
+          due_month: p.dueMonth,
+          is_advance: p.isAdvance,
+        })),
         payments: [
           {
             created_at: new Date().toISOString(),
             payment_method: paymentMethods.join(", "),
-            paid_amount: calculations.totalCollected,
+            paid_amount: ((checkedIds.has("admission") && calculations.hasAdm) ? calculations.admCurrentPaying : 0) + checkedProgPayingNow,
           },
         ],
       };
@@ -1158,7 +1168,7 @@ const FeeAddModal: React.FC<Props> = ({
                     </div>
 
                     {/* Advance Months Selector */}
-                    {/* <div className="flex items-center gap-1.5 ml-2 bg-slate-100/70 p-1 rounded-xl border border-slate-200/60">
+                    <div className="flex items-center gap-1.5 ml-2 bg-slate-100/70 p-1 rounded-xl border border-slate-200/60">
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Pay Advance:</span>
                       <TogglePill
                         size="xs"
@@ -1178,7 +1188,7 @@ const FeeAddModal: React.FC<Props> = ({
                           }
                         }}
                       />
-                    </div> */}
+                    </div>
                   </div>
                 </div>
 
@@ -1420,34 +1430,28 @@ const FeeAddModal: React.FC<Props> = ({
                                   </div>
                                 </td>
                                 <td className="px-3 py-3">
-                                  {p.dueMonth ? (
-                                    <div className="text-right text-[12px] font-bold text-gray-700 px-2">
-                                      {fmtS(p.base)}
-                                    </div>
-                                  ) : (
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      value={p.base}
-                                      onChange={(e) =>
-                                        setProgEntries((prev) =>
-                                          prev.map((o) =>
-                                            getRowKey(o) === getRowKey(p)
-                                              ? {
-                                                  ...o,
-                                                  base:
-                                                    Number(
-                                                      clamp(e.target.value),
-                                                    ) || 0,
-                                                }
-                                              : o,
-                                          ),
-                                        )
-                                      }
-                                      onKeyDown={blockNeg}
-                                      className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium"
-                                    />
-                                  )}
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={p.base}
+                                    onChange={(e) =>
+                                      setProgEntries((prev) =>
+                                        prev.map((o) =>
+                                          getRowKey(o) === getRowKey(p)
+                                            ? {
+                                                ...o,
+                                                base:
+                                                  Number(
+                                                    clamp(e.target.value),
+                                                  ) || 0,
+                                              }
+                                            : o,
+                                        ),
+                                      )
+                                    }
+                                    onKeyDown={blockNeg}
+                                    className="w-full text-right bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-gray-300 font-medium"
+                                  />
                                 </td>
                                 <td className="px-3 py-3">
                                   <div className="flex items-center justify-end gap-1.5">

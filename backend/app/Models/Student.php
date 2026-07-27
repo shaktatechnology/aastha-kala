@@ -30,9 +30,9 @@ class Student extends Model
     ];
 
     protected $casts = [
-        'dob' => 'date',
-        'enrollment_date' => 'date',
-        'billing_start_date' => 'date',
+        'dob' => 'date:Y-m-d',
+        'enrollment_date' => 'date:Y-m-d',
+        'billing_start_date' => 'date:Y-m-d',
         'admission_fee_not_required' => 'boolean',
     ];
 

@@ -323,7 +323,7 @@ class StudentFeeController extends Controller
         // Cap at the admission base amount to prevent duplicate per-month records
         // (created by a past bug) from inflating the paid total.
         $admissionBaseAmount = $admissionRecord
-            ? ($admissionRecord->admission_fee > 0 ? (float)$admissionRecord->admission_fee : (float)$admissionRecord->total_amount)
+            ? ($admissionRecord->admission_fee > 0 ? (float)$admissionRecord->admission_fee : ((float)$admissionRecord->total_amount + (float)($admissionRecord->admission_discount ?? 0)))
             : (float)($globalAdmissionFee ?? 0);
 
         // Sum only pure 'admission' fee_type records (ignore billing/program rows)
@@ -545,34 +545,28 @@ class StudentFeeController extends Controller
                             $outstanding = max(0, $netTotal - $paidTotal);
 
                             if ($outstanding > 0.01) {
+                                $firstRow = $dueRows->first();
                                 $breakdown[] = [
                                     'id'                   => $p->id,
                                     'title'                => $p->title,
-                                    'program_fee'          => round($outstanding, 2),
-                                    'paid_amount'          => 0,
+                                    'program_fee'          => ($firstRow && (float)$firstRow->program_fee > 0) ? (float)$firstRow->program_fee : $fee,
+                                    'paid_amount'          => $paidTotal,
                                     'last_payment_amount'  => 0,
-                                    'discount'             => 0,
-                                    'discount_type'        => 'cash',
+                                    'discount'             => $firstRow ? (float)($firstRow->program_discount ?? 0) : $monthlyDiscount,
+                                    'discount_type'        => $firstRow ? ($firstRow->program_discount_type ?? 'cash') : $monthlyDiscountType,
                                     'status'               => 'pending',
                                     'billing_mode'         => $billingMode,
-                                    'monthly_discount'     => 0,
-                                    'monthly_discount_type'=> 'cash',
+                                    'monthly_discount'     => $monthlyDiscount,
+                                    'monthly_discount_type'=> $monthlyDiscountType,
                                     'due_month'            => $mStr,
                                 ];
                             }
                         } else {
                             // Unrecorded past month between startMonth and requestedMonth
-                            $netForMonth = $fee;
-                            if ($monthlyDiscount > 0) {
-                                $netForMonth = $monthlyDiscountType === 'percentage'
-                                    ? max(0, $fee - ($fee * $monthlyDiscount / 100))
-                                    : max(0, $fee - $monthlyDiscount);
-                            }
-
                             $breakdown[] = [
                                 'id'                   => $p->id,
                                 'title'                => $p->title,
-                                'program_fee'          => round($netForMonth, 2),
+                                'program_fee'          => $fee,
                                 'paid_amount'          => 0,
                                 'last_payment_amount'  => 0,
                                 'discount'             => $monthlyDiscount,
@@ -599,16 +593,17 @@ class StudentFeeController extends Controller
                     ->groupBy('month_year');
 
                 foreach ($priorDues as $priorMonth => $dueRows) {
+                    $firstRow = $dueRows->first();
                     $outstanding = $dueRows->sum(fn($r) => (float)$r->total_amount - (float)$r->paid_amount);
                     if ($outstanding > 0.01) {
                         $breakdown[] = [
                             'id'                   => $p->id,
                             'title'                => $p->title,
-                            'program_fee'          => round($outstanding, 2),
-                            'paid_amount'          => 0,
+                            'program_fee'          => ($firstRow && (float)$firstRow->program_fee > 0) ? (float)$firstRow->program_fee : $fee,
+                            'paid_amount'          => $dueRows->sum(fn($r) => (float)$r->paid_amount),
                             'last_payment_amount'  => 0,
-                            'discount'             => 0,
-                            'discount_type'        => 'cash',
+                            'discount'             => $firstRow ? (float)($firstRow->program_discount ?? 0) : 0,
+                            'discount_type'        => $firstRow ? ($firstRow->program_discount_type ?? 'cash') : 'cash',
                             'status'               => 'pending',
                             'billing_mode'         => $billingMode,
                             'monthly_discount'     => 0,
@@ -621,14 +616,28 @@ class StudentFeeController extends Controller
 
             if (!$skipCurrentRow) {
                 // Current-month row
+                $progFeeVal = $fee;
+                $progDiscVal = $billingMode === 'monthly' ? $monthlyDiscount : 0;
+                $progDiscTypeVal = $billingMode === 'monthly' ? $monthlyDiscountType : 'cash';
+
+                if ($existing) {
+                    if ((float)$existing->program_fee > 0) {
+                        $progFeeVal = (float)$existing->program_fee;
+                    } elseif ((float)$existing->total_amount > 0) {
+                        $progFeeVal = (float)$existing->total_amount + (float)($existing->program_discount ?? 0);
+                    }
+                    $progDiscVal = (float)($existing->program_discount ?? 0);
+                    $progDiscTypeVal = $existing->program_discount_type ?? 'cash';
+                }
+
                 $breakdown[] = [
                     'id'                   => $p->id,
                     'title'                => $p->title,
-                    'program_fee'          => ($existing && (float)$existing->program_fee > 0) ? (float) $existing->program_fee : $fee,
+                    'program_fee'          => $progFeeVal,
                     'paid_amount'          => $existing ? (float) $existing->paid_amount : 0,
                     'last_payment_amount'  => $existing ? (float) $existing->last_payment_amount : 0,
-                    'discount'             => $existing ? (float) $existing->program_discount : ($billingMode === 'monthly' ? $monthlyDiscount : 0),
-                    'discount_type'        => $existing ? ($existing->program_discount_type ?? 'cash') : $monthlyDiscountType,
+                    'discount'             => $progDiscVal,
+                    'discount_type'        => $progDiscTypeVal,
                     'status'               => $existing ? $existing->status : 'pending',
                     'billing_mode'         => $billingMode,
                     'monthly_discount'     => $monthlyDiscount,
@@ -649,17 +658,10 @@ class StudentFeeController extends Controller
                             ->where('month_year', $advMonthStr)
                             ->first();
 
-                        $netForAdv = $fee;
-                        if ($monthlyDiscount > 0) {
-                            $netForAdv = $monthlyDiscountType === 'percentage'
-                                ? max(0, $fee - ($fee * $monthlyDiscount / 100))
-                                : max(0, $fee - $monthlyDiscount);
-                        }
-
                         $breakdown[] = [
                             'id'                   => $p->id,
                             'title'                => $p->title,
-                            'program_fee'          => ($advExisting && (float)$advExisting->program_fee > 0) ? (float) $advExisting->program_fee : round($netForAdv, 2),
+                            'program_fee'          => ($advExisting && (float)$advExisting->program_fee > 0) ? (float)$advExisting->program_fee : $fee,
                             'paid_amount'          => $advExisting ? (float) $advExisting->paid_amount : 0,
                             'last_payment_amount'  => $advExisting ? (float) $advExisting->last_payment_amount : 0,
                             'discount'             => $advExisting ? (float) $advExisting->program_discount : $monthlyDiscount,
@@ -834,13 +836,11 @@ class StudentFeeController extends Controller
 
     public function update(Request $request, $id)
     {
-        // For consolidated updates, we find the representative record, then update its entire group
-        $reproFee = StudentFee::findOrFail($id);
+        $reproFee = StudentFee::find($id);
 
-        // We redirect to the store logic but ensuring we use the same student and month
         $request->merge([
-            'student_id' => $reproFee->student_id,
-            'month_year' => $reproFee->month_year,
+            'student_id' => $reproFee ? $reproFee->student_id : $request->student_id,
+            'month_year' => $reproFee ? $reproFee->month_year : $request->month_year,
             'is_update'  => true,
         ]);
 

@@ -48,6 +48,13 @@ function parseDate(date: string | number | Date) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return new Date(`${date}T12:00:00`);
     }
+    const d = new Date(date);
+    if (!Number.isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return new Date(`${year}-${month}-${day}T12:00:00`);
+    }
   }
   return new Date(date);
 }

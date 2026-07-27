@@ -25,7 +25,7 @@ class StudentProgram extends Model
     ];
 
     protected $casts = [
-        'enrolled_at'    => 'date',
+        'enrolled_at'    => 'date:Y-m-d',
         'monthly_discount' => 'float',
     ];
 

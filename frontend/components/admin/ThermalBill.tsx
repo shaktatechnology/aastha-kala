@@ -70,6 +70,8 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
         })
       : [];
 
+    let totalBaseSum = renderAdmission ? admissionBase : 0;
+    let totalDiscountSum = renderAdmission ? (admissionBase - admissionNet) : 0;
     let programOutstandingTotal = 0;
     let programPaidToday = 0;
 
@@ -84,9 +86,15 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
       const lastPayment = Number(pb.last_payment_amount || 0);
       const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
 
+      totalBaseSum += base > 0 ? base : outstandingBeforeToday;
+      totalDiscountSum += (base - net);
       programOutstandingTotal += outstandingBeforeToday;
       programPaidToday += lastPayment;
     });
+
+    if (fee.discount_amount !== undefined && Number(fee.discount_amount) > totalDiscountSum) {
+      totalDiscountSum = Number(fee.discount_amount);
+    }
 
     const totalGross = admissionOutstanding + programOutstandingTotal;
     const netBill = totalGross;
@@ -95,15 +103,27 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
 
     const billDate = formatDate(fee.created_at || new Date());
 
-    const dueRemarks = activePrograms
-      ? activePrograms
-          .filter((pb: any) => pb.due_month)
-          .map((pb: any) => `${pb.title} — ${formatMonthYear(pb.due_month)}`)
-      : [];
+    const allMonths = Array.from(
+      new Set(
+        [
+          fee.month_year,
+          ...(fee.programs_breakdown
+            ? fee.programs_breakdown.map((pb: any) => pb.due_month).filter(Boolean)
+            : []),
+        ].filter(Boolean)
+      )
+    ).sort();
+
+    const lastMonth = allMonths.length > 0 ? allMonths[allMonths.length - 1] : fee.month_year;
+    const periodDisplay = lastMonth ? formatMonthYear(lastMonth) : "N/A";
+
+    const allPeriodsRemark = allMonths.length > 1
+      ? `Periods paid: ${allMonths.map((m: any) => formatMonthYear(m)).join(", ")}`
+      : "";
 
     const remarksParts = [];
     if (fee.remarks) remarksParts.push(fee.remarks);
-    if (dueRemarks.length > 0) remarksParts.push(...dueRemarks);
+    if (allPeriodsRemark) remarksParts.push(allPeriodsRemark);
     const finalRemarks = remarksParts.join(" | ");
 
     const billNo = `#FEE-${fee.id}`;
@@ -282,10 +302,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             {fee.student?.roll_no && (
               <MetaRow label="Roll No." value={fee.student.roll_no} />
             )}
-            <MetaRow
-              label="Period"
-              value={fee.month_year ? formatMonthYear(fee.month_year) : "N/A"}
-            />
+            <MetaRow label="Period" value={periodDisplay} />
             {fee.shift && <MetaRow label="Shift" value={fee.shift} />}
           </div>
 
@@ -333,7 +350,7 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
             </thead>
             <tbody>
               {renderAdmission && (
-                <LineItem label="Admission Fee" amount={fmt(admissionOutstanding)} />
+                <LineItem label="Admission Fee" amount={fmt(admissionBase > 0 ? admissionBase : admissionOutstanding)} />
               )}
 
               {activePrograms && activePrograms.length > 0 ? (
@@ -351,11 +368,15 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
                     net - (paid - lastPayment),
                   );
 
+                  const displayAmt = lastPayment > 0 ? lastPayment : (outstandingBeforeToday > 0 ? outstandingBeforeToday : net);
+                  const itemBase = base > 0 ? base : (displayAmt + (pb.discount_type === "percentage" ? (base * disc / 100) : disc));
+                  const periodSuffix = pb.due_month ? ` (${formatMonthYear(pb.due_month)})` : "";
+
                   return (
                     <LineItem
                       key={idx}
-                      label={pb.title}
-                      amount={fmt(outstandingBeforeToday)}
+                      label={`${pb.title}${periodSuffix}`}
+                      amount={fmt(itemBase > 0 ? itemBase : displayAmt)}
                     />
                   );
                 })
@@ -385,8 +406,23 @@ export const ThermalBill = forwardRef<HTMLDivElement, ThermalBillProps>(
               }}
             >
               <span>Subtotal</span>
-              <span className="thermal-amount">Rs. {fmt(totalGross)}</span>
+              <span className="thermal-amount">Rs. {fmt(totalBaseSum > 0 ? totalBaseSum : totalGross)}</span>
             </div>
+
+            {totalDiscountSum > 0.01 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "3px 4px",
+                  fontWeight: 600,
+                  color: "#000",
+                }}
+              >
+                <span>Discount</span>
+                <span className="thermal-amount">- Rs. {fmt(totalDiscountSum)}</span>
+              </div>
+            )}
 
             {paidToday > 0 && (
               <div

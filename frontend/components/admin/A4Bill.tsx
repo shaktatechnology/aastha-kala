@@ -40,10 +40,12 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
           const lastPayment = Number(pb.last_payment_amount || 0);
           const outstandingBeforeToday = net - (paid - lastPayment);
           
-          return (outstandingBeforeToday > 0.01);
+          return (outstandingBeforeToday > 0.01 || lastPayment > 0.01);
         })
       : [];
 
+    let totalBaseSum = renderAdmission ? admissionBase : 0;
+    let totalDiscountSum = renderAdmission ? (admissionBase - admissionNet) : 0;
     let programOutstandingTotal = 0;
     let programPaidToday = 0;
 
@@ -57,9 +59,15 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
       const lastPayment = Number(pb.last_payment_amount || 0);
       const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
 
+      totalBaseSum += base > 0 ? base : outstandingBeforeToday;
+      totalDiscountSum += (base - net);
       programOutstandingTotal += outstandingBeforeToday;
       programPaidToday += lastPayment;
     });
+
+    if (fee.discount_amount !== undefined && Number(fee.discount_amount) > totalDiscountSum) {
+      totalDiscountSum = Number(fee.discount_amount);
+    }
 
     const totalGross = admissionOutstanding + programOutstandingTotal; // Outstanding sum before today
     const totalDiscount = 0;
@@ -70,21 +78,30 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
     // Derived data
     const billDate = formatDate(fee.created_at || new Date());
 
-    const dueRemarks = activePrograms
-      ? activePrograms
-          .filter((pb: any) => pb.due_month)
-          .map((pb: any) => `${pb.title} — ${formatMonthYear(pb.due_month)}`)
-      : [];
+    const allMonths = Array.from(
+      new Set(
+        [
+          fee.month_year,
+          ...(fee.programs_breakdown
+            ? fee.programs_breakdown.map((pb: any) => pb.due_month).filter(Boolean)
+            : []),
+        ].filter(Boolean)
+      )
+    ).sort();
+
+    const lastMonth = allMonths.length > 0 ? allMonths[allMonths.length - 1] : fee.month_year;
+    const period = lastMonth ? formatMonthYear(lastMonth) : "N/A";
+
+    const allPeriodsRemark = allMonths.length > 1
+      ? `Periods paid: ${allMonths.map((m: any) => formatMonthYear(m)).join(", ")}`
+      : "";
 
     const remarksParts = [];
     if (fee.remarks) remarksParts.push(fee.remarks);
-    if (dueRemarks.length > 0) {
-      remarksParts.push(...dueRemarks);
-    }
+    if (allPeriodsRemark) remarksParts.push(allPeriodsRemark);
     const finalRemarks = remarksParts.join(" | ");
 
     const studentName = fee.student?.name || "N/A";
-    const period = fee.month_year ? formatMonthYear(fee.month_year) : "N/A";
     const billNo = `#FEE-${fee.id?.toString().padStart(2, "0")}`;
 
     const getLogoUrl = (logoPath: string | null | undefined) => {
@@ -234,7 +251,7 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                     Admission Fee
                   </td>
                   <td className="px-5 py-4 text-right text-sm">
-                    {fmt(admissionOutstanding)}
+                    {fmt(admissionBase > 0 ? admissionBase : admissionOutstanding)}
                   </td>
                 </tr>
               )}
@@ -251,16 +268,20 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
                   const lastPayment = Number(pb.last_payment_amount || 0);
                   const outstandingBeforeToday = Math.max(0, net - (paid - lastPayment));
 
+                  const displayAmt = lastPayment > 0 ? lastPayment : (outstandingBeforeToday > 0 ? outstandingBeforeToday : net);
+                  const itemBase = base > 0 ? base : (displayAmt + (pb.discount_type === 'percentage' ? (base * disc / 100) : disc));
+                  const periodSuffix = pb.due_month ? ` (${formatMonthYear(pb.due_month)})` : "";
+
                   return (
                     <tr
                       key={idx}
                       className="border-b border-gray-100 last:border-0"
                     >
                       <td className="px-5 py-4 text-sm border-r border-gray-100">
-                        {pb.title}
+                        {pb.title}{periodSuffix}
                       </td>
                       <td className="px-5 py-4 text-right text-sm">
-                        {fmt(outstandingBeforeToday)}
+                        {fmt(itemBase > 0 ? itemBase : displayAmt)}
                       </td>
                     </tr>
                   );
@@ -285,9 +306,16 @@ export const A4Bill = forwardRef<HTMLDivElement, A4BillProps>(
           <div className="flex justify-end">
             <div className="w-full max-w-[320px]">
               <div className="flex justify-between py-2 px-5">
-                <span className="font-bold text-sm">Amount Owed:</span>
-                <span className="text-sm">{fmt(totalGross)}</span>
+                <span className="font-bold text-sm">Subtotal:</span>
+                <span className="text-sm">{fmt(totalBaseSum > 0 ? totalBaseSum : totalGross)}</span>
               </div>
+
+              {totalDiscountSum > 0.01 && (
+                <div className="flex justify-between py-2 px-5 text-amber-700">
+                  <span className="font-bold text-sm">Discount:</span>
+                  <span className="text-sm">- {fmt(totalDiscountSum)}</span>
+                </div>
+              )}
 
               {paidToday > 0 && (
                 <div className="flex justify-between py-2 px-5 border-t border-gray-100 mt-2">

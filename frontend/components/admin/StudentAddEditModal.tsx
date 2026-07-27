@@ -37,6 +37,17 @@ interface Props {
   student?: any;
 }
 
+function toYmdDate(dateVal?: string | null): string {
+  if (!dateVal) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return dateVal;
+  const d = new Date(dateVal);
+  if (Number.isNaN(d.getTime())) return dateVal.split("T")[0] || "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const StudentAddEditModal: React.FC<Props> = ({
   isOpen,
   onClose,
@@ -207,14 +218,14 @@ const StudentAddEditModal: React.FC<Props> = ({
         roll_no: student.roll_no || "",
         phone: student.phone || "",
         email: student.email || "",
-        dob: student.dob ? student.dob.split('T')[0] : "",
+        dob: toYmdDate(student.dob),
         address: student.address || "",
         time: student.time || "",
         offer_enroll_reference: student.offer_enroll_reference || "",
         gender: student.gender || "",
         classes: student.classes || "",
-        enrollment_date: student.enrollment_date ? student.enrollment_date.split('T')[0] : "",
-        billing_start_date: student.billing_start_date ? student.billing_start_date.split('T')[0] : (student.enrollments?.[0]?.enrolled_at ? student.enrollments[0].enrolled_at.split('T')[0] : (student.enrollment_date ? student.enrollment_date.split('T')[0] : "")),
+        enrollment_date: toYmdDate(student.enrollment_date),
+        billing_start_date: toYmdDate(student.billing_start_date) || toYmdDate(student.enrollments?.[0]?.enrolled_at) || toYmdDate(student.enrollment_date),
         duration_value: student.duration_value || "",
         duration_unit: student.duration_unit || "",
         status: student.status || "active",
