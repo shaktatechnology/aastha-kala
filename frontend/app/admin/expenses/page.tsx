@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, Plus, Banknote, Eye, Edit2, Trash2, Wallet, Calendar, Tag, Filter } from "lucide-react";
+import { Search, Plus, Banknote, Eye, Edit2, Trash2, Wallet, Calendar, Tag, Filter, Printer } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import {
   Table,
@@ -316,6 +316,13 @@ const ExpensesPage = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleView(expense)}
+                              className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title="Print Thermal Receipt"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleView(expense)}
                               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"

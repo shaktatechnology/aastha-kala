@@ -252,7 +252,7 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
                   <LineItem
                     key={index}
                     label={it.category?.name || it.topic_name || "Income"}
-                    subLabel={it.remarks}
+                    subLabel={it.remarks !== income.remarks ? it.remarks : undefined}
                     amount={fmt(Number(it.amount))}
                   />
                 ))
@@ -263,7 +263,6 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
                       ? income.category?.name
                       : income.category || "Income"
                   }
-                  subLabel={income.remarks}
                   amount={fmt(netAmount)}
                 />
               )}
@@ -333,7 +332,7 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
                   justifyContent: "space-between",
                   padding: "3px 4px",
                   fontWeight: "bold",
-                  color: "#ff0000",
+                  color: "#000",
                 }}
               >
                 <span>Due Amount</span>
@@ -388,6 +387,24 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
               >
                 <span>Method</span>
                 <span>{income.payment_method}</span>
+              </div>
+            )}
+
+            {income.remarks && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  paddingTop: "4px",
+                  fontSize: "10.5px",
+                  color: "#000",
+                }}
+              >
+                <p style={{ fontWeight: 700, marginBottom: "2px" }}>
+                  Remarks
+                </p>
+                <p style={{ fontWeight: 400, color: "#000" }}>
+                  {income.remarks}
+                </p>
               </div>
             )}
           </div>
@@ -450,11 +467,11 @@ function LineItem({
     <tr>
       <td style={{ padding: "4px 4px", color: "#000" }}>
         <div style={{ fontWeight: 700 }}>{label}</div>
-        {subLabel && (
-          <div style={{ fontSize: "9.5px", color: "#555", marginTop: "2px", fontWeight: 400 }}>
+        {/* {subLabel && (
+          <div style={{ fontSize: "9.5px", color: "#000", marginTop: "2px", fontWeight: 400 }}>
             {subLabel}
           </div>
-        )}
+        )} */}
       </td>
       <td
         className="income-thermal-amount"

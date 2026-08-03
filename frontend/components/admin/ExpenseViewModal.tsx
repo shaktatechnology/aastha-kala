@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
-import { X, Banknote, Calendar, Tag, CreditCard, FileText, Download } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { X, Banknote, Calendar, Tag, CreditCard, FileText, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useReactToPrint } from "react-to-print";
+import { ExpenseThermalBill } from "@/components/admin/ExpenseThermalBill";
 
 interface Expense {
   id?: number;
@@ -33,6 +35,31 @@ interface Props {
 }
 
 const ExpenseViewModal: React.FC<Props> = ({ isOpen, onClose, expense }) => {
+  const [settings, setSettings] = useState<any>(null);
+  const printRefThermal = useRef<HTMLDivElement>(null);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/settings`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await res.json();
+      if (data.success) setSettings(data.data.setting);
+    } catch (e) {
+      console.error("Failed to fetch settings", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) fetchSettings();
+  }, [isOpen, fetchSettings]);
+
+  const handleThermalPrint = useReactToPrint({
+    contentRef: printRefThermal,
+    documentTitle: `Expense_Voucher_${expense?.id || "print"}`,
+    pageStyle: "@page { size: 80mm auto; margin: 0; }",
+  });
+
   if (!isOpen || !expense) return null;
 
   return (
@@ -133,13 +160,30 @@ const ExpenseViewModal: React.FC<Props> = ({ isOpen, onClose, expense }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end">
+        <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <Button
+            type="button"
+            onClick={() => handleThermalPrint()}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 h-11 text-sm font-bold flex items-center gap-2 shadow-sm cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+            Thermal Print
+          </Button>
+
           <Button
             onClick={onClose}
-            className="bg-gray-800 text-white px-8 h-11 text-base font-medium shadow-sm"
+            className="bg-gray-800 text-white px-8 h-11 text-base font-medium shadow-sm cursor-pointer"
           >
             Close View
           </Button>
+        </div>
+
+        {/* Hidden Thermal Print Container */}
+        <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+          <div ref={printRefThermal} className="expense-thermal-wrapper">
+            <ExpenseThermalBill expense={expense} settings={settings} />
+            <ExpenseThermalBill expense={expense} settings={settings} />
+          </div>
         </div>
       </div>
     </div>
