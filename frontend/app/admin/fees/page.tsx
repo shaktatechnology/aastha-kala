@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { Pagination } from "@/components/global/Pagination";
 import FeeAddModal from "@/components/admin/FeeAddModal";
 import FeeViewModal from "@/components/admin/FeeViewModal";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "@/components/admin/ThermalBill";
@@ -247,7 +248,7 @@ const FeesPage = () => {
   const fetchPrograms = async () => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/programs`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/programs?all=1`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         },
@@ -278,7 +279,7 @@ const FeesPage = () => {
   const fetchInstructors = async () => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/instructors?all=1`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         },
@@ -601,19 +602,19 @@ const FeesPage = () => {
             </div>
 
             {/* Teacher Filter */}
-            <div className="relative flex-1 sm:flex-none">
-              <select
+            <div className="relative flex-1 sm:flex-none sm:w-48">
+              <CustomSelect
                 value={instructorInput}
-                onChange={(e) => setInstructorInput(e.target.value)}
-                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-              >
-                <option value="all">All Teachers</option>
-                {instructors.map((inst) => (
-                  <option key={inst.id} value={inst.id}>
-                    {inst.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setInstructorInput(val)}
+                options={[
+                  { value: "all", label: "All Instructors" },
+                  ...instructors.map((inst) => ({
+                    value: inst.id.toString(),
+                    label: inst.name,
+                  })),
+                ]}
+                placeholder="All Instructors"
+              />
             </div>
 
             {/* Nepali Month/Year Filter */}

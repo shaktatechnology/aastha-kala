@@ -37,7 +37,7 @@ const ProgramViewModal: React.FC<ProgramViewModalProps> = ({
 
   const fetchInstructors = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/instructors?all=1`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await res.json();

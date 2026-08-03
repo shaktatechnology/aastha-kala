@@ -13,7 +13,12 @@ class InstructorController extends Controller
     // GET /api/instructors
     public function index(Request $request)
     {
-        $query = Instructor::whereHas('employee', function($query) use ($request) {
+        $query = Instructor::with(['availabilities', 'programs', 'employee']);
+
+        $isAll = $request->boolean('all') || $request->input('all') == '1' || $request->input('all') == 'true';
+
+        if (!$isAll) {
+            $query->whereHas('employee', function($query) use ($request) {
                 $query->where('type', 'instructor');
                 if ($request->filled('status')) {
                     $status = $request->status === 'active' ? true : false;
@@ -21,8 +26,8 @@ class InstructorController extends Controller
                 } else {
                     $query->where('status', true);
                 }
-            })
-            ->with(['availabilities', 'programs', 'employee']);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -33,7 +38,11 @@ class InstructorController extends Controller
             });
         }
 
-        $instructors = $query->latest()->paginate(10);
+        if ($isAll) {
+            $instructors = $query->latest()->get();
+        } else {
+            $instructors = $query->latest()->paginate($request->input('per_page', 10));
+        }
 
         return response()->json([
             'success' => true,

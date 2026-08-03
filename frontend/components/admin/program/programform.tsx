@@ -12,6 +12,7 @@ import {
   Layout, Layers, ImageIcon, ChevronDown, Save, Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CustomSelect } from '@/components/ui/custom-select';
 
 const formatTime12h = (time24: string) => {
   if (!time24) return "";
@@ -112,13 +113,12 @@ export function ProgramForm({
 
   const fetchInstructors = async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/instructors`, {
+      const res = await fetch(`${API_URL}/admin/instructors?all=1`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await res.json();
       const list = data.data?.data || data.data || [];
-      // Ensure only instructors are shown (those with type 'instructor')
-      setInstructors(list.filter((inst: any) => inst.employee?.type === 'instructor'));
+      setInstructors(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Failed to fetch instructors", error);
     }
@@ -487,24 +487,24 @@ export function ProgramForm({
                     )}
                   </div>
                 </div>
-                <div className="w-full sm:flex-1 relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-                  <select
+                <div className="w-full sm:flex-1">
+                  <CustomSelect
                     value={schedule.instructor_id}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       const newSchedules = [...schedules];
-                      newSchedules[index].instructor_id = e.target.value;
+                      newSchedules[index].instructor_id = val;
                       setSchedules(newSchedules);
                     }}
                     disabled={subPrograms.length > 0}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-11 text-base bg-white appearance-none"
-                  >
-                    <option value="">Select Instructor</option>
-                    {instructors.map(inst => (
-                      <option key={inst.id} value={inst.id}>{inst.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+                    options={[
+                      { value: "", label: "Select Instructor" },
+                      ...instructors.map(inst => ({
+                        value: inst.id.toString(),
+                        label: inst.name
+                      }))
+                    ]}
+                    placeholder="Select Instructor"
+                  />
                 </div>
                 <ErrorMessage message={errors[`schedules.${index}.instructor_id`]?.[0]} />
                 {subPrograms.length === 0 && schedules.length > 1 && (
@@ -701,23 +701,23 @@ export function ProgramForm({
                             )}
                           </div>
                         </div>
-                        <div className="w-full sm:flex-1 relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />
-                          <select
+                        <div className="w-full sm:flex-1">
+                          <CustomSelect
                             value={schedule.instructor_id}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               const newSubs = [...subPrograms];
-                              newSubs[index].schedules[slotIndex].instructor_id = e.target.value;
+                              newSubs[index].schedules[slotIndex].instructor_id = val;
                               setSubPrograms(newSubs);
                             }}
-                            className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-10 text-sm bg-white appearance-none"
-                          >
-                            <option value="">Select Instructor</option>
-                            {instructors.map(inst => (
-                              <option key={inst.id} value={inst.id}>{inst.name}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
+                            options={[
+                              { value: "", label: "Select Instructor" },
+                              ...instructors.map(inst => ({
+                                value: inst.id.toString(),
+                                label: inst.name
+                              }))
+                            ]}
+                            placeholder="Select Instructor"
+                          />
                         </div>
                         <ErrorMessage message={errors[`sub_programs.${index}.schedules.${slotIndex}.instructor_id`]?.[0]} />
                         {subProgram.schedules.length > 1 && (

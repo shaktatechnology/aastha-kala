@@ -23,6 +23,8 @@ class ProgramController extends Controller
         if (!$request->is('api/admin/*')) {
             $query->where('is_active', true);
             $programs = $query->get();
+        } elseif ($request->boolean('all')) {
+            $programs = $query->get();
         } else {
             $programs = $query->paginate(10);
         }
