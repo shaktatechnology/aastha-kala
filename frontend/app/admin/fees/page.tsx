@@ -563,42 +563,38 @@ const FeesPage = () => {
             </div>
 
             {/* Shift Filter */}
-            <div className="relative flex-1 sm:flex-none">
-              <select
+            <div className="relative flex-1 sm:flex-none sm:w-48">
+              <CustomSelect
                 value={shiftInput}
-                onChange={(e) => setShiftInput(e.target.value)}
-                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-              >
-                <option value="all">All Schedules</option>
-                {schedules.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setShiftInput(val)}
+                options={[
+                  { value: "all", label: "All Schedules" },
+                  ...schedules.map((s) => ({
+                    value: s.id.toString(),
+                    label: s.title,
+                  })),
+                ]}
+                placeholder="All Schedules"
+              />
             </div>
 
             {/* Program Filter */}
-            <div className="relative flex-1 sm:flex-none">
-              <select
+            <div className="relative flex-1 sm:flex-none sm:w-48">
+              <CustomSelect
                 value={programInput}
-                onChange={(e) => setProgramInput(e.target.value)}
-                className="w-full sm:w-48 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-              >
-                <option value="all">All Programs</option>
-                {programs.map((p) => (
-                  <React.Fragment key={p.id}>
-                    <option value={p.id} className="font-bold">
-                      {p.title}
-                    </option>
-                    {p.sub_programs?.map((sp: any) => (
-                      <option key={sp.id} value={sp.id}>
-                        &nbsp;&nbsp;— {sp.title}
-                      </option>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </select>
+                onChange={(val) => setProgramInput(val)}
+                options={[
+                  { value: "all", label: "All Programs" },
+                  ...programs.flatMap((p) => [
+                    { value: p.id.toString(), label: p.title },
+                    ...(p.sub_programs?.map((sp: any) => ({
+                      value: sp.id.toString(),
+                      label: `— ${sp.title}`,
+                    })) || []),
+                  ]),
+                ]}
+                placeholder="All Programs"
+              />
             </div>
 
             {/* Teacher Filter */}
