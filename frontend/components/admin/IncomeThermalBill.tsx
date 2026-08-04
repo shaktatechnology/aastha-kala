@@ -200,6 +200,7 @@ export const IncomeThermalBill = forwardRef<HTMLDivElement, IncomeThermalBillPro
             <MetaRow label="Receipt No." value={billNo} />
             <MetaRow label="Date" value={billDate} />
             <MetaRow label="Period" value={period} />
+            {income.instructor?.name && <MetaRow label="Teacher" value={income.instructor.name} />}
             {income.payer_name && <MetaRow label="From" value={income.payer_name} />}
             {income.payer_phone && <MetaRow label="Phone" value={income.payer_phone} />}
           </div>

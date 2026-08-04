@@ -394,6 +394,16 @@ const CompanyIncomePage = () => {
                                                             : (income.category?.name || "—")}
                                                     </div>
                                                     {income.payer_name && <div className="text-xs text-gray-400 mt-0.5 truncate max-w-[180px]">From: {income.payer_name}</div>}
+                                                    {income.instructor && (
+                                                        <div className="text-xs text-blue-600 font-semibold mt-0.5 flex items-center gap-1">
+                                                            <span>Teacher: {income.instructor.name}</span>
+                                                            {income.commission_percentage && (
+                                                                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 rounded">
+                                                                    ({income.commission_percentage}% Comm: Rs. {Number(income.commission_amount || 0).toLocaleString()})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {income.bill_number && <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">{income.bill_number}</div>}
                                                 </TableCell>
                                                 <TableCell><div className="text-sm font-black text-emerald-600">Rs. {Number(income.amount).toLocaleString()}</div></TableCell>

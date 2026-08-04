@@ -402,11 +402,15 @@ const StudentAddEditModal: React.FC<Props> = ({
             }
             formData.append(`enrollments[${index}][billing_mode]`, e.billing_mode || "duration");
             if ((e.billing_mode || "duration") === "duration") {
-              if (e.duration_value !== undefined && e.duration_value !== null && e.duration_value !== "") {
-                formData.append(`enrollments[${index}][duration_value]`, String(e.duration_value));
+              const durVal = (e.duration_value !== undefined && e.duration_value !== null && e.duration_value !== "")
+                ? e.duration_value
+                : form.duration_value;
+              const durUnit = e.duration_unit || form.duration_unit || "months";
+              if (durVal !== undefined && durVal !== null && durVal !== "") {
+                formData.append(`enrollments[${index}][duration_value]`, String(durVal));
               }
-              if (e.duration_unit) {
-                formData.append(`enrollments[${index}][duration_unit]`, e.duration_unit);
+              if (durUnit) {
+                formData.append(`enrollments[${index}][duration_unit]`, String(durUnit));
               }
             }
             if (e.monthly_discount !== undefined && e.monthly_discount !== null && e.monthly_discount !== "") {
@@ -419,7 +423,8 @@ const StudentAddEditModal: React.FC<Props> = ({
             formData.append(`enrollments[${index}][enrolled_at]`, form.billing_start_date || form.enrollment_date || new Date().toISOString().split('T')[0]);
           });
         } else if (key === 'duration_value' || key === 'duration_unit') {
-          formData.append(key, "");
+          const val = (form as any)[key];
+          formData.append(key, val !== undefined && val !== null ? String(val) : "");
         } else if (key === 'admission_fee_not_required') {
           formData.append(key, form.admission_fee_not_required ? "1" : "0");
         } else {

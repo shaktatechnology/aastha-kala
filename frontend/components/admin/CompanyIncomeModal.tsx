@@ -33,6 +33,10 @@ export interface CompanyIncomeItemData {
 export interface CompanyIncome {
     id?: number;
     income_category_id: string;
+    instructor_id?: string | number | null;
+    instructor?: { name: string; id: number };
+    commission_percentage?: string | number | null;
+    commission_amount?: string | number | null;
     category?: { name: string; id: number };
     amount: string;
     income_date: string;
@@ -50,6 +54,11 @@ export interface CompanyIncome {
 }
 
 interface IncomeCategory {
+    id: number;
+    name: string;
+}
+
+interface Instructor {
     id: number;
     name: string;
 }
@@ -163,6 +172,9 @@ function getDefaultForm(): CompanyIncome {
     const bs = getBsDateParts(new Date()) || { month: 1, year: 2081 };
     return {
         income_category_id: "",
+        instructor_id: "",
+        commission_percentage: "",
+        commission_amount: "",
         amount: "",
         income_date: today,
         month: bs.month,
@@ -196,6 +208,7 @@ const CompanyIncomeModal: React.FC<Props> = ({
     const [settings, setSettings] = useState<any>(null);
 
     const [categories, setCategories] = useState<IncomeCategory[]>([]);
+    const [instructors, setInstructors] = useState<Instructor[]>([]);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [categoryLoading, setCategoryLoading] = useState(false);
@@ -235,6 +248,18 @@ const CompanyIncomeModal: React.FC<Props> = ({
         } catch { /* silent */ }
     }, []);
 
+    const fetchInstructors = useCallback(async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/instructors`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            });
+            const data = await res.json();
+            if (data.success) {
+                setInstructors(data.data?.data || data.data || []);
+            }
+        } catch { /* silent */ }
+    }, []);
+
     const fetchSettings = useCallback(async () => {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/settings`, {
@@ -252,6 +277,9 @@ const CompanyIncomeModal: React.FC<Props> = ({
                 ...income,
                 amount: String(income.amount),
                 income_category_id: income.income_category_id ? String(income.income_category_id) : "",
+                instructor_id: income.instructor_id ? String(income.instructor_id) : "",
+                commission_percentage: income.commission_percentage !== undefined && income.commission_percentage !== null ? String(income.commission_percentage) : "",
+                commission_amount: income.commission_amount !== undefined && income.commission_amount !== null ? String(income.commission_amount) : "",
                 discount: String(income.discount ?? 0),
                 received_amount: String(income.received_amount ?? income.amount),
                 return_amount: String(income.return_amount ?? 0),
@@ -279,7 +307,8 @@ const CompanyIncomeModal: React.FC<Props> = ({
         setErrors({});
         fetchSettings();
         fetchCategories();
-    }, [income, isOpen, fetchSettings, fetchCategories]);
+        fetchInstructors();
+    }, [income, isOpen, fetchSettings, fetchCategories, fetchInstructors]);
 
     // Handle automatically calculating change return
     const subtotal = form.items?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0;
@@ -401,6 +430,9 @@ const CompanyIncomeModal: React.FC<Props> = ({
                     received_amount: Number(form.received_amount || 0),
                     return_amount: Number(form.return_amount || 0),
                     bill_number: form.bill_number || null,
+                    instructor_id: form.instructor_id || null,
+                    commission_percentage: form.commission_percentage !== "" && form.commission_percentage !== null ? Number(form.commission_percentage) : null,
+                    commission_amount: form.commission_amount !== "" && form.commission_amount !== null ? Number(form.commission_amount) : null,
                     items: form.items?.map(item => ({
                         income_category_id: isManualMode ? null : item.income_category_id,
                         topic_name: isManualMode ? item.topic_name : null,
@@ -537,6 +569,20 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                     {income.payer_name || "—"}
                                     {income.payer_phone && <span className="text-xs text-gray-500 font-semibold ml-2">({income.payer_phone})</span>}
                                 </p>
+                            </div>
+                        )}
+                        {(income.instructor || income.instructor_id) && (
+                            <div className="bg-white p-4 rounded-xl border border-blue-100 bg-blue-50/30 flex justify-between items-center">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase text-blue-600 tracking-widest mb-0.5">Assigned Instructor</p>
+                                    <p className="text-sm font-black text-gray-900">{income.instructor?.name || `Instructor #${income.instructor_id}`}</p>
+                                </div>
+                                {income.commission_percentage && (
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-bold uppercase text-emerald-600 tracking-widest mb-0.5">Commission ({income.commission_percentage}%)</p>
+                                        <p className="text-sm font-black text-emerald-700">Rs. {Number(income.commission_amount || 0).toLocaleString()}</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {income.remarks && (
@@ -781,6 +827,72 @@ const CompanyIncomeModal: React.FC<Props> = ({
                                         onChange={(val) => handleChange("year", Number(val))}
                                         options={yearOptions}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Instructor Selection & Teacher Commission */}
+                            <div className="md:col-span-2 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-700">Assign Instructor & Commission</p>
+                                    <span className="text-[10px] text-slate-400 font-medium">Optional instructor commission for this bill</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <FieldLabel label="Select Instructor" />
+                                        <CustomSelect
+                                            value={form.instructor_id?.toString() || ""}
+                                            onChange={(val) => {
+                                                handleChange("instructor_id", val);
+                                                if (!val) {
+                                                    handleChange("commission_percentage", "");
+                                                    handleChange("commission_amount", "");
+                                                }
+                                            }}
+                                            options={[
+                                                { value: "", label: "No Instructor (None)" },
+                                                ...instructors.map((inst) => ({
+                                                    value: inst.id.toString(),
+                                                    label: inst.name,
+                                                })),
+                                            ]}
+                                            placeholder="Select Instructor"
+                                        />
+                                    </div>
+
+                                    {form.instructor_id && (
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <FieldLabel label="Teacher Commission %" />
+                                                {netTotal > 0 && form.commission_percentage && (
+                                                    <span className="text-[10px] font-bold text-emerald-600">
+                                                        Rs. {((netTotal * Number(form.commission_percentage)) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="relative flex items-center">
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    placeholder="e.g. 10, 20, 50"
+                                                    value={form.commission_percentage || ""}
+                                                    onChange={(e) => {
+                                                        const pct = e.target.value;
+                                                        handleChange("commission_percentage", pct);
+                                                        if (pct !== "") {
+                                                            const calculatedComm = ((netTotal * Number(pct)) / 100).toFixed(2);
+                                                            handleChange("commission_amount", calculatedComm);
+                                                        } else {
+                                                            handleChange("commission_amount", "");
+                                                        }
+                                                    }}
+                                                    className="pr-8 h-10 text-sm font-semibold"
+                                                />
+                                                <span className="absolute right-3 text-xs font-bold text-gray-400 pointer-events-none">%</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

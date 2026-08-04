@@ -11,6 +11,7 @@ class CompanyIncome extends Model
 
     protected $fillable = [
         'income_category_id',
+        'instructor_id',
         'amount',
         'received_amount',
         'income_date',
@@ -23,6 +24,8 @@ class CompanyIncome extends Model
         'discount',
         'return_amount',
         'bill_number',
+        'commission_percentage',
+        'commission_amount',
     ];
 
     protected $casts = [
@@ -30,11 +33,18 @@ class CompanyIncome extends Model
         'received_amount' => 'float',
         'discount' => 'float',
         'return_amount' => 'float',
+        'commission_percentage' => 'float',
+        'commission_amount' => 'float',
     ];
 
     public function category()
     {
         return $this->belongsTo(IncomeCategory::class, 'income_category_id');
+    }
+
+    public function instructor()
+    {
+        return $this->belongsTo(Instructor::class, 'instructor_id');
     }
 
     public function items()

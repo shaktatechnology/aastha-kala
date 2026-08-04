@@ -115,6 +115,9 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('/all-employees', [EmployeeController::class, 'all']);
     Route::get('/salary-payments/years', [SalaryPaymentController::class, 'getStoredYears']);
     Route::get('/salary-payments/calculate-commission', [SalaryPaymentController::class, 'calculateCommission']);
+    Route::get('/salary-payments/calculate-commission-from-income', [SalaryPaymentController::class, 'calculateCommissionFromIncome']);
+    Route::get('/salary-payments/pending-commissions', [SalaryPaymentController::class, 'pendingCommissions']);
+    Route::post('/salary-payments/bulk-commission-payout', [SalaryPaymentController::class, 'bulkCommissionPayout']);
     Route::apiResource('salary-payments', SalaryPaymentController::class);
 
     // Shifts & Attendance
