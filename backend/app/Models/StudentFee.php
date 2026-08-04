@@ -44,4 +44,9 @@ class StudentFee extends Model
     {
         return $this->belongsTo(Program::class);
     }
+
+    public function commissionAllocations()
+    {
+        return $this->hasMany(SalaryPaymentStudentFee::class);
+    }
 }

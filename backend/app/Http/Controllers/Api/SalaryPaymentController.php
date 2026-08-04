@@ -87,6 +87,10 @@ class SalaryPaymentController extends Controller
 
         $payment = SalaryPayment::create($validator->validated());
 
+        if ($payment->payment_type === 'commission') {
+            $this->syncFeeCommissionAllocations($payment);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Salary payment recorded successfully',
@@ -146,6 +150,10 @@ class SalaryPaymentController extends Controller
         }
 
         $salaryPayment->update($validator->validated());
+
+        if ($salaryPayment->payment_type === 'commission') {
+            $this->syncFeeCommissionAllocations($salaryPayment);
+        }
 
         return response()->json([
             'success' => true,
@@ -300,7 +308,7 @@ class SalaryPaymentController extends Controller
 
             $created = [];
             foreach ($request->payouts as $payout) {
-                $created[] = SalaryPayment::create([
+                $payment = SalaryPayment::create([
                     'employee_id'  => $request->employee_id,
                     'amount'       => $payout['amount'],
                     'payment_date' => $request->payment_date,
@@ -309,6 +317,8 @@ class SalaryPaymentController extends Controller
                     'payment_type' => 'commission',
                     'remarks'      => $payout['remarks'] ?? 'Bulk commission payout',
                 ]);
+                $this->syncFeeCommissionAllocations($payment);
+                $created[] = $payment;
             }
 
             \Illuminate\Support\Facades\DB::commit();
@@ -343,14 +353,14 @@ class SalaryPaymentController extends Controller
         return array_values(array_unique([$bsFormatted, $bsRaw, $adMonthYearStr, $adRaw]));
     }
 
-    /** Summary fee commission for a single month (collected basis, global rate). */
+    /** Summary fee commission for a single month (collected basis, global rate), deducting prior claimed fee commissions. */
     private function summaryFeeCommission(Employee $employee, $instructor, int $bsMonth, int $bsYear, float $vatRate): ?array
     {
         if (!$instructor) return null;
 
         $variants = $this->getMonthYearVariants($bsMonth, $bsYear);
 
-        $result = \App\Models\StudentFee::whereIn('month_year', $variants)
+        $fees = \App\Models\StudentFee::whereIn('month_year', $variants)
             ->where('fee_type', 'program')
             ->whereExists(function ($query) use ($instructor) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
@@ -400,18 +410,40 @@ class SalaryPaymentController extends Controller
                         });
                     });
             })
-            ->selectRaw('SUM(paid_amount) as total_paid')
-            ->first();
+            ->get();
 
-        $collected = (float) ($result->total_paid ?? 0);
-        if ($collected < 0.01) return null;
+        if ($fees->isEmpty()) return null;
 
-        $rate   = (float) $employee->percentage / 100;
-        $gross  = $collected * $rate;
-        $vatCut = $gross * $vatRate;
-        $net    = $gross - $vatCut;
+        $globalRate = (float) $employee->percentage;
+        $totalGross = 0.0;
 
-        return ['gross' => $gross, 'vat_cut' => $vatCut, 'net' => $net];
+        foreach ($fees as $fee) {
+            if (!$fee->program_id || (float)$fee->paid_amount < 0.01) continue;
+
+            $priorClaimedGross = (float) \App\Models\SalaryPaymentStudentFee::where('student_id', $fee->student_id)
+                ->where('program_id', $fee->program_id)
+                ->whereIn('month_year', $variants)
+                ->sum('gross_commission');
+
+            $sp = \App\Models\StudentProgram::where('student_id', $fee->student_id)
+                ->where('program_id', $fee->program_id)
+                ->first();
+
+            $rate = ($sp && $sp->commission_percentage !== null)
+                ? (float) $sp->commission_percentage
+                : $globalRate;
+
+            $fullGross = (float) $fee->paid_amount * ($rate / 100);
+            $availableGross = max(0.0, $fullGross - $priorClaimedGross);
+            $totalGross += $availableGross;
+        }
+
+        if ($totalGross < 0.01) return null;
+
+        $vatCut = $totalGross * $vatRate;
+        $net    = $totalGross - $vatCut;
+
+        return ['gross' => $totalGross, 'vat_cut' => $vatCut, 'net' => $net];
     }
 
     /** Summary income commission for a single BS month. */
@@ -553,7 +585,7 @@ class SalaryPaymentController extends Controller
         $collectedGross = 0.00;
         $billedGross = 0.00;
 
-        $breakdown = $feeRecords->map(function($record) use ($enrollments, $globalRate, &$totalCollected, &$totalBilled, &$collectedGross, &$billedGross) {
+        $breakdown = $feeRecords->map(function($record) use ($enrollments, $globalRate, $monthYearVariants, &$totalCollected, &$totalBilled, &$collectedGross, &$billedGross) {
             $key = $record->student_id . '-' . $record->program_id;
             $sp = $enrollments->get($key);
             $customRate = $sp ? $sp->commission_percentage : null;
@@ -562,19 +594,32 @@ class SalaryPaymentController extends Controller
             $billed = (float) $record->total_billed;
             $paid = (float) $record->total_paid;
 
+            // Deduct prior claimed gross commission for this student-program in this month
+            $priorClaimedGross = (float) \App\Models\SalaryPaymentStudentFee::where('student_id', $record->student_id)
+                ->where('program_id', $record->program_id)
+                ->whereIn('month_year', $monthYearVariants)
+                ->sum('gross_commission');
+
+            $fullBilledGross    = $billed * ($rate / 100);
+            $fullCollectedGross = $paid * ($rate / 100);
+
+            $availCollectedGross = max(0.0, $fullCollectedGross - $priorClaimedGross);
+            $availBilledGross    = max(0.0, $fullBilledGross - $priorClaimedGross);
+
             $totalBilled += $billed;
             $totalCollected += $paid;
 
-            $billedGross += $billed * ($rate / 100);
-            $collectedGross += $paid * ($rate / 100);
+            $billedGross += $availBilledGross;
+            $collectedGross += $availCollectedGross;
 
             return [
-                'student_name' => $record->student ? $record->student->name : 'N/A',
-                'program_title' => $record->program ? $record->program->title : 'N/A',
-                'billed_amount' => $billed,
-                'paid_amount' => $paid,
-                'commission_rate' => $rate,
-                'is_custom_rate' => $customRate !== null,
+                'student_name'        => $record->student ? $record->student->name : 'N/A',
+                'program_title'       => $record->program ? $record->program->title : 'N/A',
+                'billed_amount'       => $billed,
+                'paid_amount'         => $paid,
+                'commission_rate'     => $rate,
+                'is_custom_rate'      => $customRate !== null,
+                'prior_claimed_gross' => round($priorClaimedGross, 2),
             ];
         });
 
@@ -770,5 +815,104 @@ class SalaryPaymentController extends Controller
             'success' => true,
             'data' => $years
         ]);
+    }
+
+    private function syncFeeCommissionAllocations(SalaryPayment $payment): void
+    {
+        \App\Models\SalaryPaymentStudentFee::where('salary_payment_id', $payment->id)->delete();
+
+        if ($payment->payment_type !== 'commission') return;
+
+        $employee = Employee::with('instructor')->find($payment->employee_id);
+        if (!$employee || !$employee->instructor || !$employee->earns_fee_commission) return;
+
+        $instructor = $employee->instructor;
+        $bsMonth = (int) $payment->month;
+        $bsYear = (int) $payment->year;
+
+        $variants = $this->getMonthYearVariants($bsMonth, $bsYear);
+        $setting = \App\Models\Setting::first();
+        $vatPercentage = $setting ? (float) $setting->vat_percentage : 13.00;
+        $vatRate = $vatPercentage / 100;
+        $globalRate = (float) ($employee->percentage ?? 0);
+
+        $fees = \App\Models\StudentFee::whereIn('month_year', $variants)
+            ->where('fee_type', 'program')
+            ->whereExists(function ($query) use ($instructor) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('student_programs')
+                    ->whereColumn('student_programs.student_id', 'student_fees.student_id')
+                    ->whereColumn('student_programs.program_id', 'student_fees.program_id')
+                    ->where(function ($spQ) use ($instructor) {
+                        $spQ->where(function ($bq) use ($instructor) {
+                            $bq->whereExists(function ($sub) use ($instructor) {
+                                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                                    ->from('bookings')
+                                    ->whereColumn('bookings.id', 'student_programs.booking_id')
+                                    ->where(function ($bi) use ($instructor) {
+                                        $bi->where('bookings.instructor_id', $instructor->id)
+                                           ->orWhereExists(function ($bs) use ($instructor) {
+                                               $bs->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                  ->from('booking_schedule')
+                                                  ->join('program_schedules', 'program_schedules.id', '=', 'booking_schedule.program_schedule_id')
+                                                  ->whereColumn('booking_schedule.booking_id', 'bookings.id')
+                                                  ->where('program_schedules.instructor_id', $instructor->id);
+                                           })
+                                           ->orWhereExists(function ($bsch) use ($instructor) {
+                                               $bsch->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                    ->from('program_schedules')
+                                                    ->whereColumn('program_schedules.id', 'bookings.schedule_id')
+                                                    ->where('program_schedules.instructor_id', $instructor->id);
+                                           });
+                                    });
+                            });
+                        })
+                        ->orWhere(function ($pq) use ($instructor) {
+                            $pq->whereNull('student_programs.booking_id')
+                               ->where(function ($innerP) use ($instructor) {
+                                   $innerP->whereExists(function ($pi) use ($instructor) {
+                                       $pi->select(\Illuminate\Support\Facades\DB::raw(1))
+                                          ->from('program_instructor')
+                                          ->whereColumn('program_instructor.program_id', 'student_programs.program_id')
+                                          ->where('program_instructor.instructor_id', $instructor->id);
+                                   })
+                                   ->orWhereExists(function ($ps) use ($instructor) {
+                                       $ps->select(\Illuminate\Support\Facades\DB::raw(1))
+                                          ->from('program_schedules')
+                                          ->whereColumn('program_schedules.program_id', 'student_programs.program_id')
+                                          ->where('program_schedules.instructor_id', $instructor->id);
+                                   });
+                               });
+                        });
+                    });
+            })
+            ->get();
+
+        foreach ($fees as $fee) {
+            if (!$fee->program_id || (float)$fee->paid_amount < 0.01) continue;
+
+            $sp = \App\Models\StudentProgram::where('student_id', $fee->student_id)
+                ->where('program_id', $fee->program_id)
+                ->first();
+
+            $rate = ($sp && $sp->commission_percentage !== null)
+                ? (float) $sp->commission_percentage
+                : $globalRate;
+
+            $gross = (float) $fee->paid_amount * ($rate / 100);
+            $net   = $gross - ($gross * $vatRate);
+
+            if ($gross > 0) {
+                \App\Models\SalaryPaymentStudentFee::create([
+                    'salary_payment_id' => $payment->id,
+                    'student_fee_id'    => $fee->id,
+                    'student_id'        => $fee->student_id,
+                    'program_id'        => $fee->program_id,
+                    'month_year'        => $fee->month_year,
+                    'gross_commission'  => round($gross, 2),
+                    'net_commission'    => round($net, 2),
+                ]);
+            }
+        }
     }
 }

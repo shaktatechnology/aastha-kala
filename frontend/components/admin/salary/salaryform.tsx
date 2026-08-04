@@ -492,6 +492,7 @@ export function SalaryForm({
                           const opt = commissionData.bases[commissionBasis];
                           const applyAmount = opt.remaining ?? opt.net_commission;
                           setAmount(applyAmount.toString());
+                          setPaymentType('commission');
                           setRemarks(
                             `Commission of ${commissionData.employee.percentage}% on ${
                               commissionBasis === 'collected' ? 'collected' : 'billed'
@@ -527,6 +528,11 @@ export function SalaryForm({
                                   )}>
                                     Rate: {row.commission_rate}% {row.is_custom_rate && "(Custom)"}
                                   </span>
+                                  {row.prior_claimed_gross > 0 && (
+                                    <span className="px-1 py-0.5 rounded text-[9px] font-bold leading-none bg-red-100 text-red-700">
+                                      Prev Paid: -Rs. {Number(row.prior_claimed_gross).toLocaleString()}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-[10px] text-slate-400 mt-0.5">{row.program_title}</p>
                               </div>
@@ -648,6 +654,7 @@ export function SalaryForm({
                         onClick={() => {
                           const applyAmount = incomeCommissionData.remaining ?? incomeCommissionData.net_commission;
                           setAmount(applyAmount.toString());
+                          setPaymentType('commission');
                           setRemarks(
                             `Commission from company income for ${getMonthName(Number(month))} ${toNepaliDigits(Number(year))}: Gross Rs. ${Number(incomeCommissionData.gross_commission).toLocaleString()}, VAT ${incomeCommissionData.vat_percentage}% = Rs. ${Number(incomeCommissionData.vat_cut).toLocaleString()}, Net Rs. ${Number(incomeCommissionData.net_commission).toLocaleString()}. Remaining balance.`
                           );
