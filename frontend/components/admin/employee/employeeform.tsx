@@ -68,7 +68,7 @@ export function EmployeeForm({
 
   // Commission flags
   const [earnsFeeCom, setEarnsFeeCom] = React.useState<boolean>(
-    initialData?.earns_fee_commission ?? false
+    initialData?.earns_fee_commission ?? true
   );
   const [earnsIncomeCom, setEarnsIncomeCom] = React.useState<boolean>(
     initialData?.earns_income_commission ?? false
@@ -111,8 +111,8 @@ export function EmployeeForm({
       if (percentage) formData.append('percentage', percentage);
       if (joiningDate) formData.append('joining_date', joiningDate);
       formData.append('status', status ? '1' : '0');
-      formData.append('earns_fee_commission', earnsFeeCom ? '1' : '0');
-      formData.append('earns_income_commission', earnsIncomeCom ? '1' : '0');
+      formData.append('earns_fee_commission', type === 'instructor' && earnsFeeCom ? '1' : '0');
+      formData.append('earns_income_commission', type === 'instructor' && earnsIncomeCom ? '1' : '0');
       if (image) {
         formData.append('image', image);
       } else if (imageRemoved) {
@@ -422,41 +422,41 @@ export function EmployeeForm({
             </div>
           </div>
 
-          {/* Commission Settings */}
-          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
-            <p className="text-sm font-semibold text-amber-800">Commission Settings</p>
-            <p className="text-xs text-amber-600">Enable the commission streams this employee can earn from. Both can be active simultaneously.</p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Fee Commission Toggle */}
-              <button
-                type="button"
-                onClick={() => setEarnsFeeCom(!earnsFeeCom)}
-                className={cn(
-                  "flex-1 px-4 py-3 text-left rounded-lg border-2 transition-all",
-                  earnsFeeCom
-                    ? "bg-green-50 border-green-400 text-green-800"
-                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{earnsFeeCom ? '✓' : '○'} Fee Commission</p>
-                    <p className="text-[11px] mt-0.5 opacity-70">Earns % of student program fees</p>
-                  </div>
-                  <div className={cn(
-                    "w-9 h-5 rounded-full transition-colors relative flex-shrink-0",
-                    earnsFeeCom ? "bg-green-500" : "bg-gray-300"
-                  )}>
+          {/* Commission Settings - only applicable for Instructors */}
+          {type === 'instructor' && (
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+              <p className="text-sm font-semibold text-amber-800">Commission Settings</p>
+              <p className="text-xs text-amber-600">Enable the commission streams this employee can earn from. Both can be active simultaneously.</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Fee Commission Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setEarnsFeeCom(!earnsFeeCom)}
+                  className={cn(
+                    "flex-1 px-4 py-3 text-left rounded-lg border-2 transition-all",
+                    earnsFeeCom
+                      ? "bg-green-50 border-green-400 text-green-800"
+                      : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">{earnsFeeCom ? '✓' : '○'} Fee Commission</p>
+                      <p className="text-[11px] mt-0.5 opacity-70">Earns % of student program fees</p>
+                    </div>
                     <div className={cn(
-                      "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow",
-                      earnsFeeCom ? "translate-x-4" : "translate-x-0.5"
-                    )} />
+                      "w-9 h-5 rounded-full transition-colors relative flex-shrink-0",
+                      earnsFeeCom ? "bg-green-500" : "bg-gray-300"
+                    )}>
+                      <div className={cn(
+                        "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow",
+                        earnsFeeCom ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
 
-              {/* Income Commission Toggle — only for instructors */}
-              {type === 'instructor' && (
+                {/* Income Commission Toggle */}
                 <button
                   type="button"
                   onClick={() => setEarnsIncomeCom(!earnsIncomeCom)}
@@ -483,9 +483,9 @@ export function EmployeeForm({
                     </div>
                   </div>
                 </button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Instructor Specific Fields */}
