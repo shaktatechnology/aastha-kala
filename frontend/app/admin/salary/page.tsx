@@ -214,7 +214,7 @@ const SalaryManagementPage = () => {
             >
               <Layers className="w-4 h-4" />
               <span className="text-sm font-medium">Multi-Month Payout</span>
-            </button> */}
+            </button> */}nv
             <button
               onClick={() => {
                 setEditingPayment(null);
