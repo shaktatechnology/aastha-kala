@@ -29,4 +29,9 @@ class SalaryPayment extends Model
     {
         return $this->belongsTo(Employee::class);
     }
+
+    public function feeAllocations()
+    {
+        return $this->hasMany(SalaryPaymentStudentFee::class);
+    }
 }

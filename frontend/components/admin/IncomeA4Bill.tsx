@@ -103,6 +103,9 @@ export const IncomeA4Bill = forwardRef<HTMLDivElement, IncomeA4BillProps>(
                             {income.payment_method && (
                                 <p><span className="font-bold">Method:</span> {income.payment_method}</p>
                             )}
+                            {income.instructor?.name && (
+                                <p><span className="font-bold">Instructor:</span> {income.instructor.name}</p>
+                            )}
                             {income.payer_name && (
                                 <p><span className="font-bold">Received From:</span> {income.payer_name}</p>
                             )}

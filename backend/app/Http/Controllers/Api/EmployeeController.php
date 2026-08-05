@@ -55,6 +55,8 @@ class EmployeeController extends Controller
             'salary_basis' => 'required|in:salary,percentage,none',
             'salary_amount' => 'nullable|numeric|min:0',
             'percentage' => 'nullable|numeric|min:0|max:100',
+            'earns_fee_commission' => 'nullable|boolean',
+            'earns_income_commission' => 'nullable|boolean',
             'joining_date' => 'nullable|date',
             'status' => 'nullable|boolean',
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
@@ -79,8 +81,12 @@ class EmployeeController extends Controller
             $data = $request->only([
                 'name', 'email', 'device_user_id', 'phone', 'address', 'type',
                 'salary_basis', 'salary_amount', 'percentage',
+                'earns_fee_commission', 'earns_income_commission',
                 'joining_date', 'status'
             ]);
+            // Cast checkbox values from form-data ("1"/"0") to boolean
+            $data['earns_fee_commission']    = filter_var($request->input('earns_fee_commission', false), FILTER_VALIDATE_BOOLEAN);
+            $data['earns_income_commission'] = filter_var($request->input('earns_income_commission', false), FILTER_VALIDATE_BOOLEAN);
 
             if ($request->hasFile('image')) {
                 $path = $request->file('image')->store('employees', 'public');
@@ -179,6 +185,8 @@ class EmployeeController extends Controller
             'salary_basis' => 'required|in:salary,percentage,none',
             'salary_amount' => 'nullable|numeric|min:0',
             'percentage' => 'nullable|numeric|min:0|max:100',
+            'earns_fee_commission' => 'nullable|boolean',
+            'earns_income_commission' => 'nullable|boolean',
             'joining_date' => 'nullable|date',
             'status' => 'nullable|boolean',
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
@@ -203,8 +211,12 @@ class EmployeeController extends Controller
             $data = $request->only([
                 'name', 'email', 'device_user_id', 'phone', 'address', 'type',
                 'salary_basis', 'salary_amount', 'percentage',
+                'earns_fee_commission', 'earns_income_commission',
                 'joining_date', 'status'
             ]);
+            // Cast checkbox values from form-data ("1"/"0") to boolean
+            $data['earns_fee_commission']    = filter_var($request->input('earns_fee_commission', false), FILTER_VALIDATE_BOOLEAN);
+            $data['earns_income_commission'] = filter_var($request->input('earns_income_commission', false), FILTER_VALIDATE_BOOLEAN);
 
             if ($request->hasFile('image')) {
                 if ($employee->image) {
@@ -306,7 +318,7 @@ class EmployeeController extends Controller
 
     public function all()
     {
-        $employees = Employee::all();
+        $employees = Employee::with('instructor')->get();
         return response()->json([
             'success' => true,
             'data' => $employees

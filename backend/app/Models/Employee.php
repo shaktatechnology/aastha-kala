@@ -19,9 +19,17 @@ class Employee extends Model
         'salary_basis',
         'salary_amount',
         'percentage',
+        'earns_fee_commission',
+        'earns_income_commission',
         'joining_date',
         'status',
         'image',
+    ];
+
+    protected $casts = [
+        'earns_fee_commission'   => 'boolean',
+        'earns_income_commission' => 'boolean',
+        'status'                 => 'boolean',
     ];
 
     public function instructor()

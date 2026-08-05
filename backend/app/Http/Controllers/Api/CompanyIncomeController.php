@@ -15,7 +15,7 @@ class CompanyIncomeController extends Controller
      */
     public function index(Request $request)
     {
-        $query = CompanyIncome::with(['category', 'items.category']);
+        $query = CompanyIncome::with(['category', 'items.category', 'instructor']);
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -24,6 +24,9 @@ class CompanyIncomeController extends Controller
                 })
                 ->orWhereHas('items.category', function($iq) use ($request) {
                     $iq->where('name', 'like', '%' . $request->search . '%');
+                })
+                ->orWhereHas('instructor', function($instQ) use ($request) {
+                    $instQ->where('name', 'like', '%' . $request->search . '%');
                 })
                 ->orWhere('payer_name', 'like', '%' . $request->search . '%')
                 ->orWhere('payer_phone', 'like', '%' . $request->search . '%')
@@ -92,6 +95,9 @@ class CompanyIncomeController extends Controller
             'received_amount'    => 'nullable|numeric|min:0',
             'return_amount'      => 'nullable|numeric|min:0',
             'bill_number'        => 'nullable|string|max:100',
+            'instructor_id'      => 'nullable|exists:instructors,id',
+            'commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'commission_amount'  => 'nullable|numeric|min:0',
             'items'              => 'required|array|min:1',
             'items.*.income_category_id' => 'required_without:items.*.topic_name|nullable|exists:income_categories,id',
             'items.*.topic_name'         => 'required_without:items.*.income_category_id|nullable|string|max:255',
@@ -117,6 +123,19 @@ class CompanyIncomeController extends Controller
         $data['received_amount'] = isset($data['received_amount']) ? (float)$data['received_amount'] : $netAmount;
         if ($data['received_amount'] <= 0) {
             $data['received_amount'] = $netAmount;
+        }
+
+        // Calculate instructor commission if instructor is selected
+        if (!empty($data['instructor_id']) && isset($data['commission_percentage']) && $data['commission_percentage'] !== '') {
+            $commPct = (float) $data['commission_percentage'];
+            $data['commission_percentage'] = $commPct;
+            $data['commission_amount'] = isset($data['commission_amount']) && $data['commission_amount'] !== '' 
+                ? (float) $data['commission_amount'] 
+                : round(($netAmount * $commPct) / 100, 2);
+        } else {
+            $data['instructor_id'] = null;
+            $data['commission_percentage'] = null;
+            $data['commission_amount'] = null;
         }
 
         // 2. Set the primary category for legacy/fallback lookups
@@ -151,7 +170,7 @@ class CompanyIncomeController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Income recorded successfully',
-            'data'    => $income->load(['category', 'items.category']),
+            'data'    => $income->load(['category', 'items.category', 'instructor']),
         ], 201);
     }
 
@@ -160,7 +179,7 @@ class CompanyIncomeController extends Controller
      */
     public function show(string $id)
     {
-        $income = CompanyIncome::with(['category', 'items.category'])->find($id);
+        $income = CompanyIncome::with(['category', 'items.category', 'instructor'])->find($id);
 
         if (!$income) {
             return response()->json(['success' => false, 'message' => 'Not found'], 404);
@@ -192,6 +211,9 @@ class CompanyIncomeController extends Controller
             'received_amount'    => 'nullable|numeric|min:0',
             'return_amount'      => 'nullable|numeric|min:0',
             'bill_number'        => 'nullable|string|max:100',
+            'instructor_id'      => 'nullable|exists:instructors,id',
+            'commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'commission_amount'  => 'nullable|numeric|min:0',
             'items'              => 'required|array|min:1',
             'items.*.income_category_id' => 'required_without:items.*.topic_name|nullable|exists:income_categories,id',
             'items.*.topic_name'         => 'required_without:items.*.income_category_id|nullable|string|max:255',
@@ -217,6 +239,19 @@ class CompanyIncomeController extends Controller
         $data['received_amount'] = isset($data['received_amount']) ? (float)$data['received_amount'] : $netAmount;
         if ($data['received_amount'] <= 0) {
             $data['received_amount'] = $netAmount;
+        }
+
+        // Calculate instructor commission if instructor is selected
+        if (!empty($data['instructor_id']) && isset($data['commission_percentage']) && $data['commission_percentage'] !== '') {
+            $commPct = (float) $data['commission_percentage'];
+            $data['commission_percentage'] = $commPct;
+            $data['commission_amount'] = isset($data['commission_amount']) && $data['commission_amount'] !== ''
+                ? (float) $data['commission_amount']
+                : round(($netAmount * $commPct) / 100, 2);
+        } else {
+            $data['instructor_id'] = null;
+            $data['commission_percentage'] = null;
+            $data['commission_amount'] = null;
         }
 
         // 2. Set the primary category for legacy/fallback lookups
@@ -250,7 +285,7 @@ class CompanyIncomeController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Income updated successfully',
-            'data'    => $income->load(['category', 'items.category']),
+            'data'    => $income->load(['category', 'items.category', 'instructor']),
         ]);
     }
 

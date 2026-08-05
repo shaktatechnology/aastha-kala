@@ -137,6 +137,19 @@ const FeesPage = () => {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
 
+  const programOptions = React.useMemo(() => {
+    const opts = [{ value: "all", label: "All Programs" }];
+    programs.forEach((p) => {
+      opts.push({ value: p.id.toString(), label: p.title });
+      if (p.sub_programs && p.sub_programs.length > 0) {
+        p.sub_programs.forEach((sp: any) => {
+          opts.push({ value: sp.id.toString(), label: `— ${sp.title}` });
+        });
+      }
+    });
+    return opts;
+  }, [programs]);
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -550,20 +563,21 @@ const FeesPage = () => {
             </div>
 
             {/* Status */}
-            <div className="relative flex-1 sm:flex-none">
-              <select
+            <div className="relative flex-1 sm:flex-none sm:w-36">
+              <CustomSelect
                 value={statusInput}
-                onChange={(e) => setStatusInput(e.target.value as any)}
-                className="w-full px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-bold appearance-none min-w-[120px]"
-              >
-                <option value="all">All Status</option>
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-              </select>
+                onChange={(val) => setStatusInput(val as any)}
+                options={[
+                  { value: "all", label: "All Status" },
+                  { value: "paid", label: "Paid" },
+                  { value: "pending", label: "Pending" },
+                ]}
+                placeholder="All Status"
+              />
             </div>
 
             {/* Shift Filter */}
-            <div className="relative flex-1 sm:flex-none sm:w-48">
+            <div className="relative flex-1 sm:flex-none sm:w-44">
               <CustomSelect
                 value={shiftInput}
                 onChange={(val) => setShiftInput(val)}
@@ -583,16 +597,7 @@ const FeesPage = () => {
               <CustomSelect
                 value={programInput}
                 onChange={(val) => setProgramInput(val)}
-                options={[
-                  { value: "all", label: "All Programs" },
-                  ...programs.flatMap((p) => [
-                    { value: p.id.toString(), label: p.title },
-                    ...(p.sub_programs?.map((sp: any) => ({
-                      value: sp.id.toString(),
-                      label: `— ${sp.title}`,
-                    })) || []),
-                  ]),
-                ]}
+                options={programOptions}
                 placeholder="All Programs"
               />
             </div>
@@ -616,39 +621,40 @@ const FeesPage = () => {
             {/* Nepali Month/Year Filter */}
             <div className="flex gap-2 w-full sm:w-auto">
               {/* Year Select */}
-              <div className="relative flex-1 sm:flex-none">
-                <select
+              <div className="relative flex-1 sm:flex-none sm:w-28">
+                <CustomSelect
                   value={nepaliYearInput}
-                  onChange={(e) => setNepaliYearInput(e.target.value)}
-                  className="w-full sm:w-28 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-                >
-                  <option value="">Year</option>
-                  {Array.from({ length: 11 }, (_, i) => 2080 + i).map(
-                    (year) => (
-                      <option key={year} value={year}>
-                        {toNepaliDigits(year)}
-                      </option>
+                  onChange={(val) => setNepaliYearInput(val)}
+                  options={[
+                    { value: "", label: "Year" },
+                    ...Array.from({ length: 11 }, (_, i) => 2080 + i).map(
+                      (year) => ({
+                        value: year.toString(),
+                        label: toNepaliDigits(year),
+                      }),
                     ),
-                  )}
-                </select>
+                  ]}
+                  placeholder="Year"
+                />
               </div>
 
               {/* Month Select */}
-              <div className="relative flex-1 sm:flex-none">
-                <select
+              <div className="relative flex-1 sm:flex-none sm:w-32">
+                <CustomSelect
                   value={nepaliMonthInput}
-                  onChange={(e) => setNepaliMonthInput(e.target.value)}
-                  className="w-full sm:w-32 px-4 py-2 text-sm bg-background border border-border rounded-lg focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all outline-none cursor-pointer font-medium appearance-none"
-                >
-                  <option value="">Month</option>
-                  {nepaliMonthNames.map((name, index) => (
-                    <option key={name} value={index + 1}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setNepaliMonthInput(val)}
+                  options={[
+                    { value: "", label: "Month" },
+                    ...nepaliMonthNames.map((name, index) => ({
+                      value: (index + 1).toString(),
+                      label: name,
+                    })),
+                  ]}
+                  placeholder="Month"
+                />
               </div>
             </div>
+
 
             <div className="flex gap-2">
               <button

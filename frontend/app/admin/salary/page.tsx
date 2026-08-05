@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, Plus, CreditCard, Eye, Edit2, Trash2, Wallet, Calendar, User, Download } from "lucide-react";
+import { Search, Plus, CreditCard, Eye, Edit2, Trash2, Wallet, Calendar, User, Download, Layers } from "lucide-react";
 import { formatDate, getBsDateParts, nepaliMonthNames, toNepaliDigits } from "@/lib/utils";
 import {
   Table,
@@ -17,6 +17,7 @@ import { Pagination } from "@/components/global/Pagination";
 import { SalaryForm } from "@/components/admin/salary/salaryform";
 import { AnimatePresence, motion } from "framer-motion";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { BulkCommissionModal } from "@/components/admin/salary/BulkCommissionModal";
 
 interface SalaryPayment {
   id: string;
@@ -88,6 +89,7 @@ const SalaryManagementPage = () => {
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<SalaryPayment | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   const fetchYears = useCallback(async () => {
     try {
@@ -206,6 +208,13 @@ const SalaryManagementPage = () => {
             <p className="text-sm text-gray-500 mt-1">Track payments, pre-pays, and bonuses</p>
           </div>
           <div className="flex gap-2">
+            {/* <button
+              onClick={() => setBulkModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md cursor-pointer"
+            >
+              <Layers className="w-4 h-4" />
+              <span className="text-sm font-medium">Multi-Month Payout</span>
+            </button> */}
             <button
               onClick={() => {
                 setEditingPayment(null);
@@ -446,7 +455,7 @@ const SalaryManagementPage = () => {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="w-full max-w-2xl"
+                className="w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl"
               >
                 <SalaryForm
                   initialData={editingPayment}
@@ -472,6 +481,16 @@ const SalaryManagementPage = () => {
         title="Delete Payment Record"
         description="Are you sure you want to delete this payment record? This action cannot be undone."
       />
+
+      <AnimatePresence>
+        {bulkModalOpen && (
+          <BulkCommissionModal
+            isOpen={bulkModalOpen}
+            onClose={() => setBulkModalOpen(false)}
+            onSuccess={() => { fetchPayments(1); fetchYears(); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
