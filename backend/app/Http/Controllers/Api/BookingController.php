@@ -156,11 +156,29 @@ class BookingController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // GET /api/bookings
     // ─────────────────────────────────────────────────────────────────────────
-    public function index()
+    public function index(Request $request = null)
     {
-        $bookings = Booking::with(['program', 'schedules.instructor', 'schedule.instructor', 'instructor'])
-            ->latest()
-            ->paginate(10);
+        $query = Booking::whereNull('student_id')
+            ->with(['program', 'schedules.instructor', 'schedule.instructor', 'instructor'])
+            ->latest();
+
+        if ($request && $request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request && $request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%')
+                  ->orWhereHas('program', function ($pq) use ($search) {
+                      $pq->where('title', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $bookings = $query->paginate(10);
 
         return response()->json([
             'success' => true,

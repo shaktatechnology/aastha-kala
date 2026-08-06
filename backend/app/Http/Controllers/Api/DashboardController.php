@@ -34,8 +34,8 @@ class DashboardController extends Controller
         $totalEmployees = \App\Models\Employee::count();
 
         $stats = [
-            'total_bookings' => Booking::count(),
-            'pending_bookings' => Booking::where('status', 'pending')->count(),
+            'total_bookings' => Booking::whereNull('student_id')->count(),
+            'pending_bookings' => Booking::whereNull('student_id')->where('status', 'pending')->count(),
             'total_students' => $activeStudents,
             'total_employees' => $totalEmployees,
             'total_revenue' => StudentFee::sum('paid_amount'),
@@ -122,7 +122,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        $recent_bookings = Booking::with(['program', 'instructor'])
+        $recent_bookings = Booking::whereNull('student_id')
+            ->with(['program', 'instructor'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
