@@ -55,6 +55,10 @@ class StudentFeeController extends Controller
             $query->where('fee_type', $request->fee_type);
         }
 
+        if ($request->filled('payment_method') && $request->payment_method !== 'all') {
+            $query->where('payment_method', 'like', "%{$request->payment_method}%");
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             
@@ -159,7 +163,36 @@ class StudentFeeController extends Controller
         }
 
         if ($request->filled('month_year')) {
-            $query->where('month_year', 'like', "%{$request->month_year}%");
+            $mVal = $request->month_year;
+            $bsVal = (preg_match('/^\d{4}-\d{2}$/', $mVal) && (int)substr($mVal, 0, 4) < 2050)
+                ? $this->formatToBsMonthString($mVal)
+                : null;
+            $query->where(function($q) use ($mVal, $bsVal) {
+                $q->where('month_year', 'like', "%{$mVal}%");
+                if ($bsVal) {
+                    $q->orWhere('month_year', 'like', "%{$bsVal}%");
+                }
+            });
+        }
+
+        if ($request->filled('date')) {
+            $targetDate = null;
+            if ($request->date === 'today') {
+                $targetDate = \Carbon\Carbon::today()->toDateString();
+            } elseif ($request->date === 'yesterday') {
+                $targetDate = \Carbon\Carbon::yesterday()->toDateString();
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->date)) {
+                $targetDate = $request->date;
+            }
+
+            if ($targetDate) {
+                $query->whereDate('student_fees.updated_at', $targetDate)
+                      ->where('student_fees.paid_amount', '>', 0);
+            }
+        } elseif ($request->boolean('collected_today')) {
+            $todayStr = \Carbon\Carbon::today()->toDateString();
+            $query->whereDate('student_fees.updated_at', $todayStr)
+                  ->where('student_fees.paid_amount', '>', 0);
         }
 
         // For complex grouped queries with HAVING, paginate handles it better if we explicitly tell it to wrap
@@ -169,6 +202,9 @@ class StudentFeeController extends Controller
         $baseStatsQuery = StudentFee::query();
         if ($request->filled('student_id')) $baseStatsQuery->where('student_id', $request->student_id);
         if ($request->filled('fee_type')) $baseStatsQuery->where('fee_type', $request->fee_type);
+        if ($request->filled('payment_method') && $request->payment_method !== 'all') {
+            $baseStatsQuery->where('payment_method', 'like', "%{$request->payment_method}%");
+        }
         if ($request->filled('search')) {
             $search = $request->search;
             
@@ -230,7 +266,36 @@ class StudentFeeController extends Controller
         }
 
         if ($request->filled('month_year')) {
-            $baseStatsQuery->where('month_year', 'like', "%{$request->month_year}%");
+            $mVal = $request->month_year;
+            $bsVal = (preg_match('/^\d{4}-\d{2}$/', $mVal) && (int)substr($mVal, 0, 4) < 2050)
+                ? $this->formatToBsMonthString($mVal)
+                : null;
+            $baseStatsQuery->where(function($q) use ($mVal, $bsVal) {
+                $q->where('month_year', 'like', "%{$mVal}%");
+                if ($bsVal) {
+                    $q->orWhere('month_year', 'like', "%{$bsVal}%");
+                }
+            });
+        }
+
+        if ($request->filled('date')) {
+            $targetDate = null;
+            if ($request->date === 'today') {
+                $targetDate = \Carbon\Carbon::today()->toDateString();
+            } elseif ($request->date === 'yesterday') {
+                $targetDate = \Carbon\Carbon::yesterday()->toDateString();
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->date)) {
+                $targetDate = $request->date;
+            }
+
+            if ($targetDate) {
+                $baseStatsQuery->whereDate('student_fees.updated_at', $targetDate)
+                               ->where('student_fees.paid_amount', '>', 0);
+            }
+        } elseif ($request->boolean('collected_today')) {
+            $todayStr = \Carbon\Carbon::today()->toDateString();
+            $baseStatsQuery->whereDate('student_fees.updated_at', $todayStr)
+                           ->where('student_fees.paid_amount', '>', 0);
         }
 
         // Summary for dashboard
@@ -238,7 +303,20 @@ class StudentFeeController extends Controller
         $totalBilled = (float) $baseStatsQuery->sum('total_amount');
         $totalGross = (float) $baseStatsQuery->sum(\DB::raw('COALESCE(admission_fee, 0) + COALESCE(program_fee, 0)'));
         
+        $selectedDateStr = \Carbon\Carbon::today()->toDateString();
+        if ($request->filled('date')) {
+            if ($request->date === 'yesterday') {
+                $selectedDateStr = \Carbon\Carbon::yesterday()->toDateString();
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->date)) {
+                $selectedDateStr = $request->date;
+            }
+        }
+        $dateCollected = (float) StudentFee::whereDate('updated_at', $selectedDateStr)->where('paid_amount', '>', 0)->sum('last_payment_amount');
+        
         $totals = [
+            'today_collected' => $dateCollected,
+            'date_collected'  => $dateCollected,
+            'selected_date'   => $selectedDateStr,
             'total_collected' => $totalCollected,
             'total_billed' => $totalBilled,
             'total_gross' => $totalGross,

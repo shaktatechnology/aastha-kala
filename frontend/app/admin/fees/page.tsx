@@ -19,6 +19,7 @@ import { Pagination } from "@/components/global/Pagination";
 import FeeAddModal from "@/components/admin/FeeAddModal";
 import FeeViewModal from "@/components/admin/FeeViewModal";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { NepaliDateInput } from "@/components/ui/NepaliDateInput";
 import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { ThermalBill } from "@/components/admin/ThermalBill";
@@ -81,6 +82,7 @@ const FeesPage = () => {
   const [programFilter, setProgramFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [instructorFilter, setInstructorFilter] = useState("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
 
   // Local filter buffers
   const [searchInput, setSearchInput] = useState("");
@@ -93,10 +95,13 @@ const FeesPage = () => {
   const [shiftInput, setShiftInput] = useState("all");
   const [programInput, setProgramInput] = useState("all");
   const [instructorInput, setInstructorInput] = useState("all");
+  const [paymentMethodInput, setPaymentMethodInput] = useState("all");
   const [nepaliYearInput, setNepaliYearInput] = useState("");
   const [nepaliMonthInput, setNepaliMonthInput] = useState("");
   const [nepaliYearFilter, setNepaliYearFilter] = useState("");
   const [nepaliMonthFilter, setNepaliMonthFilter] = useState("");
+  const [collectionDateInput, setCollectionDateInput] = useState("");
+  const [collectionDateFilter, setCollectionDateFilter] = useState("");
 
   const handleApplyFilters = () => {
     setSearchTerm(searchInput);
@@ -105,8 +110,10 @@ const FeesPage = () => {
     setShiftFilter(shiftInput);
     setProgramFilter(programInput);
     setInstructorFilter(instructorInput);
+    setPaymentMethodFilter(paymentMethodInput);
     setNepaliYearFilter(nepaliYearInput);
     setNepaliMonthFilter(nepaliMonthInput);
+    setCollectionDateFilter(collectionDateInput);
   };
 
   const handleClearFilters = () => {
@@ -116,16 +123,20 @@ const FeesPage = () => {
     setShiftInput("all");
     setProgramInput("all");
     setInstructorInput("all");
+    setPaymentMethodInput("all");
     setNepaliYearInput("");
     setNepaliMonthInput("");
+    setCollectionDateInput("");
     setSearchTerm("");
     setStatusFilter("all");
     setTypeFilter("all");
     setShiftFilter("all");
     setProgramFilter("all");
     setInstructorFilter("all");
+    setPaymentMethodFilter("all");
     setNepaliYearFilter("");
     setNepaliMonthFilter("");
+    setCollectionDateFilter("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -158,6 +169,9 @@ const FeesPage = () => {
   });
 
   const [summary, setSummary] = useState({
+    today_collected: 0,
+    date_collected: 0,
+    selected_date: "",
     total_collected: 0,
     total_pending: 0,
     paid_count: 0,
@@ -335,33 +349,19 @@ const FeesPage = () => {
       if (programFilter !== "all") url += `&program_id=${programFilter}`;
       if (instructorFilter !== "all")
         url += `&instructor_id=${instructorFilter}`;
-      let yearForConversion = nepaliYearFilter;
-      if (!yearForConversion && nepaliMonthFilter) {
-        yearForConversion = (
-          getBsDateParts(new Date())?.year || 2083
-        ).toString();
-      }
-
-      if (yearForConversion && nepaliMonthFilter) {
-        const by = parseInt(yearForConversion);
-        const bm = parseInt(nepaliMonthFilter);
-        let adY: number;
-        let adM: number;
-        if (bm >= 1 && bm <= 8) {
-          adM = bm + 4;
-          adY = by - 57;
-        } else {
-          adM = bm - 8;
-          adY = by - 56;
-        }
-        const formatted = `${adY}-${String(adM).padStart(2, "0")}`;
+      if (paymentMethodFilter !== "all")
+        url += `&payment_method=${encodeURIComponent(paymentMethodFilter)}`;
+      if (nepaliYearFilter && nepaliMonthFilter) {
+        const formatted = `${nepaliYearFilter}-${String(nepaliMonthFilter).padStart(2, "0")}`;
         url += `&month_year=${encodeURIComponent(formatted)}`;
       } else if (nepaliYearFilter) {
-        const midAd = bsToAd(`${nepaliYearFilter}-06-15`);
-        if (midAd) {
-          const adYear = midAd.split("-")[0];
-          url += `&month_year=${encodeURIComponent(adYear)}`;
-        }
+        url += `&month_year=${encodeURIComponent(nepaliYearFilter)}`;
+      } else if (nepaliMonthFilter) {
+        const formatted = `-${String(nepaliMonthFilter).padStart(2, "0")}`;
+        url += `&month_year=${encodeURIComponent(formatted)}`;
+      }
+      if (collectionDateFilter) {
+        url += `&date=${encodeURIComponent(collectionDateFilter)}`;
       }
       if (studentIdParam) url += `&student_id=${studentIdParam}`;
       if (searchTerm) url += `&search=${searchTerm}`;
@@ -403,8 +403,10 @@ const FeesPage = () => {
     shiftFilter,
     programFilter,
     instructorFilter,
+    paymentMethodFilter,
     nepaliYearFilter,
     nepaliMonthFilter,
+    collectionDateFilter,
     studentIdParam,
     searchTerm,
   ]);
@@ -576,6 +578,23 @@ const FeesPage = () => {
               />
             </div>
 
+            {/* Payment Method Filter */}
+            <div className="relative flex-1 sm:flex-none sm:w-44">
+              <CustomSelect
+                value={paymentMethodInput}
+                onChange={(val) => setPaymentMethodInput(val)}
+                options={[
+                  { value: "all", label: "All Payment Methods" },
+                  { value: "Cash", label: "Cash" },
+                  { value: "Bank Transfer", label: "Bank Transfer" },
+                  { value: "Digital Wallet", label: "Digital Wallet" },
+                  { value: "Cheque", label: "Cheque" },
+                  { value: "Esewa", label: "eSewa" },
+                ]}
+                placeholder="Payment Method"
+              />
+            </div>
+
             {/* Shift Filter */}
             <div className="relative flex-1 sm:flex-none sm:w-44">
               <CustomSelect
@@ -656,7 +675,20 @@ const FeesPage = () => {
             </div>
 
 
-            <div className="flex gap-2">
+            {/* Collection Date Filter (Nepali Bikram Sambat Date Picker) */}
+            <div className="relative flex-1 sm:flex-none sm:w-44">
+              <NepaliDateInput
+                value={collectionDateInput}
+                onChange={(val) => {
+                  setCollectionDateInput(val);
+                  setCollectionDateFilter(val);
+                }}
+                placeholder="Collection Date"
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex gap-2 items-center">
               <button
                 type="submit"
                 className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
@@ -667,13 +699,17 @@ const FeesPage = () => {
               {(shiftInput !== "all" ||
                 programInput !== "all" ||
                 instructorInput !== "all" ||
+                paymentMethodInput !== "all" ||
                 nepaliYearInput !== "" ||
                 nepaliMonthInput !== "" ||
+                collectionDateInput !== "" ||
+                collectionDateFilter !== "" ||
                 statusInput !== "all" ||
                 searchInput !== "" ||
                 shiftFilter !== "all" ||
                 programFilter !== "all" ||
                 instructorFilter !== "all" ||
+                paymentMethodFilter !== "all" ||
                 nepaliYearFilter !== "" ||
                 nepaliMonthFilter !== "" ||
                 statusFilter !== "all" ||
@@ -691,9 +727,21 @@ const FeesPage = () => {
         </header>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
             {
+              id: "daily_collection",
+              label: collectionDateFilter
+                ? `Collected on ${formatDate(collectionDateFilter)}`
+                : "Collected Today",
+              value: summary.date_collected || summary.today_collected || 0,
+              icon: DollarSign,
+              color: "success",
+              prefix: "Rs. ",
+              active: collectionDateFilter !== "",
+            },
+            {
+              id: "total",
               label: "Total Collected",
               value: summary.total_collected,
               icon: TrendingUp,
@@ -701,6 +749,7 @@ const FeesPage = () => {
               prefix: "Rs. ",
             },
             {
+              id: "pending",
               label: "Total Pending",
               value: summary.total_pending,
               icon: TrendingDown,
@@ -708,12 +757,14 @@ const FeesPage = () => {
               prefix: "Rs. ",
             },
             {
+              id: "paid_count",
               label: "Paid Entries",
               value: summary.paid_count,
               icon: BarChart3,
               color: "success",
             },
             {
+              id: "pending_count",
               label: "Unpaid Entries",
               value: summary.pending_count,
               icon: CreditCard,
@@ -722,7 +773,25 @@ const FeesPage = () => {
           ].map((stat, i) => (
             <div
               key={stat.label}
-              className="bg-surface rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-all duration-300 animate-slide-up group"
+              onClick={() => {
+                if (stat.id === "daily_collection") {
+                  if (collectionDateFilter) {
+                    setCollectionDateInput("");
+                    setCollectionDateFilter("");
+                  } else {
+                    const todayStr = new Date().toISOString().split("T")[0];
+                    setCollectionDateInput(todayStr);
+                    setCollectionDateFilter(todayStr);
+                  }
+                }
+              }}
+              className={`bg-surface rounded-xl border p-5 shadow-sm hover:shadow-md transition-all duration-300 animate-slide-up group ${
+                stat.id === "daily_collection" ? "cursor-pointer" : ""
+              } ${
+                stat.active
+                  ? "border-success ring-2 ring-success/20 bg-success/5"
+                  : "border-border"
+              }`}
               style={{ animationDelay: `${i * 100}ms` }}
             >
               <div className="flex items-center justify-between">

@@ -20,6 +20,7 @@ interface NepaliDateInputProps {
   min?: string;
   placeholder?: string;
   className?: string;
+  buttonClassName?: string;
 }
 
 const weekLabels = ["आइत", "सोम", "मङ्गल", "बुध", "बिही", "शुक्र", "शनि"];
@@ -35,6 +36,7 @@ export function NepaliDateInput({
   min,
   placeholder = "Select date",
   className,
+  buttonClassName,
 }: NepaliDateInputProps) {
   const [open, setOpen] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
@@ -167,12 +169,15 @@ export function NepaliDateInput({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full text-left h-11 px-3 py-2 border border-gray-300 rounded-lg bg-white flex items-center justify-between gap-3 text-sm text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className={cn(
+          "w-full text-left h-9 px-3 py-1.5 border border-border rounded-lg bg-background flex items-center justify-between gap-2 text-xs text-text-primary hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+          buttonClassName
+        )}
       >
-        <span className={value ? "text-gray-900" : "text-gray-400"}>
+        <span className={value ? "text-text-primary font-medium" : "text-text-muted"}>
           {value ? formatDate(value) : placeholder}
         </span>
-        <Calendar className="w-4 h-4 text-gray-500" />
+        <Calendar className="w-3.5 h-3.5 text-text-muted" />
       </button>
 
       {open && (
